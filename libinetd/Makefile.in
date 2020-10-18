@@ -1,0 +1,166 @@
+# -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
+# libinetd makefile.
+#
+#
+# Copyright (c) 2020, Adam Young.
+# All rights reserved.
+#
+# The applications are free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, version 3.
+#
+# The applications are distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# ==end==
+#
+
+@SET_MAKE@
+ROOT=		@abs_top_builddir@
+top_builddir=	@top_builddir@
+
+# File extensions
+
+C=		.c
+O=		.o
+H=		.h
+A=		.a
+LP=		lib
+
+CLEAN=		*.bak *~ *.BAK *.swp *.tmp core *.core a.out
+XCLEAN=
+
+# Compilers, programs
+
+CC=		@CC@
+CXX=		@CXX@
+ifeq ("$(CXX)","")
+CXX=		$(CC)
+endif
+AR=		@AR@
+RANLIB= 	@RANLIB@
+RM=		@RM@
+
+# Configuration
+
+ifeq ("$(BUILD_TYPE)","")	#default
+BUILD_TYPE=	debug
+MAKEFLAGS+=	BUILD_TYPE=debug
+endif
+ifneq ("$(BUILD_TYPE)","release")
+RTSUFFIX=d
+endif
+
+# Directories
+
+D_INC=		$(ROOT)/include
+D_BIN=		$(ROOT)/bin@TOOLCHAINEXT@/$(BUILD_TYPE)
+D_OBJ=		$(ROOT)/objects@TOOLCHAINEXT@/$(BUILD_TYPE)/libinetd
+D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
+
+# Common flags
+
+XFLAGS=
+CFLAGS=		@CFLAGS@
+CWARN=		@CWARN@
+CDEBUG=		@CDEBUG@
+CRELEASE=	@CRELEASE@
+CXXFLAGS=	@CXXFLAGS@
+CXXDEBUG=	@CXXDEBUG@
+ifeq ("$(CXXDEBUG)","")
+CXXDEBUG=	$(CDEBUG)
+endif
+CXXRELEASE=	@CXXRELEASE@
+ifeq ("$(CXXRELEASE)","")
+CXXRELEASE=	$(CRELEASE)
+endif
+LDDEBUG=	@LDDEBUG@
+LDRELEASE=	@LDRELEASE@
+
+CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@
+CEXTRA=		@DEFS@ -DWIN32_SOCKET_MAP_NATIVE
+
+ifeq ("$(BUILD_TYPE)","release")
+CFLAGS+=	$(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
+CXXFLAGS+=	$(CXXRELEASE) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
+LDFLAGS=	$(LDRELEASE) @LDFLAGS@
+else
+CFLAGS+=	$(CDEBUG) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
+CXXFLAGS+=	$(CXXDEBUG) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
+LDFLAGS=	$(LDDEBUG) @LDFLAGS@
+endif
+LDLIBS=		-L$(D_LIB) @LIBS@ @EXTRALIBS@
+
+ARFLAGS=	rcv
+RMFLAGS=	-f
+RMDFLAGS=	-rf
+
+
+#########################################################################################
+# Targets
+
+#VPATH=		inetd-1.0.0
+
+LIBROOT=	inetd
+
+LIBCSOURCES=\
+	libutil_pidfile.c
+
+LIBCPPSOURCES=\
+	inetd.cpp \
+	builtins.cpp \
+
+LIBHSOURCES=\
+	inetd.h \
+	pathnames.h
+
+LIBOBJS=\
+	$(addprefix $(D_OBJ)/,$(subst .c,$(O),$(LIBCSOURCES))) \
+	$(addprefix $(D_OBJ)/,$(subst .cpp,$(O),$(LIBCPPSOURCES)))
+	
+LIBRARY=	$(D_LIB)/$(LP)$(LIBROOT)$(A)
+
+
+#########################################################################################
+# Rules
+
+.PHONY:			build release debug
+build:			directories $(LIBRARY) installinc
+
+release:
+		$(MAKE) BUILD_TYPE=release $(filter-out release, $(MAKECMDGOALS))
+debug:
+		$(MAKE) BUILD_TYPE=debug $(filter-out debug, $(MAKECMDGOALS))
+
+$(LIBRARY):		$(LIBOBJS)
+		$(RM) $(RMFLAGS) $@
+		$(AR) $(ARFLAGS) $@ $(LIBOBJS)
+		$(RANLIB) $@
+
+.PHONY:		installinc
+installinc:		../include/.created
+		@echo publishing headers ...
+
+directories:	$(D_OBJ)/.created
+
+%/.created:
+		-@mkdir $(@D)
+		@echo "do not delete, make managed content" > $@
+
+clean:
+		@echo $(BUILD_TYPE) clean
+		-@$(RM) $(RMFLAGS) $(BAK) $(LIBRARY) $(LIBOBJS) $(CLEAN) $(XCLEAN) >/dev/null 2>&1
+		-@$(RM) $(RMFLAGS) ../include/a_out.h >/dev/null 2>&1
+
+$(D_OBJ)/%$(O): 	%$(C)
+		$(CC) $(CFLAGS) -o $@ -c $<
+
+$(D_OBJ)/%$(O):		%.cpp
+		$(CXX) $(CXXFLAGS) -o $@ -c $<
+
+#end
+

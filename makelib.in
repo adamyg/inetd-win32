@@ -1,0 +1,160 @@
+#!/usr/bin/perl
+# $Id: makelib.in,v 1.2 2020/10/18 15:34:31 cvsuser Exp $
+# -*- mode: perl; tabs: 8; indent-width: 4; -*-
+# makelib configuration
+#
+# Copyright (c) 2020, Adam Young.
+# All rights reserved.
+#
+# The applications are free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, version 3.
+#
+# Redistributions of source code must retain the above copyright
+# notice, and must be distributed with the license document above.
+#
+# Redistributions in binary form must reproduce the above copyright
+# notice, and must include the license document above in
+# the documentation and/or other materials provided with the
+# distribution.
+#
+# The applications are distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# ==end==
+#
+
+## Package
+
+$PACKAGE        = 'inetd-win32';
+$PACKAGE_NAME   = 'Windows inetd service';
+$PACKAGE_VERSION = '0.0.1';
+
+$PACKAGE_URL    = 'https://github.com/adamyg/inetd-win32';
+
+$PACKAGE_PATH   = 'libw32';
+$PACKAGE_FILE   = 'package.h';
+
+## External
+
+@LIBRARIES      = (    # local libraries -l<xxx> lib<xxx>.lib
+        'w32',
+        'compat',
+        'sthread',
+        'inetd'
+        );
+
+@LIBRARIES2     = (    # local libraries -l<xxx> xxx.lib
+        );
+
+@OPTLIBRARIES   = ();  # optional libraries
+
+## Makefiles
+
+@MAKEFILES      = (    # local makefiles
+        '.',                                    # build order
+        'libw32',
+        'libcompat',
+        'libsthread',
+        'libNTService',
+        'libinetd',
+        'service',
+        'services',
+        'clients'
+        );
+
+## Toolchain
+
+sub
+Configure()
+{
+        # Visual studio
+        ################################################################################
+
+        if ($TOOLCHAIN =~ /^vs/) {
+
+                set_msvc_runtime('dynamic', '$(RTSUFFIX)');
+
+                remove_define('WIN32');
+                add_define('HAVE_CONFIG_H');
+                add_define('_WIN32_WINNT=0x600');       # Windows SDK
+
+                add_define('LIBW32_DYNAMIC');           # libw32 bindings
+                add_define('LIBW32_SOCKET_MAP_NATIVE');
+
+                add_xinclude('$(ROOT)/libw32');         # Extra includes; C and compiler tests.
+                add_xinclude('$(ROOT)/libw32/msvc');    # MSVC specials
+                add_application_library('libw32.lib');
+        }
+
+        ################################################################################
+        # OpenWatcom
+
+        if ($TOOLCHAIN =~ /^owc/) {
+
+                remove_define('WIN32');
+                add_define('HAVE_CONFIG_H');
+                add_define('_WIN32_WINNT=0x600');       # Windows SDK
+
+                add_define('LIBW32_DYNAMIC');           # libw32 bindings
+                add_define('LIBW32_SOCKET_MAP_NATIVE');
+
+                add_xinclude('$(ROOT)/libw32');         # Extra includes; C and compiler tests.
+                add_application_library('libw32.lib');
+        }
+}
+
+
+# Example usage
+#
+#   # Configuration
+#   ifeq ("$(BUILD_TYPE)","")   #default
+#   BUILD_TYPE= debug
+#   MAKEFLAGS+= BUILD_TYPE=debug
+#   endif
+#   ifneq ("$(BUILD_TYPE)","release")
+#   # MSVC Run-time suffix
+#   RTSUFFIX=d
+#   endif
+#
+#   # Common flags
+#   XFLAGS=
+#   CFLAGS=         @CFLAGS@
+#   CWARN=          @CWARN@ $(CWALL)
+#   CDEBUG=         @CDEBUG@
+#   CRELEASE=       @CRELEASE@
+#
+#   CXXFLAGS=       @CXXFLAGS@
+#   CXXDEBUG=       @CXXDEBUG@
+#   ifeq ("$(CXXDEBUG)","")
+#   CXXDEBUG=       $(CDEBUG)
+#   endif
+#   CXXRELEASE=     @CXXRELEASE@
+#   ifeq ("$(CXXRELEASE)","")
+#   CXXRELEASE=     $(CRELEASE)
+#   endif
+#
+#   LDDEBUG=        @LDDEBUG@
+#   LDRELEASE=      @LDRELEASE@
+#
+#   CINCLUDE=       <additional> @CINCLUDE@
+#   CEXTRA=         @DEFS@ <additional>
+#
+#   ifeq ("$(BUILD_TYPE)","release")
+#   CFLAGS+=        $(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
+#   CXXFLAGS+=      $(CXXRELEASE) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
+#   LDFLAGS=        $(LDRELEASE) @LDFLAGS@
+#   else
+#   CFLAGS+=        $(CDEBUG) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
+#   CXXFLAGS+=      $(CXXDEBUG) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
+#   LDFLAGS=        $(LDDEBUG) @LDFLAGS@
+#   endif
+#   LDLIBS=         -L$(D_LIB) @LDLIBS@ @LIBS@ @EXTRALIBS@
+#
+
+1;
+

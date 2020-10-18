@@ -1,0 +1,116 @@
+/*
+ * windows resource file
+ *
+ * Copyright (c) 2020, Adam Young.
+ * All rights reserved.
+ *
+ * This file is part of inetd-win32.
+ *
+ * The applications are free software: you can redistribute it
+ * and/or modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, version 3.
+ *
+ * Redistributions of source code must retain the above copyright
+ * notice, and must be distributed with the license document above.
+ *
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, and must include the license document above in
+ * the documentation and/or other materials provided with the
+ * distribution.
+ *
+ * This project is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * ==end==
+ */
+
+#include "buildinfo.h"
+
+#define RC_PRODUCTVERSION       WININETD_VERSION_1 , WININETD_VERSION_2 , WININETD_VERSION_3 , 0
+#define RC_FILEVERSION          WININETD_VERSION_1 , WININETD_VERSION_2 , WININETD_VERSION_3 , 1
+
+#ifndef  WINDRES
+#include "windows.h"
+#include "winver.h"
+#endif
+
+/*
+ *      English (U.S.) resources
+ */
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+
+#ifdef _WIN32
+#ifndef WINDRES
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#endif
+#pragma code_page(1252)
+#endif /* _WIN32 */
+
+
+/*
+ *      Version Information
+ */
+
+VS_VERSION_INFO VERSIONINFO
+        FILEVERSION             RC_FILEVERSION
+        PRODUCTVERSION          RC_PRODUCTVERSION
+        FILEFLAGSMASK           VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+        FILEFLAGS               (VS_FF_SPECIALBUILD|VS_FF_DEBUG)
+#else
+        FILEFLAGS               (VS_FF_SPECIALBUILD)
+#endif
+        FILEOS                  VOS_NT_WINDOWS32
+        FILETYPE                VFT_APP
+        FILESUBTYPE             VFT2_UNKNOWN
+        BEGIN
+                BLOCK           "StringFileInfo"
+                BEGIN
+                        BLOCK   "040904E4"  /* Language ID=040904E4 (U.S. English, char set = Windows, Multilingual) */
+                        BEGIN
+                                VALUE "Comments",               "inetd service"
+
+                                VALUE "CompanyName",            ""
+
+                                VALUE "FileDescription",        "Windows inetd service"
+
+                                VALUE "FileVersion",            WININETD_VERSION ", Build:" WININETD_BUILD_DATE "-" WININETD_BUILD_NUMBER
+
+                                VALUE "InternalName",           "inetd_service.exe"
+
+                                VALUE "LegalCopyright",
+                                        "Licensed under GNU General Public License version 3.0. \n"
+                                        "Copyright (C) 2020, Adam Young. All rights reserved. \n"
+                                        "Copyright (c) 2003, Danga Interactive, Inc. All rights reserved. \n"
+                                        "See --license for details. \n"
+
+                                VALUE "LegalTrademarks",        ""
+
+                                VALUE "Maintainers",            "Port: inetd_service \n"
+
+                                VALUE "OriginalFilename",       "inetd_service.exe"
+
+                                VALUE "ProductName",            "Native Windows inetd service"
+
+                                VALUE "ProductVersion",         WININETD_VERSION ", Win32"
+                        END
+                END
+
+                /* It consists of any number of WORD,WORD pairs, with each pair           */
+                /* describing a language,codepage combination supported by the file.      */
+                /*                                                                        */
+                /* For example, a file might have values "0x409,1252" indicating that it  */
+                /* supports English language (0x409) in the Windows ANSI codepage (1252). */
+
+                BLOCK "VarFileInfo"
+                BEGIN
+                        VALUE "Translation", 0x400, 1200
+                END
+        END
+
+// Icon with lowest ID value placed first to ensure application icon remains consistent on all systems.
+IDI_ICON1       ICON    "inetd.ico"
+
+#endif  /* English (U.S.) resources */
+

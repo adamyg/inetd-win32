@@ -1,0 +1,227 @@
+# -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
+# $Id: Makefile.in,v 1.1 2020/10/17 18:35:19 cvsuser Exp $
+# libw32 makefile.
+#
+#
+# Copyright (c) 2020, Adam Young.
+# All rights reserved.
+#
+# The applications are free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, version 3.
+#
+# Redistributions of source code must retain the above copyright
+# notice, and must be distributed with the license document above.
+#
+# Redistributions in binary form must reproduce the above copyright
+# notice, and must include the license document above in
+# the documentation and/or other materials provided with the
+# distribution.
+#
+# The applications are distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# License for more details.
+# ==end==
+#
+
+@SET_MAKE@
+ROOT=		@abs_top_builddir@
+top_builddir=	@top_builddir@
+
+# File extensions
+
+O=		.o
+H=		.h
+A=		.a
+LP=		lib
+
+CLEAN=		*.bak *~ *.BAK *.swp *.tmp core *.core a.out
+XCLEAN=
+
+# Compilers, programs
+
+CC=		@CC@
+AR=		@AR@
+RANLIB=		@RANLIB@
+RM=		@RM@
+PERL=		@PERL@
+LIBTOOL=	@LIBTOOL@
+RC=		@RC@
+
+# Configuration
+
+ifeq ("$(BUILD_TYPE)","")	#default
+BUILD_TYPE=	debug
+MAKEFLAGS+=	BUILD_TYPE=debug
+endif
+ifneq ("$(BUILD_TYPE)","release")
+# MSVC Run-time suffix
+RTSUFFIX=d
+endif
+
+# Common flags
+
+XFLAGS=
+CFLAGS=		@CFLAGS@
+CWARN=		@CWARN@
+CDEBUG=		@CDEBUG@
+CRELEASE=	@CRELEASE@
+CXXFLAGS=	@CXXFLAGS@
+CXXDEBUG=	@CXXDEBUG@
+ifeq ("$(CXXDEBUG)","")
+CXXDEBUG=	$(CDEBUG)
+endif
+CXXRELEASE=	@CXXRELEASE@
+ifeq ("$(CXXRELEASE)","")
+CXXRELEASE=	$(CRELEASE)
+endif
+LDDEBUG=	@LDDEBUG@
+LDRELEASE=	@LDRELEASE@
+
+CINCLUDE=	-I$(D_INC) @CINCLUDE@ -I.
+CEXTRA=		-DHAVE_CONFIG_H=1 -D_WIN32_WINNT=0x600
+##CEXTRA=	@DEFS@
+
+ifeq ("$(BUILD_TYPE)","release")
+CFLAGS+=	$(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
+CXXFLAGS+=	$(CXXRELEASE) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
+LDFLAGS=	$(LDRELEASE) @LDFLAGS@
+else
+CFLAGS+=	$(CDEBUG) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
+CXXFLAGS+=	$(CXXDEBUG) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
+LDFLAGS=	$(LDDEBUG) @LDFLAGS@
+endif
+
+LDLIBS=		-L$(D_LIB) @EXTRALIBS@
+
+RMFLAGS=	-f
+ARFLAGS=	rcv
+YFLAGS=		-d
+
+# Directories
+
+D_INC=		$(ROOT)/include
+D_BIN=		$(ROOT)/bin@TOOLCHAINEXT@/$(BUILD_TYPE)
+D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
+D_OBJ=		$(ROOT)/objects@TOOLCHAINEXT@/$(BUILD_TYPE)/libw32
+
+############################################################
+
+W32LIB=		$(D_LIB)/$(LP)w32_static$(A)
+W32DLL=		$(D_LIB)/$(LP)w32.la
+
+VERSION=	1.1.0
+VERSIONSPEC=	$(subst .,:,$(VERSION))
+
+CSOURCES=\
+	w32_child.c \
+	w32_close.c \
+	w32_dir.c \
+	w32_dirent.c \
+	w32_domainname.c \
+	w32_err.c \
+	w32_errno.c \
+	w32_flock.c \
+	w32_fsync.c \
+	w32_getcwd.c \
+	w32_gethostname.c \
+	w32_getopt.c \
+	w32_getopt_long.c \
+	w32_getrlimit.c \
+	w32_getrusage.c \
+	w32_getsubopt.c \
+	w32_gistrerror.c \
+	w32_grp.c \
+	w32_ino.c \
+	w32_io.c \
+	w32_link.c \
+	w32_mmap.c \
+	w32_neterr.c \
+	w32_pipe.c \
+	w32_poll.c \
+	w32_popen.c \
+	w32_proctitle.c \
+	w32_progname.c \
+	w32_pwd.c \
+	w32_read.c \
+	w32_readv.c \
+	w32_realpath.c \
+	w32_reparse.c \
+	w32_setrlimit.c \
+	w32_shell.c \
+	w32_signal.c \
+	w32_sockbase.c \
+	w32_socket.c \
+	w32_socket2.c \
+	w32_sockfd.c \
+	w32_sockpair.c \
+	w32_time.c \
+	w32_timegm.c \
+	w32_truncate.c \
+	w32_unlink.c \
+	w32_user.c \
+	w32_util.c \
+	w32_write.c \
+	w32_writev.c
+
+LIBOBJS=\
+	$(addprefix $(D_OBJ)/,$(subst .c,$(O),$(CSOURCES)))
+
+DLLOBJS=\
+	$(subst $(O),.lo,$(LIBOBJS))
+ifeq ("mingw32","@build_os@")
+DLLOBJS+=	$(D_OBJ)/libw32_res.o
+else ifeq ("win32","@build_os@")
+DLLOBJS+=	$(D_OBJ)/libw32.res
+endif
+
+OBJS=		$(LIBOBJS) $(DLLOBJS)
+LIBS=		$(W32LIB) $(W32DLL)
+TSKS=
+
+# Rules
+
+.PHONY:		build debug release
+build:			$(LIBS) $(TSKS)
+
+release:
+		$(MAKE) BUILD_TYPE=release $(filter-out release, $(MAKECMDGOALS))
+debug:
+		$(MAKE) BUILD_TYPE=debug $(filter-out debug, $(MAKECMDGOALS))
+
+$(W32LIB):		CEXTRA += -DLIBW32_STATIC -DLIBW32_LIBRARY
+$(W32LIB):		$(D_OBJ)/.created $(LIBOBJS)
+		$(RM) $(RMFLAGS) $@
+		$(AR) $(ARFLAGS) $@ $(LIBOBJS)
+		$(RANLIB) $@
+
+$(W32DLL):		CEXTRA += -DLIBW32_DYNAMIC -DLIBW32_LIBRARY
+$(W32DLL):		DLLDEF = -export-symbols libw32.def
+$(W32DLL):		$(DLLOBJS)
+		$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -version-number $(VERSIONSPEC) \
+			-rpath $(D_LIB) -bindir $(D_BIN) $(DLLDEF) -o $@ $^ $(LDLIBS)
+
+$(D_OBJ)/.created:
+		-@mkdir $(D_OBJ)
+		@echo "do not create" > $@
+
+clean:
+		@echo $(BUILD_TYPE) clean
+		-@$(LIBTOOL) --mode=clean $(RM) $(W32DLL) $(DLLOBJS) >/dev/null 2>&1
+		-@$(RM) $(RMFLAGS) $(BAK) $(W32LIB) $(CLEAN) $(XCLEAN) >/dev/null 2>&1
+		-@$(RM) $(RMFLAGS) $(LIBOBJS) >/dev/null 2>&1
+
+$(D_OBJ)/%$(O):		%.c
+		$(CC) $(CFLAGS) -o $@ -c $<
+
+$(D_OBJ)/%.lo:		%.c
+		$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o $@ -c $<
+
+$(D_OBJ)/%.res:		%.rc
+		$(RC) -fo $@ $<
+
+$(D_OBJ)/%_res.o:	%.rc
+		$(RC) -o $@ $<
+
+#end

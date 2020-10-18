@@ -1,0 +1,9 @@
+.makelib
+include
+tarballs
+references
+objects.*
+lib.*
+bin.*
+Makefile
+*.err
