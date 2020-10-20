@@ -64,6 +64,7 @@ $PACKAGE_FILE   = 'package.h';
         'libinetd',
         'service',
         'services',
+        'control',
         'clients'
         );
 
