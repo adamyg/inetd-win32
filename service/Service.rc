@@ -82,7 +82,7 @@ VS_VERSION_INFO VERSIONINFO
                                 VALUE "LegalCopyright",
                                         "Licensed under GNU General Public License version 3.0. \n"
                                         "Copyright (C) 2020, Adam Young. All rights reserved. \n"
-                                        "Copyright (c) 2003, Danga Interactive, Inc. All rights reserved. \n"
+	                                "Copyright (c) The Regents of the University of California.  All rights reserved. \n"
                                         "See --license for details. \n"
 
                                 VALUE "LegalTrademarks",        ""
