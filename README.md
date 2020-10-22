@@ -11,7 +11,7 @@ This service implements a similar framework under windows.
 Unlike UNIX, a process cannot simply pass socket handles by associating them with standard input/output of a child process. The method available utilises the `WSADuplicateSocket` function to enable socket sharing between processes. A source process calls `WSADuplicateSocket` to obtain a `WSAPROTOCOL_INFO` structure. We then use a pipe for interprocess communications to pass the contents of this structure to a target process, which in turn uses it in a call to `WSASocket` to obtain a descriptor for the duplicated socket.
 
 In order to execute within the inetd framework applications needs to bind to a named interface and import sockets from the parent. 
-Sample code below utilises the `inetd::SocketShare::GetSocket` function to recieve a socket from its parent.
+Sample code below utilises the `inetd::SocketShare::GetSocket` function to receive a socket from its parent.
 
 ```c++
 
