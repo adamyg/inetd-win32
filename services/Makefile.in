@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.1 2020/10/18 15:34:32 cvsuser Exp $
+# $Id: Makefile.in,v 1.2 2020/10/22 17:14:24 cvsuser Exp $
 # inetd_services Makefile
 #
 #
@@ -111,7 +111,7 @@ RMFLAGS=	-f
 #########################################################################################
 # Targets
 
-TARGET=		inetd_serviceS$(E)
+TARGET=		inetd_services$(E)
 
 VPATH=		../libNTService
 

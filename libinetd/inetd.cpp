@@ -885,6 +885,7 @@ setalarm(unsigned seconds)
 		if (! ::CreateTimerQueueTimer(&hTimer, hTimerQueue,
 			    (WAITORTIMERCALLBACK)alarm_timer, NULL, seconds * 1000, 0, 0)) {
 			syslog(LOG_ERR, "create timer: %M");
+			terminate(EX_OSERR);
 		}
 	}
 }
@@ -1095,6 +1096,7 @@ flag_signal(int signo)
 	if (len != sizeof(signo)) {
 		syslog(LOG_ERR, "write signal: %m");
 //		_exit(EX_OSERR);
+//		    Note: maybe running within an alternative thread; unsafe to teminate().
 	}
 }
 
@@ -1126,7 +1128,6 @@ addchild(struct servtab *sep, pid_t pid)
 	if (SERVTAB_AT_LIMIT(sep))
 		disable(sep);
 }
-
 
 static void
 reapchildren(void)
@@ -1800,7 +1801,6 @@ static char	line[LINE_MAX];
 static int
 setconfig(void)
 {
-
 	if (fconfig != NULL) {
 		fseek(fconfig, 0L, SEEK_SET);
 		return (1);
@@ -1942,6 +1942,7 @@ more:
 
 	//
 	//  socket-type
+	//
 	arg = sskip(&cp);
 	if (strcmp(arg, "stream") == 0)
 		sep->se_socktype = SOCK_STREAM;
@@ -1958,6 +1959,7 @@ more:
 
 	//
 	//  protocol[,sndbuf=#][,rcvbuf=##]
+	//
 	arg = sskip(&cp);
 	sep->se_proto = newstr(arg);
 	if (strncmp(arg, "tcp", 3) == 0) {
@@ -2104,6 +2106,7 @@ more:
 
 	//
 	//  {wait|nowait}[/max-child[/max-connections-per-ip-per-minute[/max-child-per-ip]]]
+	//
 	arg = sskip(&cp);
 	if (!strncmp(arg, "wait", 4))
 		sep->se_accept = 0;
@@ -2161,6 +2164,10 @@ more:
 			goto more;
 		}
 	}
+
+	//
+	//  user[:group][/login-class]
+	//
 	sep->se_user = newstr(sskip(&cp));
 #ifdef LOGIN_CAP
 	if ((s = strrchr(sep->se_user, '/')) != NULL) {
@@ -2174,6 +2181,10 @@ more:
 		sep->se_group = newstr(s + 1);
 	} else
 		sep->se_group = NULL;
+
+	//
+	//  server-program
+	//
 	sep->se_server = newstr(sskip(&cp));
 	if ((sep->se_server_name = strrchr(sep->se_server, '/')))
 		sep->se_server_name++;
@@ -2210,6 +2221,9 @@ more:
 	}
 	LIST_INIT(&sep->se_children);
 
+	//
+	//  server-program-arguments
+	//
 	argc = 0;
 	for (arg = skip(&cp); cp; arg = skip(&cp))
 		if (argc < MAXARGV) {
@@ -2455,7 +2469,7 @@ inetd_setproctitle(const char *a, int s)
 int
 check_loop(const struct sockaddr *sa, const struct servtab *sep)
 {
-	struct servtab *se2;
+	const struct servtab *se2;
 	char pname[NI_MAXHOST];
 
 	for (se2 = servtab; se2; se2 = se2->se_next) {
@@ -2552,8 +2566,8 @@ cpmip(const struct servtab *sep, int ctrl)
 	 */
 
 	if (sep->se_maxcpm > 0 &&
-	            (sep->se_family == AF_INET || sep->se_family == AF_INET6) &&
-	            getpeername(ctrl, (struct sockaddr *)&rss, &rssLen) == 0 ) {
+		    (sep->se_family == AF_INET || sep->se_family == AF_INET6) &&
+		    getpeername(ctrl, (struct sockaddr *)&rss, &rssLen) == 0 ) {
 		const time_t t = time(NULL);
 		unsigned int hv = 0xABC3D20F;
 		int i;
@@ -2616,7 +2630,7 @@ cpmip(const struct servtab *sep, int ctrl)
 			}
 #endif
 			if (chBest == NULL || ch->ch_LTime == 0 ||
-                                    ch->ch_LTime < chBest->ch_LTime) {
+			    ch->ch_LTime < chBest->ch_LTime) {
 				chBest = ch;
 			}
 		}

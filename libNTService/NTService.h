@@ -34,7 +34,7 @@
 #include "NTServiceIO.h"
 #include "NTServiceReg.h"
 
-#define SERVICE_CONTROL_USER    128         // User control message base.
+#define SERVICE_CONTROL_USER    128             // User control message base.
 
 #define NTSERVICE_CMD_HELP      -1              // Help.
 #define NTSERVICE_CMD_MISSING_ARG -2            // Missing argument.

@@ -39,10 +39,10 @@ class SimpleConfig {
 
 public:
         struct string_view {
-                string_view(const char *_data, unsigned _length) :  
+                string_view(const char *_data, unsigned _length) :
                         data(_data), length(_length) {
                 }
-                string_view(const char *_data) :  
+                string_view(const char *_data) :
                         data(_data), length(_data ? strlen(_data) : 0) {
                 }
                 const char *data;
@@ -56,7 +56,7 @@ public:
                 static inline unsigned char Normalise(unsigned char ch) {
                         if (ch >= 'A' && ch <= 'Z') // tolower
                                 return ch - ('A' - 'a');
-                        if (ch == '/') 
+                        if (ch == '/')
                                 return '\\';        // equiv
                         return ch;
                 }
@@ -77,15 +77,15 @@ public:
                         for (;;) {
                                 const unsigned char lc = (lhn-- ? *ls++ : 0);
                                 const unsigned char rc = (rhn-- ? *rs++ : 0);
-	                        if (lc != rc) {
+                                if (lc != rc) {
                                         const int l = Normalise(lc), r = Normalise(rc);
                                         if (l != r) {
-        			                return (l - r);
+                                                return (l - r);
                                         }
                                 }
-		                if (lc == 0)        //eos
-			                return 0;
-	                }
+                                if (lc == 0)        //eos
+                                        return 0;
+                        }
                         /*NOTREACHED*/
                 }
 
@@ -108,15 +108,15 @@ public:
                         for (;;) {
                                 const unsigned char lc = (ln-- ? *ls++ : 0);
                                 const unsigned char rc = *rs++;
-	                        if (lc != rc) {
+                                if (lc != rc) {
                                         const int l = Normalise(lc), r = Normalise(rc);
                                         if (l != r) {
-        			                return (l - r) < 0;
+                                                return (l - r) < 0;
                                         }
                                 }
-		                if (lc == 0)        //eos
-			                return 0;
-	                }
+                                if (lc == 0)        //eos
+                                        return 0;
+                        }
                 }
 
                 bool operator()(const std::string &lhs, const SimpleConfig::string_view &rhs) const {
@@ -126,15 +126,15 @@ public:
                         for (;;) {
                                 const unsigned char lc = *ls++;
                                 const unsigned char rc = (rn-- ? *rs++ : 0);
-	                        if (lc != rc) {
+                                if (lc != rc) {
                                         const int l = Normalise(lc), r = Normalise(rc);
                                         if (l != r) {
-        			                return (l - r) < 0;
+                                                return (l - r) < 0;
                                         }
                                 }
-		                if (lc == 0)        //eos
-			                return 0;
-	                }
+                                if (lc == 0)        //eos
+                                        return 0;
+                        }
                 }
         };
 
@@ -190,3 +190,4 @@ private:
 };
 
 #endif  //CONFIG_H_INCLUDED
+

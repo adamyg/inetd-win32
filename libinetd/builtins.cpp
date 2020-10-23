@@ -81,8 +81,8 @@
 #include "inetd.h"
 
 #ifndef sockread
-#define sockread(a,b,c)             read(a,b,c)
-#define sockwrite(a,b,c)            write(a,b,c)
+#define sockread(a,b,c)		read(a,b,c)
+#define sockwrite(a,b,c)	write(a,b,c)
 #endif
 
 static void	chargen_dg(int, struct servtab *);
@@ -724,7 +724,7 @@ printit:
 	}
 	send(s, p, strlen(p), MSG_EOF);
 	free(p);
-	
+
 	exit(0);
 }
 #endif  //BUILTIN_AUTH
@@ -796,22 +796,23 @@ static int		/* # of characters up to \r,\n or \0 */
 get_line(int fd, char *buf, int len)
 {
 	int count = 0, n;
-#if defined(SIGALRM)
-	struct sigaction sa;
-	sa.sa_flags = 0;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_handler = SIG_DFL;
-	sigaction(SIGALRM, &sa, (struct sigaction *)0);
-#endif
 
 	do {
-#if defined(SIGALRM)
-		alarm(10);
-#endif
+		fd_set readable;
+		struct timeval timeout = {0};
+
+		FD_ZERO(&readable);
+		FD_SET(fd, &readable);
+		timeout.tv_sec = 10;            /* timeout */
+		timeout.tv_usec = 0;
+		if ((n = select(FD_SETSIZE /*dummy*/, &readable, (fd_set *)0, (fd_set *)0, &timeout)) <= 0) {
+			break;
+		}
+
+//              DWORD timeout = 10 * 1000;      /* recv timeout */
+//              setsockopt(fs, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+
 		n = sockread(fd, buf, len-count);
-#if defined(SIGALRM)
-		alarm(0);
-#endif
 		if (n == 0)
 			return (count);
 		if (n < 0)
@@ -858,7 +859,7 @@ tcpmux(int s)
 	}
 
 	/*
-	 *  Try matching a service in inetd.conf with the request 
+	 *  Try matching a service in inetd.conf with the request
 	 */
 	for (sep = servtab; sep; sep = sep->se_next) {
 		if (!ISMUX(sep))

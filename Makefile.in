@@ -1,5 +1,5 @@
 # -*- mode: mak; -*-
-# $Id: Makefile.in,v 1.2 2020/10/18 15:34:31 cvsuser Exp $
+# $Id: Makefile.in,v 1.4 2020/10/23 15:58:53 cvsuser Exp $
 # inetd-win32 makefile.
 #
 #
@@ -211,8 +211,9 @@ BINS=\
 	$(D_BIN)/service$(E)		\
 	$(D_BIN)/services$(E)		\
 	$(D_BIN)/control$(E)		\
-	$(D_BIN)/clients$(E)
-
+	$(D_BIN)/clients$(E)		\
+	$(D_BIN)/examples$(E)
+        
 LIBS+=\
 	$(LW)w32$(A)			\
 	$(LW)compat$(A)			\
@@ -321,15 +322,16 @@ install:		all
 
 clean:
 		@echo $(BUILD_TYPE) clean
-		$(MAKE) -C libw32 clean
-		$(MAKE) -C libcompat clean
-		$(MAKE) -C libsthread clean
-		$(MAKE) -C libNTService clean
-		$(MAKE) -C libinetd clean
+		$(MAKE) -C examples clean
 		$(MAKE) -C clients clean
 		$(MAKE) -C control clean
 		$(MAKE) -C services clean
 		$(MAKE) -C service clean
+		$(MAKE) -C libinetd clean
+		$(MAKE) -C libNTService clean
+		$(MAKE) -C libsthread clean
+		$(MAKE) -C libcompat clean
+		$(MAKE) -C libw32 clean
 
 vclean:			clean
 		-@$(RM) $(RMDFLAGS) $(D_BIN)/* $(D_MACROS)/* $(D_HELP)/* $(D_LIB)/* $(D_OBJ)/*
@@ -337,6 +339,7 @@ vclean:			clean
 
 distclean:		clean
 		$(RM) $(RMFLAGS) config.cache config.log config.status \
+			examples/Makefile \
 			clients/Makefile \
 			control/Makefile \
 			service/Makefile \

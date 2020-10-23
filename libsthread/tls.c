@@ -69,7 +69,7 @@ pthread_key_delete(pthread_key_t key)
 int
 pthread_setspecific(pthread_key_t key, const void *pointer)
 {
-    if(TlsSetValue(key,(LPVOID)pointer)){
+    if (TlsSetValue(key,(LPVOID)pointer)){
         return 0;
     }
     return EINVAL;

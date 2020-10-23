@@ -1,6 +1,6 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.1 2020/10/20 16:23:04 cvsuser Exp $
-# inetd_control Makefile
+# $Id: Makefile.in,v 1.1 2020/10/23 15:58:43 cvsuser Exp $
+# example services Makefile
 #
 #
 # Copyright (c) 2020, Adam Young.
@@ -67,7 +67,7 @@ endif
 
 D_INC=		$(ROOT)/include
 D_BIN=		$(ROOT)/bin@TOOLCHAINEXT@/$(BUILD_TYPE)
-D_OBJ=		$(ROOT)/objects@TOOLCHAINEXT@/$(BUILD_TYPE)/inetd_control
+D_OBJ=		$(ROOT)/objects@TOOLCHAINEXT@/$(BUILD_TYPE)/inetd_service
 D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
 
 # Common flags
@@ -111,46 +111,29 @@ RMFLAGS=	-f
 #########################################################################################
 # Targets
 
-TARGET=		inetd_control$(E)
+TARGETS=	\
+	$(D_BIN)/example$(E)
 
-VPATH=		../libNTService
-
-CPPSOURCES=\
-	control_main.cpp
-
-RESOURCES=\
-	Control.rc
-
-OBJS+=		$(addprefix $(D_OBJ)/,$(subst .cpp,$(O),$(CPPSOURCES)))
-OBJS+=		$(addprefix $(D_OBJ)/,$(subst .c,$(O),$(CSOURCES)))
-OBJS+=		$(addprefix $(D_OBJ)/,$(subst .rc,.res,$(RESOURCES)))
-
-XCLEAN=		service_license.h bsd_license.h
+XCLEAN=
 
 
 #########################################################################################
 # Rules
 
-.PHONY:			build resources release debug
-build:		resources $(D_BIN)/$(TARGET)
+.PHONY:			build release debug
+build:		directories $(TARGETS)
 
 release:
 		$(MAKE) BUILD_TYPE=release $(filter-out release, $(MAKECMDGOALS))
 debug:
 		$(MAKE) BUILD_TYPE=debug $(filter-out debug, $(MAKECMDGOALS))
 
-resources:		service_license.h bsd_license.h
+directories:	$(D_OBJ)/.created $(TARGETS)
 
-service_license.h:	../LICENSE ../service/mklicense.pl
-		@$(PERL) ../service/mklicense.pl $< $@ service_license
-
-bsd_license.h:		../service/bsd_license.txt ../service/mklicense.pl
-		@$(PERL) ../service/mklicense.pl $< $@ bsd_license
-
-$(D_BIN)/$(TARGET):	MAPFILE=$(basename $@).map
-$(D_BIN)/$(TARGET):	LINKLIBS=-linetd -lsthread -lcompat
-$(D_BIN)/$(TARGET):	$(D_OBJ)/.created $(OBJS) $(RESOURCES)
-		$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS) @LDMAPFILE@
+$(D_BIN)/%$(E):		MAPFILE=$(basename $@).map
+$(D_BIN)/%$(E):		LINKLIBS=-linetd -lsthread -lcompat
+$(D_BIN)/%$(E):		$(D_OBJ)/%$(O)
+		$(CC) $(LDFLAGS) -o $@ $< $(LDLIBS) @LDMAPFILE@
 
 $(D_OBJ)/.created:
 		-@mkdir $(D_OBJ)
@@ -169,3 +152,4 @@ $(D_OBJ)/%.res: 	%.rc
 		$(RC) -nologo -Fo$@ -I../include -I../libNTService $<
 
 #end
+

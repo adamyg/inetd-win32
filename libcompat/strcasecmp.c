@@ -14,9 +14,9 @@ int
 strcasecmp(const char *s1, const char *s2)
 {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
-    return _stricmp(s1, s2);
+	return _stricmp(s1, s2);
 #else
-    return stricmp(s1, s2);
+	return stricmp(s1, s2);
 #endif
 }
 

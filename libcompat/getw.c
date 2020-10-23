@@ -40,9 +40,9 @@
 int
 getw(FILE *fp)
 {
-        int x;
+	int x;
 
-        return (fread((void *)&x, sizeof(x), 1, fp) == 1 ? x : EOF);
+	return (fread((void *)&x, sizeof(x), 1, fp) == 1 ? x : EOF);
 }
 
 #else

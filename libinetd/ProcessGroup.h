@@ -42,17 +42,17 @@ class ProcessGroup {
 
 private:
         struct CriticalSection {
-                CriticalSection() { 
+                CriticalSection() {
                         ::InitializeCriticalSection(&cs_);
                 }
                 ~CriticalSection() {
                         ::DeleteCriticalSection(&cs_);
-                }   
+                }
                 CRITICAL_SECTION cs_;
         };
 
         struct CriticalGuard {
-                CriticalGuard(CriticalSection &cs) : guarded_(cs) { 
+                CriticalGuard(CriticalSection &cs) : guarded_(cs) {
                         ::EnterCriticalSection(&guarded_.cs_);
                 }
                 ~CriticalGuard() {
@@ -79,7 +79,7 @@ private:
         enum {
                 THREAD_CTRL_TRACK = 1,
                 THREAD_CTRL_QUIT,
-                THREAD_CTRL_LAST 
+                THREAD_CTRL_LAST
         };
 
 public:
@@ -90,7 +90,7 @@ public:
                 close();
         }
 
-        bool open(void (*sigchld)() = nullptr) {
+        bool open(void (*sigchld)() = nullptr, int signal_event = -1) {
                 sigchld_ = sigchld;
 
                 if (! job_.IsValid()) {
@@ -121,8 +121,13 @@ public:
                         }
                 }
 
-                if (! waitevent_.IsValid()) {
-                        waitevent_.Set(::CreateEventA(NULL, FALSE /*auto reset*/, FALSE /*off*/, NULL));
+                if (/*auto*/ -1 == signal_event && sigchld)
+                        signal_event = 0;
+                if (signal_event) {
+                        if (! waitevent_.IsValid()) {                           // optional
+                                waitevent_.Set(::CreateEventA(NULL,
+                                    (2 == signal_event ? TRUE /*auto*/: FALSE /*manual*/), FALSE /*off*/, NULL));
+                        }
                 }
 
                 if (! thread_.IsValid()) {
@@ -163,13 +168,12 @@ public:
 
 public:
 //      int
-//      waitpid(pid_t pid, int * status, int options) {
-//              return waitpid_common(pid, status, options, NULL, NULL);
+//      waitpid(pid_t pid, int *status, int options) {
+//              return wait_common(pid, status, options, NULL, NULL);
 //      }
 
 //      int
 //      wait(int *status) {
-//              return waitpid_common(-1, status, 0, NULL, NULL);
 //              if (status) {
 //                      return wait(false, *status);
 //              }
@@ -179,12 +183,12 @@ public:
 
 //      pid_t
 //      wait3(int * status, int options, struct rusage *rusage) {
-//              return waitpid_common(-1, status, options, NULL, rusage);
+//              return wait_common(-1, status, options, NULL, rusage);
 //      }
 
 //      pid_t
 //      wait4(pid_t pid, int * status, int options, struct rusage *rusage) {
-//              return waitpid_common(pid, status, options, NULL, rusage);
+//              return wait_common(pid, status, options, NULL, rusage);
 //      }
 
         int wait(bool nohang, int &status) {
@@ -266,11 +270,11 @@ private:
                                 case JOB_OBJECT_MSG_END_OF_JOB_TIME:
                                 case JOB_OBJECT_MSG_END_OF_PROCESS_TIME:
                                 case JOB_OBJECT_MSG_ACTIVE_PROCESS_LIMIT:
-                                case JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO: 
+                                case JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO:
                                         break;
                                 case JOB_OBJECT_MSG_PROCESS_MEMORY_LIMIT:
-                                case JOB_OBJECT_MSG_JOB_MEMORY_LIMIT:        
-                                case JOB_OBJECT_MSG_NOTIFICATION_LIMIT:      
+                                case JOB_OBJECT_MSG_JOB_MEMORY_LIMIT:
+                                case JOB_OBJECT_MSG_NOTIFICATION_LIMIT:
                                 case JOB_OBJECT_MSG_JOB_CYCLE_TIME_LIMIT:
                                 default:
                                         break;
@@ -305,10 +309,12 @@ private:
         }
 
         void sigchld() {
-                if (sigchld_) {
+                if (sigchld_) {                 // optional
                         sigchld_();
                 }
-                ::SetEvent(waitevent_.Get());   // optional??
+                if (waitevent_.IsValid()) {     // optional
+                    ::SetEvent(waitevent_.Get());
+                }
         }
 
         static bool wait_handle(HANDLE handle, bool nohang, int &status) {

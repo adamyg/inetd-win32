@@ -1,14 +1,13 @@
 #pragma once
-#ifndef NTSERVICEGETOPT_H_INCLUDED
-#define NTSERVICEGETOPT_H_INCLUDED
-
+#ifndef LIBINETD_GETOPT_H_INCLUDED
+#define LIBINETD_GETOPT_H_INCLUDED
+/* -*- mode: c; indent-width: 8; -*- */
 /*
- * CNTService - Classic window services framework (tweaked).
+ * Get command line options.
+ * windows inetd service.
  *
  * Copyright (c) 2020, Adam Young.
  * All rights reserved.
- *
- * This file is part of inetd-win32.
  *
  * The applications are free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License as
@@ -50,16 +49,15 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
 #include <cassert>
 
-#include "NTServiceIO.h"
+#include <iostream>
+#include <string>
 
-namespace NTService {
-
+namespace inetd {
 class Getopt {
-        Getopt(const class Getopt &) /*=delete*/;
-        Getopt& operator=(const Getopt &) /*=delete*/;
+        Getopt(const class Getopt &) = delete;
+        Getopt& operator=(const Getopt &) = delete;
 
 public:
         enum argument_flag {
@@ -87,8 +85,7 @@ public:
         };
 
 public:
-        Getopt(NTService::IDiagnostics &diags, const char *ostr, const char *progname = NULL) :
-                    diags_(diags),
+        Getopt(const char *ostr, const char *progname = NULL) :
                     ostr_(ostr), long_options_(NULL),
                     progname_(progname),
                     place_(NULL), optarg_(NULL), optind_(1), longindex_(-1), optopt_(0), optret_(0),
@@ -102,8 +99,7 @@ public:
                 }
         }
 
-        Getopt(NTService::IDiagnostics &diags, const char *ostr, struct Option *long_options, const char *progname = 0) :
-                    diags_(diags),
+        Getopt(const char *ostr, struct Option *long_options, const char *progname = 0) :
                     ostr_(ostr), long_options_(long_options),
                     progname_(progname),
                     place_(NULL), optarg_(NULL), optind_(1), longindex_(-1), optopt_(0), optret_(0),
@@ -150,27 +146,38 @@ public:
         }
 
         int shift(int nargc, const char * const *nargv) {
-                return optret_ = pop_argument(nargc, nargv);
+                return (optret_ = pop_argument(nargc, nargv, nullptr));
+        }
+
+        int shift(int nargc, const char * const *nargv, std::string &msg) {
+                return (optret_ = pop_argument(nargc, nargv, &msg));
         }
 
 public:
         virtual void error_report(enum error_code code, const char *message) {
-                diags_.error(message);
+                if (msg_) {
+                        msg_->assign(message);
+                } else {
+                        std::cerr << message << std::endl;
+                }
         }
 
 private:
-        int pop_argument(int nargc, const char * const *nargv) {
+        int pop_argument(int nargc, const char * const *nargv, std::string *msg) {
                 assert(nargc >= 1);
                 assert(nargv);
 
+                msg_ = msg;                         // optional message destination
                 longindex_ = -1;
                 int ret = short_argument(nargc, nargv);
                 if (-100 == ret) {
                         if (! long_options_) {
+                                msg_ = nullptr;
                                 return EOF;         // "--", we are done
                         }
                         ret = long_argument(nargc, nargv);
                 }
+                msg_ = nullptr;
                 return ret;
         }
 
@@ -226,7 +233,6 @@ private:
                 }
                 return optopt_;
         }
-
 
         int
         long_argument(int nargc, const char * const *nargv) {
@@ -319,8 +325,12 @@ private:
                 if (!opterr_) return;
 
                 char buffer[1024];
-                (void) _snprintf(buffer, sizeof(buffer), "%s: %s -- %c", progname(), msg, optopt_);
+#if defined(_MSC_VER)
+                (void) sprintf_s(buffer, sizeof(buffer), "%s: %s -- %c", progname(), msg, optopt_);
+#else
+                (void) snprintf(buffer, sizeof(buffer), "%s: %s -- %c", progname(), msg, optopt_);
                 buffer[sizeof(buffer) - 1] = 0;
+#endif
                 error_report(code, buffer);
         }
 
@@ -330,18 +340,22 @@ private:
 
                 char buffer[1024];
                 if (arglen < 0) arglen = (int)strlen(arg);
-                (void) _snprintf(buffer, sizeof(buffer), "%s: %s -- %.*s", progname(), msg, arglen, arg);
+#if defined(_MSC_VER)
+                (void) sprintf_s(buffer, sizeof(buffer), "%s: %s -- %.*s", progname(), msg, arglen, arg);
+#else
+                (void) snprintf(buffer, sizeof(buffer), "%s: %s -- %.*s", progname(), msg, arglen, arg);
                 buffer[sizeof(buffer) - 1] = 0;
+#endif
                 error_report(code, buffer);
         }
 
 private:
-        NTService::IDiagnostics &diags_;
         const char *ostr_;
         struct Option *long_options_;
         const char *progname_;
         const char *place_;
         const char *optarg_;
+        std::string *msg_;
         int optind_;
         int longindex_;
         int optopt_;
@@ -350,8 +364,6 @@ private:
         int opterr_;
 };
 
-}   //namspace NTService
+}   //namspace inetd
 
-#endif  NTSERVICEGETOPT_HPP_INCLUDED
-
-
+#endif //LIBINETD_GETOPT_H_INCLUDED

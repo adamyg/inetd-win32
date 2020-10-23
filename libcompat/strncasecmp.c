@@ -14,9 +14,9 @@ int
 strncasecmp(const char *s1, const char *s2, size_t len)
 {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
-    return _strnicmp(s1, s2, len);
+	return _strnicmp(s1, s2, len);
 #else
-    return strnicmp(s1, s2, len);
+	return strnicmp(s1, s2, len);
 #endif
 }
 

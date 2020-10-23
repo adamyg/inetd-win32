@@ -1,7 +1,7 @@
 #ifndef LIBW32_MSVC_ERRNO_H_INCLUDED
 #define LIBW32_MSVC_ERRNO_H_INCLUDED
 /*
- * $Id: msvc_errno.h,v 1.1 2020/10/17 18:35:20 cvsuser Exp $
+ * $Id: msvc_errno.h,v 1.2 2020/10/21 09:46:08 cvsuser Exp $
  * MSVC errno filter
  *
  * This file is part of inetd-win32.

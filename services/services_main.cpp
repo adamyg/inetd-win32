@@ -106,7 +106,7 @@ main(int argc, const char **argv)
 
 	// execute service
 
-	SOCKET socket = inetd::SocketShare::GetSocket(basename, 0 /*non overlapping*/);
+	SOCKET socket = inetd::SocketShare::GetSocket(basename);
 	if (INVALID_SOCKET == socket) {
 		exit(3);	// unable to transfer socket
 	}

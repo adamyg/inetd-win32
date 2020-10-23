@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_socket2_c,"$Id: w32_socket2.c,v 1.1 2020/10/17 18:35:22 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_socket2_c,"$Id: w32_socket2.c,v 1.2 2020/10/22 17:14:24 cvsuser Exp $")
 
 /*
  * win32 socket () system calls
@@ -65,6 +65,7 @@ nativehandle(int fd)
 {
     if (fd >= 0)
         return (SOCKET)fd;
+    errno = EBADF;                              /* sockfd is not a valid open file descriptor */
     return INVALID_SOCKET;
 }
 

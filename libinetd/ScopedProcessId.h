@@ -38,7 +38,7 @@ class ScopedProcessId {
 private:
         static bool dup_emplace(HANDLE &handle) {
                 HANDLE current_process = ::GetCurrentProcess(), result = nullptr;
-                if (::DuplicateHandle(current_process, handle, current_process, 
+                if (::DuplicateHandle(current_process, handle, current_process,
                             &result, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
                         handle = result;
                         return true;
@@ -51,7 +51,7 @@ public:
                 (void) memset(&pid_, 0, sizeof(pid_));
         }
 
-        ~ScopedProcessId() { 
+        ~ScopedProcessId() {
                 Close();
         }
 
@@ -60,14 +60,14 @@ public:
                 return *this;
         }
 
-        void Set(const PROCESS_INFORMATION &other) { 
-                if (&pid_ != &other) { 
+        void Set(const PROCESS_INFORMATION &other) {
+                if (&pid_ != &other) {
                         Close();
                         pid_ = other;
                 }
         }
 
-        bool Clone(const ScopedProcessId &other) { 
+        bool Clone(const ScopedProcessId &other) {
                 if (this != &other) {
                         PROCESS_INFORMATION temp = other.pid_;
                         if (dup_emplace(temp.hProcess)) {

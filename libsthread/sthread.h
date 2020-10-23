@@ -66,14 +66,15 @@ typedef struct pthread_attr_tag {
 
 int pthread_attr_init(pthread_attr_t *attr);
 int pthread_attr_destroy(pthread_attr_t *attr);
-    //int pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate);
-    //int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate);
-    //int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize);
-    //int pthread_attr_getstacksize(const pthread_attr_t *attr, size_t *stacksize);
-    //int pthread_attr_setstackaddr(pthread_attr_t *attr, void *stackaddr);
-    //int pthread_attr_getstackaddr(const pthread_attr_t *attr, void **stackaddr);
+int pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate);
+int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate);
+int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize);
+int pthread_attr_getstacksize(const pthread_attr_t *attr, size_t *stacksize);
+int pthread_attr_setstackaddr(pthread_attr_t *attr, void *stackaddr);
+int pthread_attr_getstackaddr(const pthread_attr_t *attr, void **stackaddr);
 
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg);
+int pthread_detach(pthread_t thread);
 int pthread_join(pthread_t thread, void **value_ptr);
 
 pthread_t pthread_self(void);

@@ -1,7 +1,7 @@
 #pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * Process socket sharing  
+ * Process socket sharing
  * windows inetd service.
  *
  * Copyright (c) 2020, Adam Young.
@@ -123,8 +123,12 @@ public:
         Client(const Client &) = delete;
         Client& operator=(const Client &) = delete;
     public:
-        Client(const char *basename) : 
+        Client(const char *basename) :
                 profile_(basename) {
+        }
+        bool
+        wait(DWORD timeout = INFINITE) {
+            return WaitSocket(profile_, timeout);
         }
         SOCKET get(DWORD dwFlags = WSA_FLAG_OVERLAPPED) {
             if (! profile_.hFile.IsValid()) {
@@ -154,7 +158,7 @@ public:
     }
 
     static SOCKET
-    GetSocket(const char *basename, DWORD dwFlags = WSA_FLAG_OVERLAPPED)
+    GetSocket(const char *basename, DWORD dwFlags = 0 /*or WSA_FLAG_OVERLAPPED*/)
     {
         ClientProfile profile(basename);
         return GetSocket(profile, dwFlags);
@@ -162,10 +166,11 @@ public:
 
 private:
     static bool
-    PushSocket(ServerProfile &profile, SOCKET socket, 
+    PushSocket(ServerProfile &profile, SOCKET socket,
             HANDLE job_handle, const char *progname, const char **argv)
     {
         const Names names(profile.basename);
+        char t_progname[_MAX_PATH] = {0};
         STARTUPINFO siStartInfo = {0};
         char cmdline[4 * 1024];                 // 4k limit
 
@@ -176,7 +181,7 @@ private:
         if (! profile.hParentEvent.IsValid()) {
             profile.hParentEvent.Set(::CreateEventA(NULL, TRUE, FALSE, names.parentEvent));
             if (! profile.hParentEvent.IsValid()) {
-                fprintf(stderr, "CreateEvent(%s) failed: %d\n", names.parentEvent, GetLastError());
+                fprintf(stderr, "CreateEvent(%s) failed: %u\n", names.parentEvent, (unsigned) ::GetLastError());
                 return false;
             }
         }
@@ -185,17 +190,25 @@ private:
 
         if (! profile.hChildEvent.IsValid()) {
             profile.hChildEvent.Set(::CreateEventA(NULL, TRUE, FALSE, names.childEvent));
-            if (! profile.hChildEvent.IsValid()) {            
-                fprintf(stderr, "CreateEvent(%s) failed: %u\n", names.childEvent, (unsigned) GetLastError());
+            if (! profile.hChildEvent.IsValid()) {
+                fprintf(stderr, "CreateEvent(%s) failed: %u\n", names.childEvent, (unsigned) ::GetLastError());
                 return false;
             }
+        }
+
+        // Process name.
+
+        const char *dot = strrchr(progname, '.');
+        if (NULL == dot || 0 != _stricmp(dot, ".exe")) {
+            sprintf_s(t_progname, sizeof(t_progname), "%s.exe", progname);
+            progname = t_progname;
         }
 
         // Child process command line options.
 
         ::GetStartupInfo(&siStartInfo);
         if (argv && argv[0]) {                  // publish interface label plus optional arguments
-            char *cursor = cmdline, 
+            char *cursor = cmdline,
                 *end = (cmdline + sizeof(cmdline)) - 1 /*nul*/;
 
             cursor += sprintf_s(cmdline, sizeof(cmdline),
@@ -211,7 +224,7 @@ private:
             }
 
         } else {
-            sprintf_s(cmdline, sizeof(cmdline), // publish interface label 
+            sprintf_s(cmdline, sizeof(cmdline), // publish interface label
                 "\"%s\" -i \"%s\"", progname, profile.basename);
         }
 
@@ -220,7 +233,7 @@ private:
         profile.hPipe.Set(::CreateNamedPipeA(
                     names.pipe,
                     PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
-                    PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
+                    PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
                                                 // message and blocking mode
                     PIPE_UNLIMITED_INSTANCES,   // max. instances
                     4096, 4096,                 // output/input buffer size
@@ -233,7 +246,7 @@ private:
             creationFlags |= CREATE_SUSPENDED;
 
         if (! profile.hPipe.IsValid()) {
-            fprintf(stderr, "CreatePipe(%s) failed: %u\n", names.pipe, (unsigned) GetLastError());
+            fprintf(stderr, "CreatePipe(%s) failed: %u\n", names.pipe, (unsigned) ::GetLastError());
 
         } else if (FALSE == ::CreateProcessA(
                                 progname,       // Module name
@@ -246,30 +259,31 @@ private:
                                 NULL,           // Use parent's starting directory
                                 &siStartInfo,
                                 profile.child)) {
-            fprintf(stderr, "CreateProcess(%s) failed: %u\n", progname, (unsigned) GetLastError());
+            fprintf(stderr, "CreateProcess(%s) failed: %u\n", progname, (unsigned) ::GetLastError());
             profile.hPipe.Close();
 
         } else {
-            OVERLAPPED ol = {0, 0, 0, 0, NULL};
-            DWORD ret = -1;
-            bool ready = false;
 
             // Associated job
 
             if (job_handle) {
                 if (! ::AssignProcessToJobObject(job_handle, profile.child.process_handle())) {
-                    fprintf(stderr, "AssignProcessJob(%s) failed: %u\n", progname, (unsigned) ret);
+                    fprintf(stderr, "AssignProcessJob(%s) failed: %u\n", progname, (unsigned) ::GetLastError());
                 }
             }
 
             if (CREATE_SUSPENDED & creationFlags) {
                 if (! ::ResumeThread(profile.child.process_thread())) {
-                    fprintf(stderr, "ResumeProcess(%s) failed: %u\n", progname, (unsigned) ret);
+                    fprintf(stderr, "ResumeProcess(%s) failed: %u\n", progname, (unsigned) ::GetLastError());
                     return false;
                 }
             }
 
             // Wait for the pipe
+
+            OVERLAPPED ol = {0, 0, 0, 0, NULL};
+            DWORD ret = -1;
+            bool ready = false;
 
             ol.hEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
             if (::ConnectNamedPipe(profile.hPipe, &ol)) {
@@ -315,7 +329,7 @@ private:
         // Clone
 
         if (SOCKET_ERROR == ::WSADuplicateSocketA(socket, profile.child.process_id(), &pi)) {
-            fprintf(stderr, "WSADuplicateSocket() failed: %u\n", (unsigned) WSAGetLastError());
+            fprintf(stderr, "WSADuplicateSocket() failed: %u\n", (unsigned) ::WSAGetLastError());
 
         // Write
 
@@ -325,11 +339,11 @@ private:
             // Signal write complete
 
             if (! ::ResetEvent(profile.hChildEvent)) {
-                fprintf(stderr, "ResetEvent(child) failed: %u\n", (unsigned) GetLastError());
+                fprintf(stderr, "ResetEvent(child) failed: %u\n", (unsigned) ::GetLastError());
             }
 
             if (! ::SetEvent(profile.hParentEvent)) {
-                fprintf(stderr, "SetEvent(parent) failed: %u\n", (unsigned) GetLastError());
+                fprintf(stderr, "SetEvent(parent) failed: %u\n", (unsigned) ::GetLastError());
             }
 
             // Wait for client
@@ -338,10 +352,10 @@ private:
                 return true;
             }
 
-            fprintf(stderr, "WaitEvent(child) failed: %u\n", (unsigned) GetLastError());
+            fprintf(stderr, "WaitEvent(child) failed: %u\n", (unsigned) ::GetLastError());
 
         } else {
-            fprintf(stderr, "WriteSocket() failed: %u\n", (unsigned) GetLastError());
+            fprintf(stderr, "WriteSocket() failed: %u\n", (unsigned) ::GetLastError());
         }
 
         return false;
@@ -357,19 +371,19 @@ private:
         // Events
 
         if (! profile.hParentEvent.IsValid()) {
-            profile.hParentEvent.Set(::OpenEvent(SYNCHRONIZE | EVENT_MODIFY_STATE, FALSE, names.parentEvent));
+            profile.hParentEvent.Set(::OpenEventA(SYNCHRONIZE | EVENT_MODIFY_STATE, FALSE, names.parentEvent));
             if (! profile.hParentEvent.IsValid()) {
-                fprintf(stderr, "OpenEvent(%s) failed: %u\n", names.parentEvent, (unsigned) GetLastError());
+                fprintf(stderr, "OpenEvent(%s) failed: %u\n", names.parentEvent, (unsigned) ::GetLastError());
                 return INVALID_SOCKET;
             }
         }
 
         if (! profile.hChildEvent.IsValid()) {
-            profile.hChildEvent.Set(::OpenEvent(SYNCHRONIZE | EVENT_MODIFY_STATE, FALSE, names.childEvent));
+            profile.hChildEvent.Set(::OpenEventA(SYNCHRONIZE | EVENT_MODIFY_STATE, FALSE, names.childEvent));
             if (! profile.hChildEvent.IsValid()) {
-                fprintf(stderr, "OpenEvent(%s) failed: %u\n", names.childEvent, (unsigned) GetLastError());
+                fprintf(stderr, "OpenEvent(%s) failed: %u\n", names.childEvent, (unsigned) ::GetLastError());
                 return INVALID_SOCKET;
-            }       
+            }
         }
 
         // Pipe
@@ -398,12 +412,12 @@ private:
             }
 
             // Wait for server
- 
-            if (GetLastError() != ERROR_PIPE_BUSY) {
-                fprintf(stderr, "OpenPipe(%s) failed: %u\n", names.pipe, (unsigned) GetLastError());
+            const DWORD ret = ::GetLastError();
+            if (ERROR_PIPE_BUSY != ret) {
+                fprintf(stderr, "OpenPipe(%s) failed: %u\n", names.pipe, (unsigned) ret);
                 break;
 
-            } else if (! ::WaitNamedPipeA(names.pipe, 10 * 1000)) {
+            } else if (! ::WaitNamedPipeA(names.pipe, 2 * 1000)) {
                 fprintf(stderr, "WaitPipe(%s) failed: %u\n", names.pipe, (unsigned) GetLastError());
                 break;
             }
@@ -418,13 +432,36 @@ private:
         return INVALID_SOCKET;
     }
 
+    static bool
+    WaitSocket(ClientProfile &profile, DWORD timeout = INFINITE) {
+
+        // Opne event resource
+
+        if (! profile.hParentEvent.IsValid()) {
+            const Names names(profile.basename);
+
+            profile.hParentEvent.Set(::OpenEventA(SYNCHRONIZE | EVENT_MODIFY_STATE, FALSE, names.parentEvent));
+            if (! profile.hParentEvent.IsValid()) {
+                fprintf(stderr, "OpenEvent(%s) failed: %u\n", names.parentEvent, (unsigned) ::GetLastError());
+                return false;
+            }
+        }
+
+        // Wait for the parent to signal that the protocol info ready to be accessed
+
+        if (WAIT_OBJECT_0 != ::WaitForSingleObject(profile.hParentEvent, timeout)) {
+            return false;
+        }
+        return true;
+    }
+
     static SOCKET
     ReadSocket(ClientProfile &profile, DWORD dwFlags) {
 
         // Wait for the parent to signal that the protocol info ready to be accessed
 
         if (WAIT_FAILED == ::WaitForSingleObject(profile.hParentEvent, 2 * 1000)) {
-            fprintf(stderr, "WaitEvent(parent) failed: %d\n", (unsigned) GetLastError());
+            fprintf(stderr, "WaitEvent(parent) failed: %d\n", (unsigned) ::GetLastError());
             return INVALID_SOCKET;
         }
 
@@ -435,9 +472,9 @@ private:
         DWORD dwBytes = 0;
 
         if (! ::ResetEvent(profile.hParentEvent)) {
-            fprintf(stderr, "ResetEvent(parent) failed: %u\n",  (unsigned) GetLastError());
+            fprintf(stderr, "ResetEvent(parent) failed: %u\n",  (unsigned) ::GetLastError());
         }
-        
+
         if (::ReadFile(profile.hFile, &socket, sizeof(socket), &dwBytes, NULL) &&
                     dwBytes == sizeof(socket) &&
             ::ReadFile(profile.hFile, &pi, sizeof(pi), &dwBytes, NULL) &&
@@ -447,15 +484,15 @@ private:
 
             if (INVALID_SOCKET == (socket =
                     ::WSASocket(AF_INET, SOCK_STREAM, 0, &pi, 0, dwFlags))) {
-                DWORD ret = (unsigned)WSAGetLastError();
+                DWORD ret = (unsigned) ::WSAGetLastError();
 
                 if (WSANOTINITIALISED == ret) {
                     WSADATA wsaData = {0};
-                            
-                    if (WSAStartup(MAKEWORD(2, 2), &wsaData) ||
+
+                    if (::WSAStartup(MAKEWORD(2, 2), &wsaData) ||
                             INVALID_SOCKET == (socket =
                                 ::WSASocket(AF_INET, SOCK_STREAM, 0, &pi, 0, dwFlags))) {
-                        ret = (unsigned)WSAGetLastError();
+                        ret = (unsigned) ::WSAGetLastError();
                     }
                 }
 
@@ -464,14 +501,18 @@ private:
                 }
             }
 
+            // Disable socket inheritance; enabled by default, mirror unix defaults.
+
+            ::SetHandleInformation((HANDLE) socket, HANDLE_FLAG_INHERIT, 0);
+
             // Signal parent we are done
 
             if (! ::SetEvent(profile.hChildEvent)) {
-                fprintf(stderr, "SetEvent(child) failed: %u\n",  (unsigned) GetLastError());
+                fprintf(stderr, "SetEvent(child) failed: %u\n",  (unsigned) ::GetLastError());
             }
 
         } else {
-            fprintf(stderr, "ReadSocket() failed: %u\n", (unsigned) GetLastError());
+            fprintf(stderr, "ReadSocket() failed: %u\n", (unsigned) ::GetLastError());
         }
 
         return socket;

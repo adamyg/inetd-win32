@@ -112,7 +112,7 @@ LIBCSOURCES=\
 
 LIBCPPSOURCES=\
 	inetd.cpp \
-	builtins.cpp \
+	builtins.cpp
 
 LIBHSOURCES=\
 	inetd.h \

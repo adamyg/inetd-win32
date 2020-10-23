@@ -165,7 +165,7 @@ public:
             int n;
 
 	    if ((n = ::select(sockets_.size(), &readers,
-                    (fd_set *)NULL, (fd_set *)NULL, &timeval)) <= 0) {
+                        (fd_set *)NULL, (fd_set *)NULL, &timeval)) <= 0) {
                 if (shutdown_) {
                     break;
                 }

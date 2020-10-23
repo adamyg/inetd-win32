@@ -1,0 +1,3 @@
+[submodule "references/asio"]
+	path = references/asio-standalone
+	url = https://github.com/chriskohlhoff/asio.git

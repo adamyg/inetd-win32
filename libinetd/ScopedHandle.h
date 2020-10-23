@@ -1,7 +1,7 @@
 #pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * RAII handles  
+ * RAII handles
  * windows inetd service.
  *
  * Copyright (c) 2020, Adam Young.
@@ -42,7 +42,7 @@ public:
         ScopedHandle() : handle_(nullptr) {
         }
 
-        ~ScopedHandle() { 
+        ~ScopedHandle() {
                 Close();
         }
 
@@ -51,8 +51,8 @@ public:
                 return *this;
         }
 
-        void Set(HANDLE handle) { 
-                if (handle_ != handle) { 
+        void Set(HANDLE handle) {
+                if (handle_ != handle) {
                         Close();
                         handle_ = handle;
                 }
@@ -68,7 +68,7 @@ public:
                 return handle;
         }
 
-        operator HANDLE() const { 
+        operator HANDLE() const {
                 return handle_;
         }
 
