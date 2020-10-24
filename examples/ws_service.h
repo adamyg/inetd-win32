@@ -1,17 +1,18 @@
 //
-//  HTTP Service, 
-//  extended https://gitlab.com/eidheim/Simple-Web-Server
+//  WS Service, 
+//  extended https://gitlab.com/eidheim/Simple-WebSocket-Server
 
 #define  USE_STANDALONE_ASIO 1
-#include <server_http.hpp>
+#include <server_ws.hpp>
 
-class http_service : public SimpleWeb::Server<SimpleWeb::HTTP> {
+class ws_service : public SimpleWeb::SocketServer<SimpleWeb::WS> {
 public:
-    http_service() : 
-            SimpleWeb::Server<SimpleWeb::HTTP>() {  
+    ws_service() : 
+            SimpleWeb::SocketServer<SimpleWeb::WS>() {  
     }
 
     void start(SOCKET socket) {
+//      std::lock_guard<std::mutex> lock(start_stop_mutex);
         if (! io_service) {
             io_service = std::make_shared<asio::io_context>();
             internal_io_service = true;
@@ -50,20 +51,23 @@ public:
     }
 #endif
 
-    void accept(SOCKET socket) {
-        auto connection = create_connection(*io_service);
+    void stop() noexcept {
+//    std::lock_guard<std::mutex> lock(start_stop_mutex);
+      if(internal_io_service)
+        io_service->stop();
+    }
 
-        connection->socket->assign(asio::ip::tcp::v4(), socket);
-        auto session = std::make_shared<Session>(config.max_request_streambuf_size, connection);
+    void accept(SOCKET socket) {
+        std::shared_ptr<Connection> connection(new_connection());
+
+        connection->get_socket().assign(asio::ip::tcp::v4(), socket);
 
         asio::ip::tcp::no_delay option(true);
         asio::error_code ec;
-        session->connection->socket->set_option(option, ec);
+        connection->get_socket().set_option(option, ec);
 
         if (! ec) {
-            this->read(session);
-        } else if(this->on_error) {
-            this->on_error(session->request, ec);
+            read_handshake(connection);
         }
     }
 };
