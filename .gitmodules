@@ -1,3 +1,9 @@
-[submodule "references/asio"]
+[submodule "references/asio-standalone"]
 	path = references/asio-standalone
 	url = https://github.com/chriskohlhoff/asio.git
+[submodule "references/Simple-WebSocket-Server"]
+	path = references/Simple-WebSocket-Server
+	url = https://gitlab.com/eidheim/Simple-WebSocket-Server.git
+[submodule "references/Simple-Web-Server"]
+	path = references/Simple-Web-Server
+	url = https://gitlab.com/eidheim/Simple-Web-Server.git

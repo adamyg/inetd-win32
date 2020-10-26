@@ -55,7 +55,6 @@ public:
                 bool delay_start;
                 bool console_output;
                 bool logger;
-//              unsigned port;
                 std::string conf;
         };
 

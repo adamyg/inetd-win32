@@ -39,6 +39,10 @@ main(int argc, const char **argv)
     std::string msg;
     bool ip6 = false;
 
+#if defined(_DEBUG)
+//  SimpleWeb::Crypto::unit_tests();
+#endif
+
     while (-1 != options.shift(argc, argv, msg)) {
         switch (options.optret()) {
         case 'i':   // interface
@@ -149,7 +153,7 @@ process(SOCKET socket)
     };
 
     std::cerr << socket << ": Connection open" << std::endl;
-    server.start(socket);
+    server.client(socket, true);
     std::cerr << socket << ": Connection complete" << std::endl;
 
     return 0;
