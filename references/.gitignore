@@ -1,5 +1,7 @@
 CVS/
-Simple-Web-Server.001/
-Simple-WebSocket-Server.001/
-asio-standalone.001/
+001/
+002/
+asio-standalone/
 source/
+*.zip
+

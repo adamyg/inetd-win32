@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_socket2_c,"$Id: w32_socket2.c,v 1.2 2020/10/22 17:14:24 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_socket2_c,"$Id: w32_socket2.c,v 1.3 2020/10/27 11:12:15 cvsuser Exp $")
 
 /*
  * win32 socket () system calls
@@ -422,7 +422,6 @@ w32_recvfrom_native(int fd, char *buf, int len, int flags,
 }
 
 
-
 /*
  *  socknonblockingio
  */
@@ -430,7 +429,7 @@ LIBW32_API int
 w32_socknonblockingio_native(int fd, int enabled)
 {
     SOCKET osf;
-    int ret;
+    int ret = 0;
 
     if ((osf = nativehandle(fd)) == (SOCKET)INVALID_SOCKET) {
         ret = -1;
@@ -438,6 +437,27 @@ w32_socknonblockingio_native(int fd, int enabled)
         u_long mode = (long)enabled;
         if ((ret = ioctlsocket(osf, FIONBIO, &mode)) == -1 /*SOCKET_ERROR*/) {
             w32_sockerror();
+        }
+    }
+    return ret;
+}
+
+
+/*
+ *  sockinheritable
+ */
+LIBW32_API int
+w32_sockinheritable_native(int fd, int enabled)
+{
+    SOCKET osf;
+    int ret = 0;
+
+    if ((osf = nativehandle(fd)) == (SOCKET)INVALID_SOCKET) {
+        ret = -1;
+    } else {
+        if (! SetHandleInformation((HANDLE)osf, HANDLE_FLAG_INHERIT, enabled ? 1 : 0)) {
+            w32_sockerror();
+            ret = -1;
         }
     }
     return ret;

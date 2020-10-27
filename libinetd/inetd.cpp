@@ -739,6 +739,10 @@ body(int argc, char **argv)
 						syslog(LOG_ERR, "ioctl2 (FIONBIO, 0): %m");
 					if (socknonblockingio(ctrl, 0) < 0)
 						syslog(LOG_ERR, "ioctl3 (FIONBIO, 0): %m");
+#if defined(_WIN32)
+					if (sockinheritable(ctrl, 0) < 0) // sockets are inherited by default; disable
+						syslog(LOG_ERR, "ioctl5 (F_SETFD, FD_CLOEXEC): %m");
+#endif
 					if (cpmip(sep, ctrl) < 0) {
 						sockclose(ctrl);
 						continue;

@@ -1,7 +1,7 @@
 #ifndef LIBW32_SYS_SOCKET_H_INCLUDED
 #define LIBW32_SYS_SOCKET_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_sys_socket_h,"$Id: socket.h,v 1.1 2020/10/17 18:35:24 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_sys_socket_h,"$Id: socket.h,v 1.2 2020/10/27 11:12:15 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
@@ -99,6 +99,10 @@ LIBW32_API int          w32_shutdown_native(int fd, int flags);
 
 LIBW32_API int          w32_socknonblockingio_fd(int fd, int enabled);
 LIBW32_API int          w32_socknonblockingio_native(int fd, int enabled);
+
+LIBW32_API int          w32_sockinheritable_fd(int fd, int enabled);
+LIBW32_API int          w32_sockinheritable_native(int fd, int enabled);
+
 LIBW32_API int          w32_sockwrite_fd(int fd, const void *buffer, unsigned int cnt);
 LIBW32_API int          w32_sockwrite_native(int fd, const void *buffer, unsigned int cnt);
 LIBW32_API int          w32_sockread_fd(int fd, void *buf, unsigned int nbyte);
@@ -193,6 +197,7 @@ LIBW32_API int          w32_poll_native(struct pollfd *fds, int cnt, int timeout
 #endif
 
 #define socknonblockingio(a,b)  w32_socknonblockingio_fd(a,b)
+#define sockinheritable(a,b)    w32_sockinheritable_fd(a,b)
 #define sockread(a,b,c)         w32_sockread_fd(a,b,c)
 #define sockwrite(a,b,c)        w32_sockwrite_fd(a,b,c)
 #define sockclose(a)            w32_sockclose_fd(a)
@@ -225,6 +230,7 @@ LIBW32_API int          w32_poll_native(struct pollfd *fds, int cnt, int timeout
 #endif /*SOCKET_MAPCALLS*/
 
 #define socknonblockingio(a,b)  w32_socknonblockingio_native(a,b)
+#define sockinheritable(a,b)    w32_sockinheritable_native(a,b)
 #define sockread(a,b,c)         w32_sockread_native(a,b,c)
 #define sockwrite(a,b,c)        w32_sockwrite_native(a,b,c)
 #define sockclose(a)            w32_sockclose_native(a)

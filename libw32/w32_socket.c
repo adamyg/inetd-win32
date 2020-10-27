@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_socket_c,"$Id: w32_socket.c,v 1.1 2020/10/17 18:35:22 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_socket_c,"$Id: w32_socket.c,v 1.2 2020/10/27 11:12:15 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -368,10 +368,10 @@ w32_recvfrom_fd(int fd, char *buf, int len, int flags,
  *  socknonblockingio()
  */
 LIBW32_API int
-w32_socknonblockingmode_fd(int fd, int enabled)
+w32_socknonblockingio_fd(int fd, int enabled)
 {
     SOCKET osf;
-    int ret;
+    int ret = 0;
 
     if ((osf = w32_sockhandle(fd)) == (SOCKET)INVALID_SOCKET) {
         ret = -1;
@@ -383,7 +383,28 @@ w32_socknonblockingmode_fd(int fd, int enabled)
     }
     return ret;
 }
- 
+
+
+/*
+ *  sockinheritable
+ */
+LIBW32_API int
+w32_sockinheritable_fd(int fd, int enabled)
+{
+    SOCKET osf;
+    int ret = 0;
+
+    if ((osf = w32_sockhandle(fd)) == (SOCKET)INVALID_SOCKET) {
+        ret = -1;
+    } else {
+        if (! SetHandleInformation((HANDLE)osf, HANDLE_FLAG_INHERIT, enabled ? 1 : 0)) {
+            w32_sockerror();
+            ret = -1;
+        }
+    }
+    return ret;
+}
+
 
 /*
  *  sockwrite() system call; aka write() for sockets.
