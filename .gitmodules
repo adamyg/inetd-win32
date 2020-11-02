@@ -5,5 +5,5 @@
 	path = references/Simple-Web-Server
 	url = https://gitlab.com/adamyg/Simple-Web-Server.git
 [submodule "Simple-WebSocket-Server"]
-	path = Simple-WebSocket-Server
+	path = references/Simple-WebSocket-Server
 	url = https://gitlab.com/adamyg/Simple-WebSocket-Server.git
