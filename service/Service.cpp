@@ -503,7 +503,7 @@ Service::logger_body(PipeEndpoint *endpoint)
             endpoint = 0;
         }
 
-        const DWORD dwWait =
+        const DWORD dwWait =                    // XXX: client limit 63
                 ::WaitForMultipleObjects(inst + 1, handles, FALSE, terminate ? 100 : INFINITE);
 
 #define WAIT_OBJECT_1       (WAIT_OBJECT_0 + 1)
@@ -545,18 +545,23 @@ Service::logger_body(PipeEndpoint *endpoint)
                             unsigned sz = nl - line;
 
                             if (sz) {
-                                ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, line, sz);
-                                if (INVALID_HANDLE_VALUE != hStdout) {
-                                    if (! ::WriteConsole(hStdout, line, sz + 1, NULL, NULL)) {
-                                        ::CloseHandle(hStdout);
-                                        hStdout = INVALID_HANDLE_VALUE;
-                                            //TODO: move into logger, as console may block.
+                                unsigned t_sz = sz;
+
+                                if ('\r' == line[sz - 1]) --t_sz; // \r\n
+                                if (t_sz) {
+                                    ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, line, t_sz);
+                                    if (INVALID_HANDLE_VALUE != hStdout) {
+                                        if (! ::WriteConsole(hStdout, line, sz + 1, NULL, NULL)) {
+                                            ::CloseHandle(hStdout);
+                                            hStdout = INVALID_HANDLE_VALUE;
+                                                // TODO: move into logger, as console may block.
+                                        }
                                     }
                                 }
                             }
 
                             ++nl, ++sz;         // consume newline
-                            if ('\r' == *nl) {
+                            if ('\r' == *nl) {  // \n\r
                                 ++nl, ++sz;     // consume optional return
                             }
                             dwPopped += sz;
