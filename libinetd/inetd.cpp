@@ -481,7 +481,7 @@ body(int argc, char **argv)
 				"usage: inetd [-dlwW] [-a address] [-R rate]"
 				" [-c maximum] [-C rate]"
 				" [-p pidfile] [conf-file]");
-			exit(EX_USAGE);
+			terminate(EX_USAGE);
 		}
 
 	/*
