@@ -41,9 +41,8 @@ static struct inetd::Getopt::Option long_options[] = {
     { NULL }
 };
 
-
 static bool         ssl = false;
-static const char  *cert = "", *privkey, *cacerts, *ciphers;
+static std::string  cert, privkey, cacerts, ciphers;
 
 static void         usage(const char *fmt = NULL, ...); /*no-return*/
 static int          process(SOCKET socket);
@@ -59,6 +58,14 @@ main(int argc, const char **argv)
 #if defined(_DEBUG) && defined(_WIN32)
     SimpleWeb::Crypto::unit_tests();
 #endif
+
+    ssl = true;
+//  cert = "cert://service,user,local/localhost";
+    cert = "cert://localhost";
+//  cert = "hash://03:74:62:3a:2c:ac:ef:52:ee:dc:0e:11:42:16:83:ff:e8:d5:ad:05";
+//  cert = "hash://0374623a2cacef52eedc0e11421683ffe8d5ad05";
+//  cacerts = "store://CA";
+    ciphers = "ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS";
 
     while (-1 != options.shift(argc, argv, msg)) {
         switch (options.optret()) {
@@ -132,7 +139,7 @@ usage(const char *fmt, ...)
 #if defined(HAVE_OPENSSL)
         "   --ssl               SSL mode.\n"
         "   --cert <cert>       Server certificate.\n"
-        "   --privkey <key>     Private key.\n"
+        "   --privkey <key>     Private key, if required.\n"
         "   --cacerts <certs>   Client verification certificates.\n"
         "   --ciphers <list>    Cipher list.\n"
 #endif
@@ -142,34 +149,34 @@ usage(const char *fmt, ...)
 
 
 namespace {
-    template <typename S>
-    int Service(S &server, SOCKET socket)
+    template <typename Type>
+    int Service(Type &server, SOCKET socket)
     {
         //
         //  echo endpoint
         auto &echo = server.endpoint["^/echo/?$"];
 
-        echo.on_open = [](std::shared_ptr<ws_service::Connection> connection) {
+        echo.on_open = [](std::shared_ptr<typename Type::Connection> connection) {
             std::cout << "Server: Opened connection " << connection.get() << std::endl;
         };
 
         // See RFC 6455 7.4.1. for status codes
-        echo.on_close = [](std::shared_ptr<ws_service::Connection> connection, int status, const std::string & /*reason*/) {
+        echo.on_close = [](std::shared_ptr<typename Type::Connection> connection, int status, const std::string & /*reason*/) {
             std::cout << "Server: Closed connection " << connection.get() << " with status code " << status << std::endl;
         };
 
         // Can modify handshake response headers here if needed
-        echo.on_handshake = [](std::shared_ptr<ws_service::Connection> /*connection*/, SimpleWeb::CaseInsensitiveMultimap & /*response_header*/) {
+        echo.on_handshake = [](std::shared_ptr<typename Type::Connection> /*connection*/, SimpleWeb::CaseInsensitiveMultimap & /*response_header*/) {
             return SimpleWeb::StatusCode::information_switching_protocols; // Upgrade to websocket
         };
 
         // See http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio/reference.html, Error Codes for error code meanings
-        echo.on_error = [](std::shared_ptr<ws_service::Connection> connection, const SimpleWeb::error_code &ec) {
+        echo.on_error = [](std::shared_ptr<typename Type::Connection> connection, const SimpleWeb::error_code &ec) {
             std::cout << "Server: Error in connection " << connection.get() << ". "
                  << "Error: " << ec << ", error message: " << ec.message() << std::endl;
         };
 
-        echo.on_message = [](std::shared_ptr<ws_service::Connection> connection, std::shared_ptr<ws_service::InMessage> in_message) {
+        echo.on_message = [](std::shared_ptr<typename Type::Connection> connection, std::shared_ptr<typename Type::InMessage> in_message) {
             auto out_message = in_message->string();
 
             std::cout << "Server: Message received: \"" << out_message << "\" from " << connection.get() << std::endl;
@@ -205,9 +212,11 @@ process(SOCKET socket)
 #if defined(HAVE_OPENSSL)
     if (ssl) {
         wss_service service(cert, privkey, cacerts);
-        if (ciphers && ciphers) {
-            service.set_cipher_list(ciphers);
-        }
+
+        service.set_cipher_list(ciphers);
+#if defined(_DEBUG)
+        service.set_diagnostics();
+#endif
         return Service(service, socket);
     }
 #endif /*HAVE_OPENSSL*/
