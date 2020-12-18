@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.1 2020/10/23 15:58:43 cvsuser Exp $
+# $Id: Makefile.in,v 1.2 2020/12/13 13:15:09 cvsuser Exp $
 # example services Makefile
 #
 #
@@ -128,7 +128,7 @@ release:
 debug:
 		$(MAKE) BUILD_TYPE=debug $(filter-out debug, $(MAKECMDGOALS))
 
-directories:	$(D_OBJ)/.created $(TARGETS)
+directories:	$(D_OBJ)/.created
 
 $(D_BIN)/%$(E):		MAPFILE=$(basename $@).map
 $(D_BIN)/%$(E):		LINKLIBS=-linetd -lsthread -lcompat

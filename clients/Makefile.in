@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.1 2020/10/18 16:17:34 cvsuser Exp $
+# $Id: Makefile.in,v 1.2 2020/11/16 11:15:08 cvsuser Exp $
 # clients Makefile
 #
 #
@@ -143,7 +143,7 @@ $(D_OBJ)/.created:
 		@echo "do not delete" > $@
 
 clean:
-		-@$(RM) $(RMFLAGS) $(BAK) $(D_BIN)/$(TARGET) $(TARGET) $(OBJS) $(CLEAN) $(XCLEAN) >/dev/null 2>&1
+		-@$(RM) $(RMFLAGS) $(BAK) $(TARGETS) $(OBJS) $(CLEAN) $(XCLEAN) >/dev/null 2>&1
 
 $(D_OBJ)/%$(O):		%$(C)
 		$(CC) $(CFLAGS) -o $@ -c $<
