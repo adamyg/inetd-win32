@@ -96,6 +96,13 @@ extern void explicit_bzero(void *s, size_t len);
 #endif
 #endif /*HAVE_EXPLICIT_BZERO*/
 
+#if !defined(HAVE_MEMMEM)
+extern void *memmem(const void *h0, size_t k, const void *n0, size_t l);
+#if !defined(LIBCOMPAT_SOURCE)
+#define HAVE_MEMMEM
+#endif
+#endif /*HAVE_MEMMEM*/
+
 #if !defined(HAVE_PUTW)
 extern int putw(int w, FILE *fp);
 #if !defined(LIBCOMPAT_SOURCE)
@@ -158,6 +165,13 @@ extern void *reallocarray(void *optr, size_t nmemb, size_t size);
 #define HAVE_REALLOCARRAY
 #endif
 #endif /*HAVE_REALLOCARRAY*/
+
+#if !defined(HAVE_RECALLOCARRAY)
+extern void *recallocarray(void *ptr, size_t oldnmemb, size_t newnmemb, size_t size);
+#if !defined(LIBCOMPAT_SOURCE)
+#define HAVE_RECALLOCARRAY
+#endif
+#endif /*HAVE_RECALLOCARRAY*/
 
 #if !defined(HAVE_ASPRINTF)     /*stdio.h*/
 extern int asprintf(char **str, const char *fmt, ...);

@@ -108,9 +108,11 @@ LIBCSOURCES=\
 		getline.c	\
 		getw.c		\
 		index.c		\
+		memmem.c	\
 		mktemp.c	\
 		putw.c		\
 		reallocarray.c	\
+		recallocarray.c	\
 		rindex.c	\
 		strcasecmp.c	\
 		strcatn.c	\
