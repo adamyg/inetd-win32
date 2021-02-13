@@ -145,6 +145,7 @@ public:
 	bool check_limit(const struct sockaddr_storage &rss, const char *service, int maxcpm) {
 		const time_t now = time(NULL);
 		const unsigned int ticks = (unsigned int)(now / CHTGRAN);
+                inetd::CriticalSection::Guard guard(cs_);
 		CHash *node = nullptr;
 		int cnt = 0;
 
@@ -157,7 +158,7 @@ public:
 				ct.ct_Count = 0;
 			}
 			++ct.ct_Count;
-		}
+		}               
 
 		for (unsigned i = 0; i < CHTSIZE; ++i) {
 			const CTime *ct = &node->ch_Times[i];
@@ -216,6 +217,7 @@ private:
 	}
 
 private:
+        inetd::CriticalSection cs_;
 	inetd::ObjectPool<CHash> pool_;
 	CHashTree_t tree_;
 	CHashList_t list_;
