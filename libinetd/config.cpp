@@ -447,26 +447,36 @@ more:
 	}
 
 	sep->se_maxchild = -1;
-	sep->se_maxcpm	 = -1;
+	sep->se_maxcpm   = -1;
 	sep->se_maxperip = -1;
 	if ((s = strchr(arg, '/')) != NULL) {
 		char *eptr;
 		u_long val;
 
-		val = strtoul(s + 1, &eptr, 10);
-		if (eptr == s + 1 || val > MAX_MAXCHLD) {
-			syslog(LOG_ERR, "%s: bad max-child for service %s", CONFIG, sep->se_service);
-			goto more;
-		}
-		if (debug)
-			if (!sep->se_accept && val != 1)
+		if (s[1] == '/') {		/* allow empty definition; default */
+			eptr = s + 1;
+		} else {
+			val = strtoul(s + 1, &eptr, 10);
+			if (eptr == s + 1 || val > MAX_MAXCHLD) {
+				syslog(LOG_ERR, "%s: bad max-child for service %s", CONFIG, sep->se_service);
+				goto more;
+			}
+			if (debug && !sep->se_accept && val != 1)
 				warnx("maxchild=%lu for wait service %s"
-				    " not recommended", val, sep->se_service);
-		sep->se_maxchild = val;
-		if (*eptr == '/')
-			sep->se_maxcpm = strtol(eptr + 1, &eptr, 10);
-		if (*eptr == '/')
-			sep->se_maxperip = strtol(eptr + 1, &eptr, 10);
+					" not recommended", val, sep->se_service);
+			sep->se_maxchild = val;
+		}
+		if (*eptr == '/') {
+			if (*++eptr != '/') {	/* allow empty definition; default */
+				sep->se_maxcpm = strtol(eptr, &eptr, 10);
+			}
+		}
+		if (*eptr == '/') {
+			if (*++eptr != '/') {	/* allow empty definition; default */
+				sep->se_maxperip = strtol(eptr, &eptr, 10);
+			}
+		}
+
 		/*
 		 * explicitly do not check for \0 for future expansion /
 		 * backwards compatibility
