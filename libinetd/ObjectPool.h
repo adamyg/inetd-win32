@@ -99,17 +99,17 @@ public:
 			capacity_(0),
 			avail_(0) {
 
-			assert(bucket_first_);
-			assert(bucket_first_ <= bucket_max_);
-			assert(meta_size_ >= sizeof(Node));
-			assert(node_size_ >= (sizeof(Node) + sizeof(element_type)));
+		assert(bucket_first_);
+		assert(bucket_first_ <= bucket_max_);
+		assert(meta_size_ >= sizeof(Node));
+		assert(node_size_ >= (sizeof(Node) + sizeof(element_type)));
 
-			TAILQ_INIT(&slabs_);
-			TAILQ_INIT(&free_list_);
-			TAILQ_INIT(&used_list_);
-			if (prime) {
-				(free)((malloc)());
-			}
+		TAILQ_INIT(&slabs_);
+		TAILQ_INIT(&free_list_);
+		TAILQ_INIT(&used_list_);
+		if (prime) {
+			(free)((malloc)());
+		}
 	}
 
 	~ObjectPool() {
