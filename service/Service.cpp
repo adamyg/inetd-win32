@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.2 2020/10/18 15:34:32 cvsuser Exp $")
+__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.4 2021/02/13 13:53:13 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -547,7 +547,7 @@ Service::logger_body(PipeEndpoint *endpoint)
                             if (sz) {
                                 unsigned t_sz = sz;
 
-                                if ('\r' == line[sz - 1]) --t_sz; // \r\n
+                                if ('\r' == line[t_sz-1]) --t_sz; // \r\n
                                 if (t_sz) {
                                     ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, line, t_sz);
                                     if (INVALID_HANDLE_VALUE != hStdout) {

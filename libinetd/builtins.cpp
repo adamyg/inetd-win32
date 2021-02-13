@@ -2,7 +2,7 @@
 /*
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2021, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -849,7 +849,7 @@ tcpmux(int s)
 	 * Help is a required command, and lists available services, one per line.
 	 */
 	if (0 == strcasecmp(service, "help")) {
-		for (sep = servtab; sep; sep = sep->se_next) {
+		for (sep = servtabs; sep; sep = sep->se_next) {
 			if (!ISMUX(sep))
 				continue;
 			(void)sockwrite(s,sep->se_service,strlen(sep->se_service));

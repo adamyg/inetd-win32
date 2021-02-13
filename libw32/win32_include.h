@@ -48,6 +48,7 @@ __CPRAGMA_ONCE
 #endif
 #include <winsock2.h>
 #include <ws2tcpip.h>                           /* getaddrinfo() */
+#include <mswsock.h>                            /* IOCP */
 #endif /*HAVE_WINSOCK2_H_INCLUDED*/
 
 #if !defined(HAVE_WINDOWS_H_INCLUDED)

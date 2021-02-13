@@ -239,7 +239,9 @@ extern void setlogproxy (SYSLOGPROXYCB fnProxy, void *data);
 extern int  setlogmask (int mask);
 extern int  setlogoption (int option);
 extern void syslog (int pri, const char *fmt, ...);
+extern void WSASyslogx (int pri, const char *fmt, ...);
 extern void vsyslog (int pri, const char *fmt, va_list ap); //_BSD_SOURCE 
+extern void vxsyslog (int pri, const char *fmt, va_list ap, const char *err); //_BSD_SOURCE 
 
 #ifdef __cplusplus
 }

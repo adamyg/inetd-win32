@@ -136,7 +136,7 @@ main(int argc, const char **argv)
 		exit(3);
 	}
 
-	struct servtab sep = {0};
+	struct servtab sep;
 	sep.se_service = (char *)service;
 	(bi->bi_fn)(socket, &sep);
 	return 0;
@@ -172,7 +172,7 @@ license(void)
 {
 	printf(WININETD_PACKAGE " - " WININETD_PACKAGE_NAME " " WININETD_VERSION "\n\n");
 
-	printf("Copyright (C) 2020 Adam Young, All rights reserved.\n");
+	printf("Copyright (C) 2020-2021 Adam Young, All rights reserved.\n");
 	printf("Licensed under GNU General Public License version 3.0.\n");
 
 	printf("\n\nThis program comes with ABSOLUTELY NO WARRANTY. This is free software,\n");

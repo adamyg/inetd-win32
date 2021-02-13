@@ -4,7 +4,7 @@
  * Process socket sharing
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020-2021, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -29,7 +29,7 @@
 #include <cstdio>
 #include <cassert>
 
-#include "Windowstd.h"
+#include "WindowStd.h"
 #include "ScopedHandle.h"
 #include "ScopedProcessId.h"
 
@@ -126,8 +126,7 @@ public:
         Client(const char *basename) :
                 profile_(basename) {
         }
-        bool
-        wait(DWORD timeout = INFINITE) {
+        bool wait(DWORD timeout = INFINITE) {
             return WaitSocket(profile_, timeout);
         }
         SOCKET get(DWORD dwFlags = WSA_FLAG_OVERLAPPED) {
@@ -285,7 +284,7 @@ private:
             DWORD ret = -1;
             bool ready = false;
 
-            ol.hEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+            ol.hEvent = ::CreateEventA(NULL, TRUE, FALSE, NULL);
             if (::ConnectNamedPipe(profile.hPipe, &ol)) {
                 ready = true;
             } else {
@@ -295,7 +294,11 @@ private:
                     ready = true;
                     break;
                 case ERROR_IO_PENDING:
+#if defined(_DEBUG)
+                    if (WAIT_OBJECT_0 == ::WaitForSingleObject(ol.hEvent, 15 * 1000 /*15 seconds*/)) {
+#else
                     if (WAIT_OBJECT_0 == ::WaitForSingleObject(ol.hEvent, 5 * 1000 /*5 seconds*/)) {
+#endif
                         DWORD dwIgnore = 0;
                         if (::GetOverlappedResult(profile.hPipe, &ol, &dwIgnore, FALSE)) {
                             ready = true;
@@ -323,12 +326,12 @@ private:
     static bool
     WriteSocket(ServerProfile &profile, SOCKET socket) {
 
-        WSAPROTOCOL_INFO pi = {0};
+        WSAPROTOCOL_INFOW pi = {0};
         DWORD dwBytes = 0;
 
         // Clone
 
-        if (SOCKET_ERROR == ::WSADuplicateSocketA(socket, profile.child.process_id(), &pi)) {
+        if (SOCKET_ERROR == ::WSADuplicateSocketW(socket, profile.child.process_id(), &pi)) {
             fprintf(stderr, "WSADuplicateSocket() failed: %u\n", (unsigned) ::WSAGetLastError());
 
         // Write
@@ -467,7 +470,7 @@ private:
 
         // Read socket description
 
-        WSAPROTOCOL_INFO pi = {0};
+        WSAPROTOCOL_INFOW pi = {0};
         SOCKET socket = INVALID_SOCKET;
         DWORD dwBytes = 0;
 
@@ -483,7 +486,7 @@ private:
             // Clone socket
 
             if (INVALID_SOCKET == (socket =
-                    ::WSASocket(AF_INET, SOCK_STREAM, 0, &pi, 0, dwFlags))) {
+                    ::WSASocketW(AF_INET, SOCK_STREAM, 0, &pi, 0, dwFlags))) {
                 DWORD ret = (unsigned) ::WSAGetLastError();
 
                 if (WSANOTINITIALISED == ret) {
@@ -491,7 +494,7 @@ private:
 
                     if (::WSAStartup(MAKEWORD(2, 2), &wsaData) ||
                             INVALID_SOCKET == (socket =
-                                ::WSASocket(AF_INET, SOCK_STREAM, 0, &pi, 0, dwFlags))) {
+                                ::WSASocketW(AF_INET, SOCK_STREAM, 0, &pi, 0, dwFlags))) {
                         ret = (unsigned) ::WSAGetLastError();
                     }
                 }

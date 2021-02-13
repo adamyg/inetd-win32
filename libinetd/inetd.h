@@ -2,7 +2,7 @@
 /*
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2021, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -66,6 +66,12 @@
 
 #include <stdio.h>
 
+#include <vector>
+
+#include "SimpleLock.h"
+#include "IntrusiveList.h"              // Intrusive list
+#include "IOCPService.h"                // IO completion port support
+
 #if defined(HAVE_AFUNIX_H)
 #include <afunix.h>
 #define HAVE_AF_UNIX	1		/* Insider Build 17063 */
@@ -82,52 +88,93 @@
 #define ISMUX(sep)	(((sep)->se_type == MUX_TYPE) || ((sep)->se_type == MUXPLUS_TYPE))
 #define ISMUXPLUS(sep)	((sep)->se_type == MUXPLUS_TYPE)
 
-__BEGIN_DECLS
+#if defined(_WIN32)
+#define SOCKLEN_SOCKADDR(sa) sizeof(struct sockaddr)
+#define SOCKLEN_SOCKADDR_PTR(sa) sizeof(struct sockaddr)
+#define SOCKLEN_SOCKADDR_STORAGE(ss) sizeof(struct sockaddr_storage)
+#define SOCKLEN_SOCKADDR_STORAGE_PTR(ss) sizeof(struct sockaddr_storage)
+#else
+#define SOCKLEN_SOCKADDR(sa) sa.sa_len
+#define SOCKLEN_SOCKADDR_PTR(sa) sa->sa_len
+#define SOCKLEN_SOCKADDR_STORAGE(ss) ss.ss_len
+#define SOCKLEN_SOCKADDR_STORAGE_PTR(ss) ss->ss_len
+#endif
+
+#define satosin(sa)	((struct sockaddr_in *)(void *)sa)
+#define csatosin(sa)	((const struct sockaddr_in *)(const void *)sa)
+#ifdef INET6
+#define satosin6(sa)	((struct sockaddr_in6 *)(void *)sa)
+#define csatosin6(sa)	((const struct sockaddr_in6 *)(const void *)sa)
+#endif
 
 struct procinfo {
-	LIST_ENTRY(procinfo) pr_link;
-	pid_t		pr_pid;		/* child pid */
-	struct conninfo	*pr_conn;
+	procinfo() : pr_pid(-1), pr_conn(nullptr) {
+        }
+	inetd::Intrusive::MemberHook<procinfo> pr_link_;
+	pid_t	pr_pid;                 /* child pid & linked, otherwise -1 */
+	struct conninfo	*pr_conn; 	/* associated host connection */
+};
+
+typedef inetd::Intrusive::List<procinfo, inetd::Intrusive::MemberHook<procinfo>, &procinfo::pr_link_> ProcInfoList;
+
+struct connprocs {
+	struct Guard : public inetd::SpinLock::Guard {
+                Guard(connprocs &cps) : inetd::SpinLock::Guard(cps.cp_lock) { }
+	};
+
+        connprocs() : cp_maxchild(0) { }
+        int numchild() const {
+                return (int)cp_procs.size();
+        }
+
+        inetd::SpinLock cp_lock;        /* spin lock */
+        std::vector<struct procinfo *> cp_procs; /* child proc entries */
+	int	cp_maxchild;		/* max number of children */
 };
 
 struct conninfo {
-	LIST_ENTRY(conninfo) co_link;
+	conninfo() {
+	}
+	inetd::Intrusive::MemberHook<conninfo> co_link_;
 	struct sockaddr_storage	co_addr;/* source address */
-	int	co_numchild;		/* current number of children */
-	struct procinfo	**co_proc;	/* array of child proc entry */
+	connprocs co_procs;		/* array of child proc entry, from same host/addr */
 };
+
+typedef inetd::Intrusive::List<conninfo, inetd::Intrusive::MemberHook<conninfo>, &conninfo::co_link_> ConnInfoList;
 
 #define PERIPSIZE	256
 
 struct	stabchild {
-	LIST_ENTRY(stabchild)	sc_link;
-	pid_t			sc_pid;
+	stabchild(pid_t pid) : sc_pid(pid) {
+	}
+	inetd::Intrusive::MemberHook<stabchild> sc_link_;
+	pid_t	sc_pid;
 };
 
-struct	servtab {
-	char	*se_service;		/* name of service */
+typedef inetd::Intrusive::List<stabchild, inetd::Intrusive::MemberHook<stabchild>, &stabchild::sc_link_> StabChildList;
+
+struct	servconfig {
+	const char *se_service;		/* name of service */
 	int	se_socktype;		/* type of socket to use */
 	int	se_family;		/* address family */
-	char	*se_proto;		/* protocol used */
+	const char *se_proto;		/* protocol used */
 	int	se_sndbuf;		/* sndbuf size (netbsd) */
 	int	se_rcvbuf;		/* rcvbuf size (netbsd) */
 	int	se_maxchild;		/* max number of children */
 	int	se_maxcpm;		/* max connects per IP per minute */
-	int	se_numchild;		/* current number of children */
-	char	*se_user;		/* user name to run as */
-	char	*se_group;		/* group name to run as */
+	const char *se_user;		/* user name to run as */
+	const char *se_group;		/* group name to run as */
 #ifdef  LOGIN_CAP
-	char	*se_class;		/* login class name to run with */
+	const char *se_class;		/* login class name to run with */
 #endif
 	const struct biltin *se_bi;	/* if built-in, description */
-	char	*se_server;		/* server program */
-	char	*se_server_name;	/* server program without path */
+	const char *se_server;		/* server program */
+	const char *se_server_name;	/* server program without path */
 #define	MAXARGV 20
-	char	*se_argv[MAXARGV+1];	/* program arguments */
+	const char *se_argv[MAXARGV+1];	/* program arguments */
 #ifdef IPSEC
-	char	*se_policy;		/* IPsec policy string */
+	const char *se_policy;		/* IPsec policy string */
 #endif
-	int	se_fd;			/* open descriptor */
 	union {				/* bound address */
 		struct	sockaddr se_un_ctrladdr;
 		struct	sockaddr_in se_un_ctrladdr4;
@@ -145,7 +192,6 @@ struct	servtab {
 	gid_t	se_sockgid;		/* Group for unix domain socket */
 	mode_t	se_sockmode;		/* Mode for unix domain socket */
 	u_char	se_type;		/* type: normal, mux, or mux+ */
-	u_char	se_checked;		/* looked at during merge */
 	u_char	se_accept;		/* i.e., wait/nowait mode */
 #if defined(RPC)
 	u_char	se_rpc;			/* ==1 if RPC service */
@@ -153,32 +199,44 @@ struct	servtab {
 	u_int	se_rpc_lowvers;		/* RPC low version */
 	u_int	se_rpc_highvers;	/* RPC high version */
 #endif
-	int	se_count;		/* number started since se_time */
-	struct	timespec se_time;	/* start of se_count */
-	struct	servtab *se_next;
 	struct se_flags {
 		u_int se_nomapped : 1;
 		u_int se_reset : 1;
 	} se_flags;
 	int	se_maxperip;		/* max number of children per src */
-	LIST_HEAD(, conninfo) se_conn[PERIPSIZE];
-	LIST_HEAD(, stabchild) se_children;
+};
+
+struct	servtab : public servconfig {
+	servtab() : servconfig() {
+	}
+	servtab(const servconfig &cfg) : servconfig(cfg) {
+	}
+	int	se_fd;			/* open descriptor */
+	inetd::IOCPService::Listener se_listener;
+	int	se_count;		/* number started since se_time */
+	struct	timespec se_time;	/* start of se_count */
+	struct	servtab *se_next;
+//	u_char	se_running;		/* is the service running */
+//	u_char	se_enabled;		/* is the service enabled/accepting connections */
+	u_char	se_checked;		/* looked at during configuration merge */
+
+	ConnInfoList se_conn[PERIPSIZE];/* per host connection management */
+	StabChildList se_children;      /* active child processes */
 };
 
 #define	se_nomapped		se_flags.se_nomapped
 #define	se_reset		se_flags.se_reset
 
 #define	SERVTAB_AT_LIMIT(sep)		\
-	((sep)->se_maxchild > 0 && (sep)->se_numchild == (sep)->se_maxchild)
+	((sep)->se_maxchild > 0 && (sep)->se_children.count() == (sep)->se_maxchild)
+#define	SERVTAB_AT_LIMITX(sep, count)	\
+	((sep)->se_maxchild > 0 && (count) == (sep)->se_maxchild)
 #define	SERVTAB_EXCEEDS_LIMIT(sep)	\
-	((sep)->se_maxchild > 0 && (sep)->se_numchild >= (sep)->se_maxchild)
-
-int		check_loop(const struct sockaddr *, const struct servtab *sep);
-void		inetd_setproctitle(const char *, int);
-struct servtab *tcpmux(int);
+	((sep)->se_maxchild > 0 && (sep)->se_children.count() >= (sep)->se_maxchild)
+#define	SERVTAB_EXCEEDS_LIMITX(sep, coun)	\
+	((sep)->se_maxchild > 0 && (count) >= (sep)->se_maxchild)
 
 extern int	debug;
-extern struct servtab *servtab;
 
 typedef void (bi_fn_t)(int, struct servtab *);
 
@@ -192,4 +250,12 @@ struct biltin {
 
 extern const struct biltin biltins[];
 
+int		cpmip(const struct servtab *sep, int ctrl);
+
+__BEGIN_DECLS
+int		check_loop(const struct sockaddr *, const struct servtab *sep);
+void		inetd_setproctitle(const char *, int);
+#if defined(TCPMUX)
+struct servtab *tcpmux(int);
+#endif
 __END_DECLS

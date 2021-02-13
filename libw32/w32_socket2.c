@@ -190,7 +190,7 @@ w32_listen_native(int fd, int num)
 #undef listen
     if ((osf = nativehandle(fd)) == (SOCKET)INVALID_SOCKET) {
         ret = -1;
-    } else if (listen((SOCKET)osf, num) != 0) {
+    } else if (listen((SOCKET)osf, (-1 == num ? SOMAXCONN : num)) != 0) {
         w32_sockerror();
         ret = -1;
     }

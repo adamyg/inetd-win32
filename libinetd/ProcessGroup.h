@@ -4,7 +4,7 @@
  * Process group management
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020-2021, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -32,7 +32,7 @@
 #include <unordered_map>
 #include <set>
 
-#include "Windowstd.h"
+#include "WindowStd.h"
 #include "ScopedProcessId.h"
 
 namespace inetd {
@@ -62,6 +62,7 @@ private:
         };
 
         struct Process {
+                Process() : exitcode_(0) { }
                 HANDLE take_process_handle() {
                     return pid_.take_process_handle();
                 }
@@ -72,7 +73,7 @@ private:
                     return pid_.process_id();
                 }
                 ScopedProcessId pid_;
-                DWORD retcode_;
+                DWORD exitcode_;
         };
 
 private:
@@ -255,6 +256,7 @@ private:
 
                                                 auto it = processes.find(process_id);
                                                 if (it != processes.end()) {
+                                                        assert(::GetExitCodeProcess(it->second->pid_.process_handle(), &it->second->exitcode_));
                                                         {   CriticalGuard guard(self->completelock_);
                                                             self->complete_.push_back(std::move(it->second));
                                                         }
@@ -290,7 +292,7 @@ private:
                                                         bool is_unique = processes.insert(std::make_pair(process->process_id(), std::move(process))).second;
                                                         assert(is_unique);
                                                 } else {    // assume process has already terminated
-                                                        assert(::GetExitCodeProcess(process->pid_.process_handle(), &process->retcode_));
+                                                        assert(::GetExitCodeProcess(process->pid_.process_handle(), &process->exitcode_));
                                                         {   CriticalGuard guard(self->completelock_);
                                                             self->complete_.push_back(std::move(process));
                                                         }
