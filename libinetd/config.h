@@ -25,56 +25,57 @@
  * ==end==
  */
 
-#ifndef	TOOMANY
-#define	TOOMANY		256		/* don't start more than TOOMANY */
+#ifndef TOOMANY
+#define TOOMANY 	256		/* don't start more than TOOMANY */
 #endif
 
-#ifndef	MAXCHILD
-#define	MAXCHILD	-1		/* maximum number of this service < 0 = no limit */
+#ifndef MAXCHILD
+#define MAXCHILD	-1		/* maximum number of this service < 0 = no limit */
 #endif
 
-#ifndef	MAXCPM
-#define	MAXCPM		-1		/* rate limit invocations from a single remote address, < 0 = no limit */
+#ifndef MAXCPM
+#define MAXCPM		-1		/* rate limit invocations from a single remote address, < 0 = no limit */
 #endif
 
-#ifndef	MAXPERIP
-#define	MAXPERIP	-1		/* maximum number of this service from a single remote address, < 0 = no limit */
+#ifndef MAXPERIP
+#define MAXPERIP	-1		/* maximum number of this service from a single remote address, < 0 = no limit */
 #endif
 
 #define MAX_MAXCHLD	32767		/* max allowable max children */
 
 struct configparams {
-        configparams() {
+	configparams() {
 		euid      = 0;
 		egid      = 0;
-		options   = 0;          /* SO_DEBUG */
+		options   = 0;		/* SO_DEBUG */
 		toomany   = TOOMANY;
 		maxperip  = MAXPERIP;
 		maxcpm    = MAXCPM;
 		maxchild  = MAXCHILD;
 		maxthread = 0;
 		v4bind_ok = 0;
-        	v6bind_ok = 0;
+		v6bind_ok = 0;
 		bind_sa4  = NULL;
 		bind_sa6  = NULL;
-        }
-	uid_t   euid;
-	gid_t   egid;
-	int	options;                /* global socket options */
+	}
+	uid_t	euid;
+	gid_t	egid;
+	int	options;		/* global socket options */
 	int	toomany;
-	int     maxperip;
-	int     maxcpm;
-	int     maxchild;
-        int	maxthread;
+	int	maxperip;
+	int	maxcpm;
+	int	maxchild;
+	int	maxthread;
 	int	v4bind_ok;
-        int	v6bind_ok;
+	int	v6bind_ok;
 	struct	sockaddr_in *bind_sa4;
 	struct	sockaddr_in6 *bind_sa6;
 };
 
-int     setconfig(const char *path);
+int	setconfig(const char *path);
 struct servconfig *getconfigent(const struct configparams *params, int *ret);
 void	endconfig(void);
 void	freeconfig(struct servconfig *);
 
 /*end*/
+

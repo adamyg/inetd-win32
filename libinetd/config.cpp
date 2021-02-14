@@ -556,7 +556,6 @@ more:
 		else
 			sep->se_maxchild = 1;
 	}
-//	LIST_INIT(&sep->se_children);
 
 	//
 	//  server-program-arguments
@@ -571,8 +570,7 @@ more:
 		}
 	while (argc <= MAXARGV)
 		sep->se_argv[argc++] = NULL;
-//	for (i = 0; i < PERIPSIZE; ++i)
-//		LIST_INIT(&sep->se_conn[i]);
+
 #ifdef IPSEC
 	sep->se_policy = policy ? newstr(policy) : NULL;
 	free(policy);
@@ -799,4 +797,3 @@ freeconfig(struct servconfig *cp)
 }
 
 /*end*/
-
