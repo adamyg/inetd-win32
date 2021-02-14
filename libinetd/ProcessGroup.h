@@ -34,6 +34,7 @@
 
 #include "WindowStd.h"
 #include "ScopedProcessId.h"
+#include "SimpleLock.h"
 
 namespace inetd {
 class ProcessGroup {
@@ -41,26 +42,6 @@ class ProcessGroup {
         ProcessGroup& operator=(const ProcessGroup &) = delete;
 
 private:
-        struct CriticalSection {
-                CriticalSection() {
-                        ::InitializeCriticalSection(&cs_);
-                }
-                ~CriticalSection() {
-                        ::DeleteCriticalSection(&cs_);
-                }
-                CRITICAL_SECTION cs_;
-        };
-
-        struct CriticalGuard {
-                CriticalGuard(CriticalSection &cs) : guarded_(cs) {
-                        ::EnterCriticalSection(&guarded_.cs_);
-                }
-                ~CriticalGuard() {
-                        ::LeaveCriticalSection(&guarded_.cs_);
-                }
-                CriticalSection &guarded_;
-        };
-
         struct Process {
                 Process() : exitcode_(0) { }
                 HANDLE take_process_handle() {
@@ -197,7 +178,7 @@ public:
                         ScopedHandle handle;
                         int pid = 0;
 
-                        {       CriticalGuard guard(completelock_);
+                        {       inetd::CriticalSection::Guard guard(completelock_);
                                 if (! complete_.empty()) {
                                         handle.Set(complete_.front()->take_process_handle());
                                         pid = complete_.front()->process_id();
@@ -257,7 +238,7 @@ private:
                                                 auto it = processes.find(process_id);
                                                 if (it != processes.end()) {
                                                         assert(::GetExitCodeProcess(it->second->pid_.process_handle(), &it->second->exitcode_));
-                                                        {   CriticalGuard guard(self->completelock_);
+                                                        {   inetd::CriticalSection::Guard guard(self->completelock_);
                                                             self->complete_.push_back(std::move(it->second));
                                                         }
                                                         processes.erase(it);
@@ -293,7 +274,7 @@ private:
                                                         assert(is_unique);
                                                 } else {    // assume process has already terminated
                                                         assert(::GetExitCodeProcess(process->pid_.process_handle(), &process->exitcode_));
-                                                        {   CriticalGuard guard(self->completelock_);
+                                                        {   inetd::CriticalSection::Guard guard(self->completelock_);
                                                             self->complete_.push_back(std::move(process));
                                                         }
                                                         self->sigchld();
@@ -351,7 +332,7 @@ private:
         }
 
 private:
-        CriticalSection completelock_;
+        inetd::CriticalSection completelock_;
         std::list<std::unique_ptr<Process>> complete_;
         void (*sigchld_)();
         unsigned unmanaged_;
