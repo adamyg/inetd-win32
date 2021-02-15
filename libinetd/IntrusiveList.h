@@ -56,12 +56,6 @@ struct MemberHook {
 			hook->member_ = member;
 			return ++count;
 		}
-		inline unsigned push_back(Member *member, MemberHook *hook) {
-			LIST_INSERT_TAIL(&head, hook, node_);
-			hook->owner_  = this;
-			hook->member_ = member;
-			return ++count;
-		}
 		inline unsigned remove(MemberHook *hook) {
 			hook->owner_  = nullptr;
 			hook->member_ = nullptr;
