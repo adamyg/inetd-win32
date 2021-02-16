@@ -88,23 +88,32 @@
 #define MAX(X,Y)	((X) > (Y) ? (X) : (Y))
 #endif
 
+struct snode {  /* name string cache */
+	LIST_ENTRY(snode) node_;
+	char name_[1];  //implied nul
+};
+
 struct servconfig *nextconfigent(const struct configparams *params);
 static int	matchservent(const char *, const char *, const char *);
 static char	*skip(char **);
 static char	*sskip(char **);
+static const char *newname(const char *);
 static const char *newstr(const char *);
 static char	*nextline(FILE *);
 static bool	parse_protocol_sizes(struct servconfig *sep);
 
+static LIST_HEAD(snodes, snode) strings;
 static const char *CONFIG = "";
-static FILE	*fconfig = NULL;
+static FILE	*fconfig = (FILE *)-1;
 static struct	servconfig configent;
 static char	line[LINE_MAX];
 
 int
 setconfig(const char *path)
 {
-	if (fconfig != NULL) {
+	if ((FILE *)-1 == fconfig) {
+		LIST_INIT(&strings);
+	} else if (fconfig) {
 		fseek(fconfig, 0L, SEEK_SET);
 		return (1);
 	}
@@ -115,7 +124,7 @@ setconfig(const char *path)
 void
 endconfig(void)
 {
-	if (fconfig) {
+	if (fconfig && fconfig != (FILE *)-1) {
 		(void) fclose(fconfig);
 		fconfig = NULL;
 	}
@@ -166,6 +175,10 @@ more:
 	v4bind = 0;
 	v6bind = 0;
 #endif
+
+	if (NULL == fconfig || (FILE *)-1 == fconfig)
+		return (NULL);
+
 	while ((cp = nextline(fconfig)) != NULL) {
 #ifdef IPSEC
 		/* lines starting with #@ is not a comment, but the policy */
@@ -254,9 +267,9 @@ more:
 			c++;
 		} else
 			sep->se_type = MUX_TYPE;
-		sep->se_service = newstr(c);
+		sep->se_service = newname(c);
 	} else {
-		sep->se_service = newstr(arg);
+		sep->se_service = newname(arg);
 		sep->se_type = NORM_TYPE;
 	}
 
@@ -682,6 +695,27 @@ newstr(const char *cp)
 	return NULL;
 }
 
+static const char *
+newname(const char *name)
+{
+	snode *node;
+	LIST_FOREACH(node, &strings, node_) {
+		if (0 == strcmp(node->name_, name)) {
+			return node->name_;
+		}
+	}
+
+	const size_t slen = strlen(name);
+	if (NULL == (node = (snode *)malloc(sizeof(snode) + slen))) {
+		syslog(LOG_ERR, "malloc: %m");
+		throw EX_OSERR;
+		/*NOREACHED*/
+	}
+	(void) memcpy(node->name_, name, slen + 1 /*nul*/);
+	LIST_INSERT_HEAD(&strings, node, node_);
+	return node->name_;
+}
+
 static bool
 parse_protocol_sizes(struct servconfig *sep)
 { /*source: netbsd/openbsd inetd */
@@ -783,7 +817,7 @@ do { \
 void
 freeconfig(struct servconfig *cp)
 {
-	free((char *)cp->se_service);
+//	free((char *)cp->se_service); ; see newname()
 	free((char *)cp->se_proto);
 	free((char *)cp->se_user);
 	free((char *)cp->se_group);
