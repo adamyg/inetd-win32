@@ -26,16 +26,41 @@
  * ==
  */
 
+ /* 
+  * Intrusive TAILQ and LIST based containers
+  *
+  * Example usage:
+  *
+  *     struct tailq_node {
+  *         inetd::Intrusive::TailMemberHook<tailq_node> link_;
+  *         int other_members_;
+  *     };
+  *     typedef inetd::Intrusive::ListContainer<tailq_node, inetd::Intrusive::TailMemberHook<tailq_node>, &tailq_node::link_> MYTailq;
+  *
+  *
+  *     struct list_node {
+  *         inetd::Intrusive::ListMemberHook<list_node> link_;
+  *         int other_members_;
+  *     };
+  *     typedef inetd::Intrusive::ListContainer<list_node, inetd::Intrusive::ListMemberHook<list_node>, &list_node::link_> MYList;
+  *
+  */
+
 #include <sys/queue.h>
 
+#include <utility>
 #include <cassert>
 
 #include "SimpleLock.h"
 
 namespace inetd {
 namespace Intrusive {
+
+/////////////////////////////////////////////////////////////////////////////////////////
+//	List collection
+
 template <typename Member>
-struct MemberHook {
+struct ListMemberHook {
 	struct Collection {
 		Collection() {
 			reset();
@@ -47,56 +72,227 @@ struct MemberHook {
 		inline bool empty() const {
 			return LIST_EMPTY(&head);
 		}
-		inline MemberHook *top() {
+		inline ListMemberHook *front() {
 			return LIST_FIRST(&head);
 		}
-		inline unsigned push_front(Member *member, MemberHook *hook) {
+		inline unsigned push_front(Member *member, ListMemberHook *hook) {
 			LIST_INSERT_HEAD(&head, hook, node_);
-			hook->owner_  = this;
+			hook->collection_ = this;
 			hook->member_ = member;
 			return ++count;
 		}
-		inline unsigned remove(MemberHook *hook) {
-			hook->owner_  = nullptr;
+		inline bool exists(ListMemberHook *hook) const {
+			ListMemberHook *existing;
+			LIST_FOREACH(existing, &head, node_) {
+				if (existing == hook) {
+					return true;
+				}
+			}
+			return false;
+		}
+		template<class Parent, class Functor, class... TParameter>
+		int foreach(Parent &parent, Functor functor, TParameter... params) {
+			ListMemberHook *hook;
+			LIST_FOREACH(hook, &head, node_) {
+				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
+					return ret;
+				}
+			}
+			return 0;
+		}
+		template<class Parent, class Functor, class... TParameter>
+		int foreach_safe(Parent &parent, Functor functor, TParameter... params) {
+			ListMemberHook *hook, *t_hook;
+			LIST_FOREACH_SAFE(hook, &head, node_, t_hook) {
+				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
+					return ret;
+				}
+			}
+			return 0;
+		}
+		inline ListMemberHook *next(ListMemberHook *hook) {
+			return LIST_NEXT(hook, node_);
+		}
+		inline unsigned remove(ListMemberHook *hook) {
+			hook->collection_ = nullptr;
 			hook->member_ = nullptr;
 			LIST_REMOVE(hook, node_);
 			return --count;
 		}
-		inetd::CriticalSection cs_;
-		_LIST_HEAD(, MemberHook, ) head;
+		inetd::CriticalSection cs;
+		_LIST_HEAD(, ListMemberHook, ) head;
 		unsigned count;
 	};
 
-	MemberHook() : node_{}, member_(nullptr) {
+	ListMemberHook() : node_{}, member_(nullptr) {
 	}
-	_LIST_ENTRY(MemberHook, ) node_;
-	Collection *owner_;
+	_LIST_ENTRY(ListMemberHook, ) node_;
+	Collection *collection_;
 	Member *member_;
 };
 
+
+/////////////////////////////////////////////////////////////////////////////////////////
+//	Tail Queue collection
+
+template <typename Member>
+struct TailMemberHook{
+	struct Collection {
+		Collection() {
+			reset();
+		}
+		inline void reset() {
+			TAILQ_INIT(&head);
+			count = 0;
+		}
+		inline bool empty() const {
+			return TAILQ_EMPTY(&head);
+		}
+		inline TailMemberHook *front() {
+			return TAILQ_FIRST(&head);
+		}
+		inline TailMemberHook *back() {
+			return TAILQ_LAST(&head, TailHead);
+		}
+		inline unsigned push_front(Member *member, TailMemberHook *hook) {
+			TAILQ_INSERT_HEAD(&head, hook, node_);
+			hook->collection_ = this;
+			hook->member_ = member;
+			return ++count;
+		}
+		inline unsigned push_back(Member *member, TailMemberHook *hook) {
+			TAILQ_INSERT_TAIL(&head, hook, node_);
+			hook->collection_ = this;
+			hook->member_ = member;
+			return ++count;
+		}
+		inline bool exists(TailMemberHook *hook) const {
+			TailMemberHook *existing;
+			TAILQ_FOREACH(existing, &head, node_) {
+				if (existing == hook) {
+					return true;
+				}
+			}
+			return false;
+		}
+		template<class Parent, class Functor, class... TParameter>
+		int foreach(Parent &parent, Functor functor, TParameter... params) {
+			TailMemberHook *hook;
+			TAILQ_FOREACH(hook, &head, node_) {
+				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
+					return ret;
+				}
+			}
+			return 0;
+		}
+		template<class Parent, class Functor, class... TParameter>
+		int foreach_safe(Parent &parent, Functor functor, TParameter... params) {
+			TailMemberHook *hook, *t_hook;
+			TAILQ_FOREACH_SAFE(hook, &head, node_, t_hook) {
+				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
+					return ret;
+				}
+			}
+			return 0;
+		}
+		inline TailMemberHook *next(TailMemberHook *hook) {
+			return TAILQ_NEXT(hook, node_);
+		}
+		inline unsigned remove(TailMemberHook *hook) {
+			hook->collection_ = nullptr;
+			hook->member_ = nullptr;
+			TAILQ_REMOVE(&head, hook, node_);
+			return --count;
+		}
+		inetd::CriticalSection cs;
+		_TAILQ_HEAD(TailHead, TailMemberHook, ) head;
+		unsigned count;
+	};
+
+	TailMemberHook() : node_{}, member_(nullptr) {
+	}
+
+	_TAILQ_ENTRY(TailMemberHook, ) node_;
+	Collection *collection_;
+	Member *member_;
+};
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+//	List container
+
 template <typename Member, typename Hook, Hook Member::* PtrToMemberHook>
-struct List {
-	List(const List &) = delete;
-	List& operator=(const List &) = delete;
+struct ListContainer {
+	ListContainer(const ListContainer &) = delete;
+	ListContainer operator=(const ListContainer &) = delete;
 
 public:
+	typedef typename Hook::Collection Collection;
+
 	class Guard {
 		Guard(const Guard &) = delete;
 		Guard& operator=(const Guard &) = delete;
 	public:
 		Guard(typename Hook::Collection &collection) :
-				guard_(collection.cs_) {
+				guard_(collection.cs) {
 		}
 	private:
 		inetd::CriticalSection::Guard guard_;
 	};
 	friend class Guard;
 
-private:
+public:
+	typedef typename Hook::Collection Collection;
 	typedef Hook MemberHook;
 
+	struct iterator {
+		using iterator_category = std::forward_iterator_tag;
+		using difference_type = std::ptrdiff_t;
+		using value_type = Member;
+		using pointer = Member *;
+		using reference = Member &;
+
+		iterator(pointer ptr) : ptr_(ptr) { }
+
+		reference operator*() const {
+			assert(ptr_);
+			return *ptr_;
+		}
+		pointer operator->() {
+			assert(ptr_);
+			return ptr_;
+		}
+		iterator& operator++() {
+			if (pointer ptr = ptr_) {
+				MemberHook *hook =
+					ListContainer::member_hook_assigned(ptr);
+				ptr = nullptr;
+				if (nullptr != (hook = hook->collection_->next(hook))) {
+					ptr = hook_member(hook);
+				}
+				ptr_ = ptr;
+			}
+			return *this;
+		}
+		iterator operator++(int) {
+			iterator tmp(*this);
+			++(*this);
+			return tmp;
+		}
+		friend bool operator== (const iterator& a, const iterator& b) {
+			return a.ptr_ == b.ptr_;
+		};
+		friend bool operator!= (const iterator& a, const iterator& b) {
+			return a.ptr_ != b.ptr_;
+		};
+	private:
+		pointer ptr_;
+	};
+
+private:
 	static inline MemberHook *
-	member_hook_raw(Member *member) {
+	member_hook_naive(Member *member) {
+		assert(member);
 		return &((member)->*(PtrToMemberHook));
 	}
 
@@ -114,6 +310,7 @@ private:
 		return &((member)->*(PtrToMemberHook));
 	}
 
+public:
 	static inline Member *
 	hook_member(MemberHook *hook) {
 		constexpr size_t hook_offset = offsetof(Member, *PtrToMemberHook);
@@ -123,9 +320,9 @@ private:
 	}
 
 public:
-	List() { }
+	ListContainer() { }
 
-	~List() {
+	~ListContainer() {
 		assert(empty());
 		assert(0 == count());
 	}
@@ -138,8 +335,17 @@ public:
 		return collection_.count;
 	}
 
-	Member *top() {
-		if (MemberHook *hook = collection_.top()) {
+	Member *front() {
+		if (MemberHook *hook = collection_.front()) {
+			return hook_member(hook);
+		}
+		return nullptr;
+	}
+
+	template<typename = std::enable_if<
+		std::is_member_function_pointer<decltype(&Hook::Collection::back)>::value>>
+	Member *back() {
+		if (MemberHook *hook = collection_.back()) {
 			return hook_member(hook);
 		}
 		return nullptr;
@@ -158,12 +364,16 @@ public:
 		collection_.push_front(member, member_hook_unassigned(member));
 	}
 
+	template<typename = std::enable_if<
+		std::is_member_function_pointer<decltype(&Hook::Collection::push_back)>::value >>
 	unsigned push_back_r(Member *member) {
 		Guard guard(collection_);
 		push_back(member);
 		return count();
 	}
 
+	template<typename = std::enable_if<
+		std::is_member_function_pointer<decltype(&Hook::Collection::push_back)>::value >>
 	void push_back(Member *member) {
 #if defined(_DEBUG) && !defined(NDEBUG)
 		assert(! exists(member));
@@ -171,14 +381,13 @@ public:
 		collection_.push_back(member, member_hook_unassigned(member));
 	}
 
+	bool exists_r(Member *member) const {
+		Guard guard(collection_);
+		return collection_.exists(member_hook_naive(member));
+	}
+
 	bool exists(Member *member) const {
-		MemberHook *hook = member_hook_raw(member), *existing = nullptr;
-		LIST_FOREACH(existing, &collection_.head, node_) {
-			if (existing == hook) {
-				return true;
-			}
-		}
-		return false;
+		return collection_.exists(member_hook_naive(member));
 	}
 
 	unsigned remove_r(Member *member) {
@@ -195,14 +404,14 @@ public:
 
 	static void remove_self_r(Member *member) {
 		MemberHook *hook = member_hook_assigned(member);
-		Hook::Collection *collection = hook->owner_;
+		Hook::Collection *collection = hook->collection_;
 		Guard guard(*collection);
 		collection->remove(hook);
 	}
 
 	static void remove_self(Member *member) {
 		MemberHook *hook = member_hook_assigned(member);
-		Hook::Collection *collection = hook->owner_;
+		Hook::Collection *collection = hook->collection_;
 		collection->remove(hook);
 	}
 
@@ -217,103 +426,67 @@ public:
 
 	template<class Functor, class... TParameter>
 	int foreach_r(Functor functor, TParameter... params) {
-		MemberHook *hook = nullptr;
 		Guard guard(collection_);
-		LIST_FOREACH(hook, &collection_.head, node_) {
-			if (int ret = functor(hook_member(hook), params...)) {
-				return ret;
-			}
-		}
-		return 0;
+		return collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach(Functor functor, TParameter... params) {
-		MemberHook *hook = nullptr;
-		LIST_FOREACH(hook, &collection_.head, node_) {
-			if (int ret = functor(hook_member(hook), params...)) {
-				return ret;
-			}
-		}
-		return 0;
+		return collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_term_r(Functor functor, TParameter... params) {
-		MemberHook *hook = nullptr;
 		Guard guard(collection_);
-		LIST_FOREACH(hook, &collection_.head, node_) {
-			if (int ret = functor(hook_member(hook), params...)) {
-				return ret;
-			}
+		if (int ret = collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...)) {
+			return ret;
 		}
-		return functor(static_cast<Member *>(nullptr), params...);
+		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_term(Functor functor, TParameter... params) {
-		MemberHook *hook = nullptr;
-		LIST_FOREACH(hook, &collection_.head, node_) {
-			if (int ret = functor(hook_member(hook), params...)) {
-				return ret;
-			}
+		if (int ret = collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...)) {
+			return ret;
 		}
-		return functor(static_cast<Member *>(nullptr), params...);
+		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_safe_r(Functor functor, TParameter... params) {
-		MemberHook *hook, *t_hook = nullptr;
 		Guard guard(collection_);
-		LIST_FOREACH_SAFE(hook, &collection_.head, node_, t_hook) {
-			if (int ret = functor(hook_member(hook), params...)) {
-				return ret;
-			}
-		}
-		return 0;
+		return collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_safe(Functor functor, TParameter... params) {
-		MemberHook *hook, *t_hook = nullptr;
-		LIST_FOREACH_SAFE(hook, &collection_.head, node_, t_hook) {
-			if (int ret = functor(hook_member(hook), params...)) {
-				return ret;
-			}
-		}
-		return 0;
+		return collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_term_safe_r(Functor functor, TParameter... params) {
-		MemberHook *hook, *t_hook = nullptr;
 		Guard guard(collection_);
-		LIST_FOREACH_SAFE(hook, &collection_.head, node_, t_hook) {
-			if (int ret = functor(hook_member(hook), params...)) {
-				return ret;
-			}
+		if (int ret = collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...)) {
+			return ret;
 		}
-		return functor(static_cast<Member *>(nullptr), params...);
+		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_term_safe(Functor functor, TParameter... params) {
-		MemberHook *hook, *t_hook = nullptr;
-		LIST_FOREACH_SAFE(hook, &collection_.head, node_, t_hook) {
-			if (int ret = functor(hook_member(hook), params...)) {
-				return ret;
-			}
+		if (int ret = collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...)) {
+			return ret;
 		}
-		return functor(static_cast<Member *>(nullptr), params...);
+		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	void drain_r(Functor functor, TParameter... params) {
 		Guard guard(collection_);
 		while (! empty()) {
-			Member *member = top();
+			Member *member = front();
 			remove(member);
-			functor(member);
+			functor(member, std::forward<TParameter>(params)...);
 		}
 		assert(0 == count());
 	}
@@ -321,18 +494,43 @@ public:
 	template<class Functor, class... TParameter>
 	void drain(Functor functor, TParameter... params) {
 		while (! empty()) {
-			Member *member = top();
+			Member *member = front();
 			remove(member);
-			functor(member, params...);
+			functor(member, std::forward<TParameter>(params)...);
 		}
 		assert(0 == count());
 	}
 
+public:
+	iterator begin() {
+		MemberHook *hook = collection_.front();
+		return iterator(hook ? hook_member(hook) : nullptr);
+	}
+
+	iterator end() {
+		return iterator(nullptr);
+	}
+
+	iterator iterator_to(Member *member) {
+		assert(member);
+		assert(member->collection_ == &collection_);
+		return iterator(member);
+	}
+
+	void erase(iterator &it) {
+		assert(it.ptr_);
+		assert(it.ptr_->collection_ == &collection_);
+		if (Member *member = it.ptr_) {
+			member->collection_->remove(ListContainer::member_hook_assigned(member));
+			it.ptr_ = nullptr;
+		}
+	}
+
 private:
-	typename Hook::Collection collection_;
+	Collection collection_;
 };
 
-}   //Intrusive
-};  //inetd
+}  //Intrusive
+}; //inetd
 
 //end
