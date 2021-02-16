@@ -110,12 +110,12 @@
 struct procinfo {
 	procinfo() : pr_pid(-1), pr_conn(nullptr) {
         }
-	inetd::Intrusive::MemberHook<procinfo> pr_link_;
+	inetd::Intrusive::TailMemberHook<procinfo> pr_link_;
 	pid_t	pr_pid;                 /* child pid & linked, otherwise -1 */
 	struct conninfo	*pr_conn; 	/* associated host connection */
 };
 
-typedef inetd::Intrusive::List<procinfo, inetd::Intrusive::MemberHook<procinfo>, &procinfo::pr_link_> ProcInfoList;
+typedef inetd::Intrusive::ListContainer<procinfo, inetd::Intrusive::TailMemberHook<procinfo>, &procinfo::pr_link_> ProcInfoList;
 
 struct connprocs {
 	struct Guard : public inetd::SpinLock::Guard {
@@ -135,23 +135,23 @@ struct connprocs {
 struct conninfo {
 	conninfo() {
 	}
-	inetd::Intrusive::MemberHook<conninfo> co_link_;
+	inetd::Intrusive::ListMemberHook<conninfo> co_link_;
 	struct sockaddr_storage	co_addr;/* source address */
 	connprocs co_procs;		/* array of child proc entry, from same host/addr */
 };
 
-typedef inetd::Intrusive::List<conninfo, inetd::Intrusive::MemberHook<conninfo>, &conninfo::co_link_> ConnInfoList;
+typedef inetd::Intrusive::ListContainer<conninfo, inetd::Intrusive::ListMemberHook<conninfo>, &conninfo::co_link_> ConnInfoList;
 
 #define PERIPSIZE	256
 
 struct	stabchild {
 	stabchild(pid_t pid) : sc_pid(pid) {
 	}
-	inetd::Intrusive::MemberHook<stabchild> sc_link_;
+	inetd::Intrusive::ListMemberHook<stabchild> sc_link_;
 	pid_t	sc_pid;
 };
 
-typedef inetd::Intrusive::List<stabchild, inetd::Intrusive::MemberHook<stabchild>, &stabchild::sc_link_> StabChildList;
+typedef inetd::Intrusive::ListContainer<stabchild, inetd::Intrusive::ListMemberHook<stabchild>, &stabchild::sc_link_> StabChildList;
 
 struct	servconfig {
 	const char *se_service;		/* name of service */
