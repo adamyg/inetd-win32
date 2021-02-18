@@ -817,7 +817,7 @@ do { \
 void
 freeconfig(struct servconfig *cp)
 {
-//	free((char *)cp->se_service); ; see newname()
+        assert(NULL == cp->se_service || (cp->se_service == newname(cp->se_service)));
 	free((char *)cp->se_proto);
 	free((char *)cp->se_user);
 	free((char *)cp->se_group);

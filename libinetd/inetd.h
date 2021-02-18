@@ -109,7 +109,7 @@
 
 struct procinfo {
 	procinfo() : pr_pid(-1), pr_conn(nullptr) {
-        }
+	}
 	inetd::Intrusive::TailMemberHook<procinfo> pr_link_;
 	pid_t	pr_pid;                 /* child pid & linked, otherwise -1 */
 	struct conninfo	*pr_conn; 	/* associated host connection */
@@ -119,16 +119,16 @@ typedef inetd::Intrusive::ListContainer<procinfo, inetd::Intrusive::TailMemberHo
 
 struct connprocs {
 	struct Guard : public inetd::SpinLock::Guard {
-                Guard(connprocs &cps) : inetd::SpinLock::Guard(cps.cp_lock) { }
+		Guard(connprocs &cps) : inetd::SpinLock::Guard(cps.cp_lock) { }
 	};
 
-        connprocs() : cp_maxchild(0) { }
-        int numchild() const {
-                return (int)cp_procs.size();
-        }
+	connprocs() : cp_maxchild(0) { }
+	int numchild() const {
+		return (int)cp_procs.size();
+	}
 
-        inetd::SpinLock cp_lock;        /* spin lock */
-        std::vector<struct procinfo *> cp_procs; /* child proc entries */
+	inetd::SpinLock cp_lock;	/* spin lock */
+	std::vector<struct procinfo *> cp_procs; /* child proc entries */
 	int	cp_maxchild;		/* max number of children */
 };
 
@@ -207,17 +207,26 @@ struct	servconfig {
 };
 
 struct	servtab : public servconfig {
-	servtab() : servconfig() {
+	servtab() : servconfig(),
+			se_fd(-1), se_count(0), se_time(), se_next(nullptr) {
+		se_state.running = false;
+                se_state.enabled = false;
 	}
-	servtab(const servconfig &cfg) : servconfig(cfg) {
+	servtab(const servconfig &cfg) : servconfig(cfg), 
+			se_fd(-1), se_count(0), se_time(), se_next(nullptr) {
+		se_state.running = false;
+		se_state.enabled = false;
 	}
+	struct {
+		inetd::CriticalSection lock;
+		bool running;		/* is the service running */
+		bool enabled;		/* is the service enabled/accepting connections */
+	} se_state;
 	int	se_fd;			/* open descriptor */
-	inetd::IOCPService::Listener se_listener;
+	inetd::IOCPService::Listener se_listener; /* iocp listener */
 	int	se_count;		/* number started since se_time */
 	struct	timespec se_time;	/* start of se_count */
 	struct	servtab *se_next;
-//	u_char	se_running;		/* is the service running */
-//	u_char	se_enabled;		/* is the service enabled/accepting connections */
 	u_char	se_checked;		/* looked at during configuration merge */
 
 	ConnInfoList se_conn[PERIPSIZE];/* per host connection management */
@@ -227,13 +236,9 @@ struct	servtab : public servconfig {
 #define	se_nomapped		se_flags.se_nomapped
 #define	se_reset		se_flags.se_reset
 
-#define	SERVTAB_AT_LIMIT(sep)		\
-	((sep)->se_maxchild > 0 && (sep)->se_children.count() == (sep)->se_maxchild)
-#define	SERVTAB_AT_LIMITX(sep, count)	\
-	((sep)->se_maxchild > 0 && (count) == (sep)->se_maxchild)
 #define	SERVTAB_EXCEEDS_LIMIT(sep)	\
 	((sep)->se_maxchild > 0 && (sep)->se_children.count() >= (sep)->se_maxchild)
-#define	SERVTAB_EXCEEDS_LIMITX(sep, coun)	\
+#define	SERVTAB_EXCEEDS_LIMITX(sep, count) \
 	((sep)->se_maxchild > 0 && (count) >= (sep)->se_maxchild)
 
 extern int	debug;

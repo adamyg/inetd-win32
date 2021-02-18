@@ -375,18 +375,27 @@ struct {								\
 		RB_AUGMENT(RB_PARENT(tmp, field));			\
 } while (0)
 
+#undef  __RB_CONST
+#if defined(__cplusplus)
+#define __RB_CONST const
+#else
+#define __RB_CONST
+#endif
+
 /* Generates prototypes and inline functions */
 #define	RB_PROTOTYPE(name, type, field, cmp)				\
-	RB_PROTOTYPE_INTERNAL(name, type, field, cmp,)
+	RB_PROTOTYPE_INTERNAL(name, type, field, cmp,,__RB_CONST)
+
 #define	RB_PROTOTYPE_STATIC(name, type, field, cmp)			\
-	RB_PROTOTYPE_INTERNAL(name, type, field, cmp, /*__attribute__((__unused__))*/ static)
-#define RB_PROTOTYPE_INTERNAL(name, type, field, cmp, attr)		\
+	RB_PROTOTYPE_INTERNAL(name, type, field, cmp, /*__attribute__((__unused__))*/ static,)
+
+#define RB_PROTOTYPE_INTERNAL(name, type, field, cmp, attr, attr2)	\
 attr void name##_RB_INSERT_COLOR(struct name *, struct type *);		\
 attr void name##_RB_REMOVE_COLOR(struct name *, struct type *, struct type *);\
 attr struct type *name##_RB_REMOVE(struct name *, struct type *);	\
 attr struct type *name##_RB_INSERT(struct name *, struct type *);	\
-attr struct type *name##_RB_FIND(struct name *, struct type *);		\
-attr struct type *name##_RB_NFIND(struct name *, struct type *);	\
+attr struct type *name##_RB_FIND(attr2 struct name *, struct type *) attr2;\
+attr struct type *name##_RB_NFIND(attr2 struct name *, struct type *) attr2;\
 attr struct type *name##_RB_NEXT(struct type *);			\
 attr struct type *name##_RB_PREV(struct type *);			\
 attr struct type *name##_RB_MINMAX(struct name *, int);			\
@@ -396,10 +405,12 @@ attr struct type *name##_RB_MINMAX(struct name *, int);			\
  * Moves node close to the key of elm to top
  */
 #define	RB_GENERATE(name, type, field, cmp)				\
-	RB_GENERATE_INTERNAL(name, type, field, cmp,)
+	RB_GENERATE_INTERNAL(name, type, field, cmp,,__RB_CONST)
+
 #define	RB_GENERATE_STATIC(name, type, field, cmp)			\
-	RB_GENERATE_INTERNAL(name, type, field, cmp, /*__attribute__((__unused__))*/ static)
-#define RB_GENERATE_INTERNAL(name, type, field, cmp, attr)		\
+	RB_GENERATE_INTERNAL(name, type, field, cmp, /*__attribute__((__unused__))*/ static,)
+
+#define RB_GENERATE_INTERNAL(name, type, field, cmp, attr, attr2)	\
 attr void								\
 name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 {									\
@@ -620,7 +631,7 @@ name##_RB_INSERT(struct name *head, struct type *elm)			\
 									\
 /* Finds the node with the same key as elm */				\
 attr struct type *							\
-name##_RB_FIND(struct name *head, struct type *elm)			\
+name##_RB_FIND(attr2 struct name *head, struct type *elm) attr2		\
 {									\
 	struct type *tmp = RB_ROOT(head);				\
 	int comp;							\
@@ -638,7 +649,7 @@ name##_RB_FIND(struct name *head, struct type *elm)			\
 									\
 /* Finds the first node greater than or equal to the search key */	\
 attr struct type *							\
-name##_RB_NFIND(struct name *head, struct type *elm)			\
+name##_RB_NFIND(attr2 struct name *head, struct type *elm) attr2	\
 {									\
 	struct type *tmp = RB_ROOT(head);				\
 	struct type *res = NULL;					\

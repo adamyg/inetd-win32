@@ -85,52 +85,52 @@
 #include <unistd.h>
 
 #include "SimpleLock.h"
+#include "IntrusiveTree.h"
+#include "IntrusiveList.h"
 #include "ObjectPool.h"
 #include "inetd.h"
 
-#define CHTGRAN		10
-#define CHTSIZE		6
+#define CHTGRAN 	10
+#define CHTSIZE 	6
 
 typedef struct CTime {
-	unsigned long 	ct_Ticks;
+	unsigned long	ct_Ticks;
 	int		ct_Count;
 } CTime;
 
 typedef struct CHash {
-	RB_ENTRY(CHash) ch_rbnode;
-	TAILQ_ENTRY(CHash) ch_listnode;
+	struct Compare {
+		int operator()(const CHash *a, const CHash *b) const {
+			const int cmp = strcmp(a->ch_Service, b->ch_Service);
+			if (0 == cmp) {
+				if (a->ch_Family == b->ch_Family) {
+					if (AF_INET == a->ch_Family) {
+						return memcmp(&a->ch_Addr4, &b->ch_Addr4, sizeof(a->ch_Addr4));
+					} else {
+						return memcmp(&a->ch_Addr6, &b->ch_Addr6, sizeof(a->ch_Addr6));
+					}
+				}
+				return (a->ch_Family < b->ch_Family ? -1 : 1);
+			}
+			return cmp;
+		}
+	};
+
+	inetd::Intrusive::TreeMemberHook<CHash> ch_rbnode;
+	inetd::Intrusive::TailMemberHook<CHash> ch_listnode;
+
 	union {
-		struct in_addr c4_Addr;
-		struct in6_addr c6_Addr;
-	} cu_Addr;
-#define	ch_Addr4	cu_Addr.c4_Addr
-#define	ch_Addr6	cu_Addr.c6_Addr
+		struct in_addr ch_Addr4;
+		struct in6_addr ch_Addr6;
+	};
 	int		ch_Family;
 	time_t		ch_LTime;
 	const char	*ch_Service;
 	CTime		ch_Times[CHTSIZE];
 } CHash;
 
-typedef RB_HEAD(CHashTree, CHash) CHashTree_t;
-typedef TAILQ_HEAD(CHashList, CHash) CHashList_t;
-
-static int cmp(const CHash *a, const CHash *b) {
-	const int cmp = strcmp(a->ch_Service, b->ch_Service);
-	if (0 == cmp) {
-		if (a->ch_Family == b->ch_Family) {
-			if (AF_INET == a->ch_Family) {
-				return memcmp(&a->ch_Addr4, &b->ch_Addr4, sizeof(a->ch_Addr4));
-			} else {
-				return memcmp(&a->ch_Addr6, &b->ch_Addr6, sizeof(a->ch_Addr6));
-			}
-		}
-		return (a->ch_Family < b->ch_Family ? -1 : 1);
-	}
-	return cmp;
-}
-
-RB_PROTOTYPE_STATIC(CHashTree, CHash, ch_rbnode, cmp);
-RB_GENERATE_STATIC(CHashTree, CHash, ch_rbnode, cmp);
+typedef inetd::Intrusive::TreeContainer<CHash, CHash::Compare, inetd::Intrusive::TreeMemberHook<CHash>, &CHash::ch_rbnode> CHashTree_t;
+typedef inetd::Intrusive::ListContainer<CHash, inetd::Intrusive::TailMemberHook<CHash>, &CHash::ch_listnode> CHashList_t;
 
 class HostCollection {
 	HostCollection(const HostCollection &) = delete;
@@ -138,14 +138,12 @@ class HostCollection {
 
 public:
 	HostCollection() {
-		RB_INIT(&tree_);
-		TAILQ_INIT(&list_);
 	}
 
 	bool check_limit(const struct sockaddr_storage &rss, const char *service, int maxcpm) {
 		const time_t now = time(NULL);
 		const unsigned int ticks = (unsigned int)(now / CHTGRAN);
-                inetd::CriticalSection::Guard guard(cs_);
+		inetd::CriticalSection::Guard guard(cs_);
 		CHash *node = nullptr;
 		int cnt = 0;
 
@@ -158,7 +156,7 @@ public:
 				ct.ct_Count = 0;
 			}
 			++ct.ct_Count;
-		}               
+		}
 
 		for (unsigned i = 0; i < CHTSIZE; ++i) {
 			const CTime *ct = &node->ch_Times[i];
@@ -187,23 +185,23 @@ private:
 
 		// lookup existing
 
-		if (nullptr != (node = RB_FIND(CHashTree, &tree_, &t_node))) {
-			TAILQ_REMOVE(&list_, node, ch_listnode);
+		if (nullptr != (node = tree_.find(t_node))) {
+			list_.remove_self(node);
 
 		// expire an existing, re-cycle node
 
-		} else if (nullptr != (node = TAILQ_FIRST(&list_)) &&
+		} else if (nullptr != (node = list_.front()) &&
 				node->ch_LTime < (now - 60)) {
-			TAILQ_REMOVE(&list_, node, ch_listnode);
-			RB_REMOVE(CHashTree, &tree_, node);
+			list_.remove_self(node);
+			tree_.remove(node);
 
 			*node = t_node;
-			RB_INSERT(CHashTree, &tree_, node);
+			tree_.insert(*node);
 
 		// build new
 
 		} else if (nullptr != (node = pool_.construct_nothrow(t_node))) {
-			RB_INSERT(CHashTree, &tree_, node);
+			tree_.insert(*node);
 
 		} else {
 			return nullptr;
@@ -211,13 +209,13 @@ private:
 
 		// update
 
-		TAILQ_INSERT_TAIL(&list_, node, ch_listnode);
+		list_.push_back(*node);
 		node->ch_LTime = now;
 		return node;
 	}
 
 private:
-        inetd::CriticalSection cs_;
+	inetd::CriticalSection cs_;
 	inetd::ObjectPool<CHash> pool_;
 	CHashTree_t tree_;
 	CHashList_t list_;

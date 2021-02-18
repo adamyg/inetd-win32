@@ -1,7 +1,6 @@
-#pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * inetd::Instrusive::List
+ * inetd::Instrusive::Tree
  * windows inetd service.
  *
  * Copyright (c) 2020 - 2021, Adam Young.
@@ -23,32 +22,34 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * license for more details.
- * ==
+ * ==end==
  */
 
  /* 
-  * Intrusive TAILQ and LIST based containers
+  * Intrusive RB and SPLAY based containers; see <sys/tree.h>
   *
   * Example usage:
   *
-  *     struct tailq_node {
-  *         inetd::Intrusive::TailMemberHook<tailq_node> link_;
+  *     struct rb_node {
+  *         inetd::Intrusive::TreeMemberHook<rb_node> link_;
   *         int other_members_;
   *     };
-  *     typedef inetd::Intrusive::ListContainer<tailq_node, inetd::Intrusive::TailMemberHook<tailq_node>, &tailq_node::link_> MYTailq;
+  *     typedef inetd::Intrusive::TreeContainer<rb_node, inetd::Intrusive::TreeMemberHook<rb_node>, &rb_node::link_> RBTree;
   *
   *
-  *     struct list_node {
-  *         inetd::Intrusive::ListMemberHook<list_node> link_;
+  *     struct splay_node {
+  *         inetd::Intrusive::PlayMemberHook<splay_node> link_;
   *         int other_members_;
   *     };
-  *     typedef inetd::Intrusive::ListContainer<list_node, inetd::Intrusive::ListMemberHook<list_node>, &list_node::link_> MYList;
+  *     typedef inetd::Intrusive::TreeContainer<splay_node, inetd::Intrusive::PlayMemberHook<splay_node>, &splay_node::link_> SPLAYTree;
   *
   */
 
-#include <sys/queue.h>
+#undef   bind
+#include <sys/tree.h>
 
 #include <utility>
+#include <functional>
 #include <cassert>
 
 #include "SimpleLock.h"
@@ -57,194 +58,135 @@ namespace inetd {
 namespace Intrusive {
 
 /////////////////////////////////////////////////////////////////////////////////////////
-//	List collection
+//	Tree node collection
 
 template <typename Member>
-struct ListMemberHook {
-	struct Collection {
-		Collection() {
-			reset();
-		}
-		inline void reset() {
-			LIST_INIT(&head);
-			count = 0;
-		}
-		inline bool empty() const {
-			return LIST_EMPTY(&head);
-		}
-		inline ListMemberHook *front() {
-			return LIST_FIRST(&head);
-		}
-		inline unsigned push_front(Member *member, ListMemberHook *hook) {
-			LIST_INSERT_HEAD(&head, hook, node_);
-			hook->collection_ = this;
-			hook->member_ = member;
-			return ++count;
-		}
-		inline bool exists(ListMemberHook *hook) const {
-			ListMemberHook *existing;
-			LIST_FOREACH(existing, &head, node_) {
-				if (existing == hook) {
-					return true;
-				}
-			}
-			return false;
-		}
-		template<class Parent, class Functor, class... TParameter>
-		int foreach(Parent &parent, Functor functor, TParameter... params) {
-			ListMemberHook *hook;
-			LIST_FOREACH(hook, &head, node_) {
-				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
-					return ret;
-				}
-			}
-			return 0;
-		}
-		template<class Parent, class Functor, class... TParameter>
-		int foreach_safe(Parent &parent, Functor functor, TParameter... params) {
-			ListMemberHook *hook, *t_hook;
-			LIST_FOREACH_SAFE(hook, &head, node_, t_hook) {
-				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
-					return ret;
-				}
-			}
-			return 0;
-		}
-		inline ListMemberHook *next(ListMemberHook *hook) {
-			return LIST_NEXT(hook, node_);
-		}
-		inline unsigned remove(ListMemberHook *hook) {
-			hook->collection_ = nullptr;
-			hook->member_ = nullptr;
-			LIST_REMOVE(hook, node_);
-			return --count;
-		}
-		inetd::CriticalSection cs;
-		_LIST_HEAD(, ListMemberHook, ) head;
-		unsigned count;
+struct TreeMemberHook {
+	typedef RB_HEAD(rb, TreeMemberHook) TreeMemberHead;
+
+	struct IComparator {
+		virtual inline int operator()(const TreeMemberHook *a, const TreeMemberHook *b) const = 0;
 	};
 
-	ListMemberHook() : node_{}, member_(nullptr) {
+	struct Collection {
+		Collection(IComparator& comparator) : comparator_(comparator) {
+			reset();
+		}
+
+		inline void reset() {
+			RB_INIT(&head_);
+			count_ = 0;
+		}
+
+		inline bool empty() const {
+			return RB_EMPTY(&head_);
+		}
+
+		inline TreeMemberHook *front() {
+			return RB_MIN(rb, &head_);
+		}
+
+		inline TreeMemberHook *root() {
+			return RB_ROOT(&head_);
+		}
+
+		inline TreeMemberHook *back() {
+			return RB_MAX(rb, &head_);
+		}
+
+		inline unsigned insert(Member *member, TreeMemberHook *hook) {
+			RB_INSERT(rb, &head_, hook);
+			hook->collection_ = this;
+			hook->member_ = member;
+			return ++count_;
+		}
+
+		inline TreeMemberHook *find(TreeMemberHook *hook) const {
+			return RB_FIND(rb, &head_, hook);
+		}
+
+		inline bool exists(TreeMemberHook *hook) const {
+			const TreeMemberHook *existing = RB_FIND(rb, &head_, hook);
+			return (existing == hook);
+		}
+
+		template<class Parent, class Functor, class... TParameter>
+		int foreach(Parent &parent, Functor functor, TParameter... params) {
+			TreeMemberHook *hook;
+			RB_FOREACH(hook, rb, &head) {
+				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
+					return ret;
+				}
+			}
+			return 0;
+		}
+
+		inline TreeMemberHook *next(TreeMemberHook *hook) {
+			return RB_NEXT(rb, &head_, hook);
+		}
+
+		inline TreeMemberHook *prev(TreeMemberHook *hook) {
+			return RB_PREV(rb, &head_, hook);
+		}
+
+		inline unsigned remove(TreeMemberHook *hook) {
+			hook->collection_ = nullptr;
+			hook->member_ = nullptr;
+			RB_REMOVE(rb, &head_, hook);
+			return --count_;
+		}
+
+		inetd::CriticalSection& cs() {
+			return cs_;
+		}
+
+		unsigned count() const {
+			return count_;
+		}
+
+	private:
+		RB_GENERATE(rb, TreeMemberHook, node_, comparator_);
+		IComparator &comparator_;
+
+	private:
+		inetd::CriticalSection cs_;
+		TreeMemberHead head_;
+		unsigned count_;
+	};
+
+	TreeMemberHook() : node_{}, member_(nullptr) {
 	}
-	_LIST_ENTRY(ListMemberHook, ) node_;
+
+	RB_ENTRY(TreeMemberHook) node_;
 	Collection *collection_;
 	Member *member_;
 };
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
-//	Tail Queue collection
+//	Tree container
 
-template <typename Member>
-struct TailMemberHook{
-	struct Collection {
-		Collection() {
-			reset();
-		}
-		inline void reset() {
-			TAILQ_INIT(&head);
-			count = 0;
-		}
-		inline bool empty() const {
-			return TAILQ_EMPTY(&head);
-		}
-		inline TailMemberHook *front() {
-			return TAILQ_FIRST(&head);
-		}
-		inline TailMemberHook *back() {
-			return TAILQ_LAST(&head, TailHead);
-		}
-		inline unsigned push_front(Member *member, TailMemberHook *hook) {
-			TAILQ_INSERT_HEAD(&head, hook, node_);
-			hook->collection_ = this;
-			hook->member_ = member;
-			return ++count;
-		}
-		inline unsigned push_back(Member *member, TailMemberHook *hook) {
-			TAILQ_INSERT_TAIL(&head, hook, node_);
-			hook->collection_ = this;
-			hook->member_ = member;
-			return ++count;
-		}
-		inline bool exists(TailMemberHook *hook) const {
-			TailMemberHook *existing;
-			TAILQ_FOREACH(existing, &head, node_) {
-				if (existing == hook) {
-					return true;
-				}
-			}
-			return false;
-		}
-		template<class Parent, class Functor, class... TParameter>
-		int foreach(Parent &parent, Functor functor, TParameter... params) {
-			TailMemberHook *hook;
-			TAILQ_FOREACH(hook, &head, node_) {
-				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
-					return ret;
-				}
-			}
-			return 0;
-		}
-		template<class Parent, class Functor, class... TParameter>
-		int foreach_safe(Parent &parent, Functor functor, TParameter... params) {
-			TailMemberHook *hook, *t_hook;
-			TAILQ_FOREACH_SAFE(hook, &head, node_, t_hook) {
-				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
-					return ret;
-				}
-			}
-			return 0;
-		}
-		inline TailMemberHook *next(TailMemberHook *hook) {
-			return TAILQ_NEXT(hook, node_);
-		}
-		inline unsigned remove(TailMemberHook *hook) {
-			hook->collection_ = nullptr;
-			hook->member_ = nullptr;
-			TAILQ_REMOVE(&head, hook, node_);
-			return --count;
-		}
-		inetd::CriticalSection cs;
-		_TAILQ_HEAD(TailHead, TailMemberHook, ) head;
-		unsigned count;
-	};
-
-	TailMemberHook() : node_{}, member_(nullptr) {
-	}
-
-	_TAILQ_ENTRY(TailMemberHook, ) node_;
-	Collection *collection_;
-	Member *member_;
-};
-
-
-/////////////////////////////////////////////////////////////////////////////////////////
-//	List container
-
-template <typename Member, typename Hook, Hook Member::* PtrToMemberHook>
-struct ListContainer {
-	ListContainer(const ListContainer &) = delete;
-	ListContainer operator=(const ListContainer &) = delete;
+template <typename Member, typename Comparator, typename Hook, Hook Member::* PtrToMemberHook>
+struct TreeContainer {
+	TreeContainer(const TreeContainer &) = delete;
+	TreeContainer operator=(const TreeContainer &) = delete;
 
 public:
+	typedef typename Hook::IComparator IComparator;
 	typedef typename Hook::Collection Collection;
+	typedef Hook MemberHook;
 
 	class Guard {
 		Guard(const Guard &) = delete;
 		Guard& operator=(const Guard &) = delete;
 	public:
-		Guard(typename Hook::Collection &collection) :
-				guard_(collection.cs) {
-		}
+		Guard(Collection &collection) : guard_(collection.cs) { }
 	private:
 		inetd::CriticalSection::Guard guard_;
 	};
 	friend class Guard;
 
 public:
-	typedef typename Hook::Collection Collection;
-	typedef Hook MemberHook;
-
 	struct iterator {
 		using iterator_category = std::forward_iterator_tag;
 		using difference_type = std::ptrdiff_t;
@@ -265,7 +207,7 @@ public:
 		iterator& operator++() {
 			if (pointer ptr = ptr_) {
 				MemberHook *hook =
-					ListContainer::member_hook_assigned(ptr);
+					TreeContainer::member_hook_assigned(ptr);
 				ptr = nullptr;
 				if (nullptr != (hook = hook->collection_->next(hook))) {
 					ptr = hook_member(hook);
@@ -291,9 +233,9 @@ public:
 
 private:
 	static inline MemberHook *
-	member_hook_naive(Member *member) {
+	member_hook_naive(const Member *member) {
 		assert(member);
-		return &((member)->*(PtrToMemberHook));
+		return (MemberHook *)&((member)->*(PtrToMemberHook));
 	}
 
 	static inline MemberHook *
@@ -319,10 +261,16 @@ public:
 		return static_cast<Member *>(hook->member_);
 	}
 
-public:
-	ListContainer() { }
+	static inline const Member *
+	hook_member_unassigned(const MemberHook *hook) {
+		constexpr size_t hook_offset = offsetof(Member, *PtrToMemberHook);
+		return (const Member *)((const char *)hook - hook_offset);
+	}
 
-	~ListContainer() {
+public:
+	TreeContainer() : collection_(icomparator_) { }
+
+	~TreeContainer() {
 		assert(empty());
 		assert(0 == count());
 	}
@@ -332,11 +280,20 @@ public:
 	}
 
 	int count() const {
-		return collection_.count;
+		return collection_.count();
 	}
 
 	Member *front() {
 		if (MemberHook *hook = collection_.front()) {
+			return hook_member(hook);
+		}
+		return nullptr;
+	}
+
+	template<typename = std::enable_if<
+		std::is_member_function_pointer<decltype(&Hook::Collection::root)>::value>>
+	Member *root() {
+		if (MemberHook *hook = collection_.root()) {
 			return hook_member(hook);
 		}
 		return nullptr;
@@ -351,51 +308,37 @@ public:
 		return nullptr;
 	}
 
-	unsigned push_front_r(Member &member) {
+	inline void insert(Member &member) {
+		collection_.insert(&member, member_hook_unassigned(&member));
+	}
+
+	inline Member *find_r(const Member &member) const {
 		Guard guard(collection_);
-		push_front(member);
-		return count();
+		return find(member);
 	}
 
-	void push_front(Member &member) {
-#if defined(_DEBUG) && !defined(NDEBUG)
-		assert(! exists(&member));
-#endif
-		collection_.push_front(&member, member_hook_unassigned(&member));
+	inline Member *find(const Member &member) const {
+		if (MemberHook *hook = collection_.find(member_hook_naive(&member))) {
+			return hook_member(hook);
+		}
+		return nullptr;
 	}
 
-	template<typename = std::enable_if<
-		std::is_member_function_pointer<decltype(&Hook::Collection::push_back)>::value>>
-	unsigned push_back_r(Member &member) {
-		Guard guard(collection_);
-		push_back(member);
-		return count();
-	}
-
-	template<typename = std::enable_if<
-		std::is_member_function_pointer<decltype(&Hook::Collection::push_back)>::value>>
-	void push_back(Member &member) {
-#if defined(_DEBUG) && !defined(NDEBUG)
-		assert(! exists(&member));
-#endif
-		collection_.push_back(&member, member_hook_unassigned(&member));
-	}
-
-	bool exists_r(Member *member) const {
+	inline bool exists_r(Member *member) const {
 		Guard guard(collection_);
 		return collection_.exists(member_hook_naive(member));
 	}
 
-	bool exists(Member *member) const {
+	inline bool exists(Member *member) const {
 		return collection_.exists(member_hook_naive(member));
 	}
 
-	unsigned remove_r(Member *member) {
+	inline unsigned remove_r(Member *member) {
 		Guard guard(collection_);
 		return remove(member);
 	}
 
-	unsigned remove(Member *member) {
+	inline unsigned remove(Member *member) {
 #if defined(_DEBUG) && !defined(NDEBUG)
 		assert(exists(member));
 #endif
@@ -415,12 +358,12 @@ public:
 		collection->remove(hook);
 	}
 
-	void reset_r() {
+	inline void reset_r() {
 		Guard guard(collection_);
 		reset(member);
 	}
 
-	void reset() {
+	inline void reset() {
 		collection_.reset();
 	}
 
@@ -521,16 +464,23 @@ public:
 		assert(it.ptr_);
 		assert(it.ptr_->collection_ == &collection_);
 		if (Member *member = it.ptr_) {
-			member->collection_->remove(ListContainer::member_hook_assigned(member));
+			member->collection_->remove(TreeContainer::member_hook_assigned(member));
 			it.ptr_ = nullptr;
 		}
 	}
 
 private:
+	struct ComparatorImpl : public IComparator {
+		inline int operator()(const MemberHook *a, const MemberHook *b) const override final {
+			return comparator_(hook_member_unassigned(a), hook_member_unassigned(b));
+		}
+		Comparator comparator_;
+	};
+	ComparatorImpl icomparator_;
 	Collection collection_;
 };
 
-}  //namespace Intrusive
-}  //namespace inetd
+}  //Intrusive
+}  //inetd
 
 //end

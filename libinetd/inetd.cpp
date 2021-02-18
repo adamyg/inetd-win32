@@ -236,7 +236,7 @@ static int	body(int argc, char **argv);
 static void	getservicesprog(char *servicesprog, size_t buflen);
 static int	do_accept(struct servtab *sep, int ctrl);
 static void	setalarm(unsigned seconds);
-static int	do_fork(const char *servicesprog, const struct servtab *sep, int ctrl);
+static int	do_fork(const struct servtab *sep, int ctrl);
 static void	child(struct servtab *sep, int ctrl);
 static void	close_sep(struct servtab *);
 static void	sigchld(void);
@@ -291,7 +291,7 @@ static int	wrap_bi = 0;
 static int	dolog = 0;
 static fd_set	allsock;
 
-static int	timingout;
+static bool	timingout;
 
 static struct	servent *sp;
 static struct	rpcent *rpc;
@@ -356,10 +356,26 @@ whichaf(struct request_info *req)
 }
 #endif
 
+#if (XXX)
+static void rb_test()
+{
+        struct test_node  {
+	        inetd::Intrusive::TreeMemberHook<test_node> link_;
+        } nodea, nodeb;
+
+        inetd::Intrusive::TreeMemberHook<test_node>::Collection collection;
+        collection.insert(&nodea, &nodea.link_);
+        collection.find(nodea.link_);
+        collection.remove(&nodea.link_);
+}
+#endif  //XXX
+
 extern "C" int
 inetd_main(int argc, char **argv)
 {
 	int ret = 99;
+
+//      rb_test();
 
 	mainthreadid = GetCurrentThreadId();
 	try {
@@ -626,7 +642,7 @@ body(int argc, char **argv)
 		}
 #endif
 
-		/* WIN32: limit 64 sockets and HANDLE's should be reorged reducing starve objects */
+		/* WIN32: limit 64 sockets and HANDLE's should be reorged reducing starved objects */
 		readable = allsock;
 		if ((n = select(FD_SETSIZE /*dummy*/, &readable, (fd_set *)0, (fd_set *)0, (struct timeval *)0)) <= 0) {
 			if (n < 0 && errno != EINTR) {
@@ -643,6 +659,7 @@ body(int argc, char **argv)
 		if (FD_ISSET(signalpipe[0], &readable)) {
 			int nsig = 0, signo;
 
+			n--;
 			if (ioctlsocket(signalpipe[0], FIONREAD, &nsig) != 0) {
 				syslog(LOG_ERR, "ioctl: %m");
 				terminate(EX_OSERR);
@@ -674,20 +691,21 @@ body(int argc, char **argv)
 			}
 		}
 
-		/* Network events */
+		/* network events */
 		for (sep = servtabs; n && sep; sep = sep->se_next) {
 			// TODO: skip async from readable.
 			// TODO: destroy stale async clients.
 			// TODO: clean-up terminated services.
 
-//			if (sep->se_shutdown) {
-//				if (sep->se_fd >= 0) {
-//					close_sep(sep);
-//				}
-//				continue;
-//			}
+			if (sep->se_fd < 0) {
+				continue;
+			}
 
-			if (sep->se_fd != -1 && FD_ISSET(sep->se_fd, &readable)) {
+			if (sep->se_listener.is_open()) {
+				continue;
+			}
+
+			if (FD_ISSET(sep->se_fd, &readable)) {
 				n--;
 				if (debug)
 					warnx("someone wants %s", sep->se_service);
@@ -813,30 +831,36 @@ do_accept(struct servtab *sep, int ctrl)
 				free_conn(conn);
 				close_sep(sep);
 				if (!timingout) {
-					timingout = 1;
+					timingout = true;
 					setalarm(RETRYTIME);
 				}
-				return -1; //shutdown
+				return -1; 	/* shutdown */
 			}
 		}
-		pid = do_fork(servicesprog, sep, ctrl);
+
+		pid = do_fork(sep, ctrl);
+
+		if (-1 == pid) {		/* fork error */
+			syslog(LOG_ERR, "fork: %m");
+			free_proc(proc);
+			free_conn(conn);
+			sleep(1);
+			return 0;
+		}
+
+		if (pid) {			/* fork success */
+			addchild_conn(conn, proc, pid);
+			addchild(sep, pid);
+			return 2;
+		}
 	}
 
-	if (-1 == pid) {	/* fork error */
-		syslog(LOG_ERR, "fork: %m");
-		free_proc(proc);
-		free_conn(conn);
-		sleep(1);
-		return 0;
-	}
+	assert(! pid);
+	assert(! dofork);
+	assert(! proc);
+	assert(! conn);
 
-	if (pid) {		/* fork success */
-		addchild_conn(conn, proc, pid);
-		addchild(sep, pid);
-		return 2;
-	}
-
-	if (0 == pid) { 	/* local execution */
+	if (0 == pid) { 			/* local execution */
 		assert(sep->se_bi);
 		if (sep->se_bi) {
 			(*sep->se_bi->bi_fn)(ctrl, sep);
@@ -870,7 +894,7 @@ alarm_timer(PVOID lpParam, BOOLEAN TimerOrWaitFired)
 
 static void
 setalarm(unsigned seconds)
-{
+{   
 	static HANDLE hTimerQueue, hTimer;
 
 	if (hTimer) {				// stop existing
@@ -880,6 +904,7 @@ setalarm(unsigned seconds)
 		hTimer = NULL;
 	}
 
+	assert(seconds);
 	if (seconds) {				// reschedule
 		if (NULL == hTimerQueue &&
 			    NULL == (hTimerQueue = ::CreateTimerQueue())) {
@@ -897,7 +922,7 @@ setalarm(unsigned seconds)
 }
 
 static int
-do_fork(const char *servicesprog, const struct servtab *sep, int ctrl)
+do_fork(const struct servtab *sep, int ctrl)
 {
 	const char *service = (sep->se_server_name ? sep->se_server_name : sep->se_service);
 	const char *progname = NULL;
@@ -1136,8 +1161,8 @@ addchild(struct servtab *sep, pid_t pid)
 		terminate(EX_OSERR);
 		return;
 	}
-	const unsigned count = sep->se_children.push_front_r(sc);
-	if (SERVTAB_AT_LIMITX(sep, count))
+	const int count = (int)sep->se_children.push_front_r(*sc);
+	if (SERVTAB_EXCEEDS_LIMITX(sep, count))
 		disable(sep);
 }
 
@@ -1172,20 +1197,21 @@ reapchild(pid_t pid)
 	struct servtab *sep;
 	const char *ret = NULL;
 
+	//XXX, scanning feels like the wrong solution
 	for (sep = servtabs; sep; sep = sep->se_next) {
 		if (sep->se_children.foreach_r(
 			[sep, pid, &ret](auto sc) {
 				if (sc->sc_pid == pid) {
-					const unsigned count = sep->se_children.remove(sc);
-					if (SERVTAB_AT_LIMITX(sep, count + 1))
+					const int count = (int)sep->se_children.remove(sc);
+					if (! SERVTAB_EXCEEDS_LIMITX(sep, count))
 						enable(sep);
 					delete sc;
 					ret = sep->se_server;
-					return true; //match
+					return true;
 				}
-				return false; //next
+				return false;
 			})) {
-			break; //match
+			break;
 		}
 	}
 	reapchild_conn(pid);
@@ -1269,11 +1295,9 @@ config(void)
 			/* might need to turn on or off service now */
 			if (sep->se_fd >= 0) {
 				if (SERVTAB_EXCEEDS_LIMIT(sep)) {
-					if (FD_ISSET(sep->se_fd, &allsock))
-						disable(sep);
+					disable(sep);
 				} else {
-					if (!FD_ISSET(sep->se_fd, &allsock))
-						enable(sep);
+					enable(sep);
 				}
 			}
 			sep->se_accept = cfg->se_accept;
@@ -1404,8 +1428,6 @@ config(void)
 			unregisterrpc(sep);
 #endif
 		freeserv(sep);
-//FIXME:	if async, events MAY still be active !
-//		freesep(sep);
 	}
 }
 
@@ -1468,7 +1490,7 @@ retry(void)
 {
 	struct servtab *sep;
 
-	timingout = 0;
+	timingout = false;
 	for (sep = servtabs; sep; sep = sep->se_next)
 		if (sep->se_fd == -1 && !ISMUX(sep))
 			setup(sep);
@@ -1535,15 +1557,18 @@ setup(struct servtab *sep)
 	}
 #endif //AF_UNIX
 
+	assert(! sep->se_state.enabled);
+	sep->se_state.enabled = true;
+
 	if (bind(sep->se_fd, (struct sockaddr *)&sep->se_ctrladdr, sep->se_ctrladdr_size) < 0) {
 		if (debug)
 			warn("bind failed on %s/%s", sep->se_service, sep->se_proto);
 		syslog(LOG_ERR, "%s/%s: bind: %m",
 		    sep->se_service, sep->se_proto);
-		(void) close(sep->se_fd);
+		(void) sockclose(sep->se_fd);
 		sep->se_fd = -1;
 		if (!timingout) {
-			timingout = 1;
+			timingout = true;
 			setalarm(RETRYTIME);
 		}
 #if defined(HAVE_AF_UNIX)
@@ -1620,6 +1645,7 @@ setup(struct servtab *sep)
 		}
 	}
 #endif //RPC
+
 	if (sep->se_socktype == SOCK_STREAM)
 		listen(sep->se_fd, -1);
 	enable(sep);
@@ -1703,18 +1729,16 @@ ipsecsetup(struct servtab *sep)
 static void
 close_sep(struct servtab *sep)
 {
+	if (debug)
+		warnx("closing %s, fd %d", sep->se_service, sep->se_fd);
 	if (sep->se_fd >= 0) {
-		if (sep->se_listener.is_open()) {
-			iocp.Shutdown(sep->se_listener);
-		} else {
-			if (FD_ISSET(sep->se_fd, &allsock))
-				disable(sep);
-		}
+                disable(sep);
+		iocp.Shutdown(sep->se_listener);
 		(void) sockclose(sep->se_fd);
 		sep->se_fd = -1;
 	}
-	sep->se_count = 0;
-	sep->se_children.reset(); /* forget about any existing children */
+	sep->se_children.reset();	/* forget about any existing children */
+	sep->se_count = 0;		/* reset usage */ 
 }
 
 static struct servtab *
@@ -1722,13 +1746,14 @@ enter(const struct servconfig *cfg)
 {
 	struct servtab *sep;
 
+	if (debug)
+		warnx("creating %s", cfg->se_service);
 	sep = new (std::nothrow) struct servtab(*cfg);
 	if (sep == NULL) {
 		syslog(LOG_ERR, "new: %m");
 		terminate(EX_OSERR);
 		return nullptr;
 	}
-	sep->se_fd = -1;
 	sep->se_next = servtabs;
 	servtabs = sep;
 	return (sep);
@@ -1737,8 +1762,23 @@ enter(const struct servconfig *cfg)
 static void
 enable(struct servtab *sep)
 {
+	inetd::CriticalSection::Guard guard(sep->se_state.lock);
+	assert(sep->se_state.enabled);
+	if (sep->se_state.running) {
+#ifdef SANITY_CHECK
+		assert(sep->se_fd >= 0);
+		if (sep->se_accept && sep->se_socktype == SOCK_STREAM && iocp.Enabled()) {
+			assert(sep->se_listener.is_open());
+                } else {
+			assert(FD_ISSET(sep->se_fd, &allsock));
+                }
+#endif
+		return;
+	}
+
 	if (debug)
 		warnx("enabling %s, fd %d", sep->se_service, sep->se_fd);
+
 #ifdef SANITY_CHECK
 	if (sep->se_fd < 0) {
 		syslog(LOG_ERR,
@@ -1752,22 +1792,15 @@ enable(struct servtab *sep)
 		terminate(EX_SOFTWARE);
 		return;
 	}
+	if (FD_ISSET(sep->se_fd, &allsock)) {
+		syslog(LOG_ERR,
+		    "%s: %s: stream is sync", __func__, sep->se_service);
+		terminate(EX_SOFTWARE);
+	}
 #endif
 
-//	Guard guard(sep->se_state.lock);
-//	if (!sep->se_state.running || !sep->se_state.enabled) {
-//		return;
-//	}
-
+	sep->se_state.running = true;
 	if (sep->se_accept && sep->se_socktype == SOCK_STREAM && iocp.Enabled()) {
-#ifdef SANITY_CHECK
-		if (FD_ISSET(sep->se_fd, &allsock)) {
-			syslog(LOG_ERR,
-			    "%s: %s: stream is sync", __func__, sep->se_service);
-			terminate(EX_SOFTWARE);
-		}
-#endif
-
 		if (! iocp.Listen(sep->se_listener, sep->se_fd)) {
 			terminate(EX_SOFTWARE);
 			return;
@@ -1776,7 +1809,6 @@ enable(struct servtab *sep)
 		std::shared_ptr<inetd::IOCPService::Socket>
 			acceptor = std::make_shared<inetd::IOCPService::Socket>();
 
-//		sep->se_state.enabled = true;
 		if (! iocp.Accept(sep->se_listener, *acceptor.get(),
 			    std::bind(&async_accept, sep, acceptor, std::placeholders::_1))) {
 			terminate(EX_SOFTWARE);
@@ -1784,24 +1816,25 @@ enable(struct servtab *sep)
 		}
 
 	} else {
-#ifdef SANITY_CHECK
-		if (FD_ISSET(sep->se_fd, &allsock)) {
-			syslog(LOG_ERR,
-			    "%s: %s: not off", __func__, sep->se_service);
-			terminate(EX_SOFTWARE);
-		}
-		nsock++;
-#endif
-//		sep->se_state.enabled = true;
 		FD_SET(sep->se_fd, &allsock);
+#ifdef SANITY_CHECK
+		++nsock;
+#endif
 	}
 }
 
 static void
 disable(struct servtab *sep)
 {
+	inetd::CriticalSection::Guard guard(sep->se_state.lock);
+	assert(sep->se_state.enabled);
+	if (! sep->se_state.running) {
+		return;
+	}
+
 	if (debug)
 		warnx("disabling %s, fd %d", sep->se_service, sep->se_fd);
+
 #ifdef SANITY_CHECK
 	if (sep->se_fd < 0) {
 		syslog(LOG_ERR,
@@ -1815,52 +1848,34 @@ disable(struct servtab *sep)
 		terminate(EX_SOFTWARE);
 		return;
 	}
+	if (FD_ISSET(sep->se_fd, &allsock)) {
+		syslog(LOG_ERR,
+		    "%s: %s: not off", __func__, sep->se_service);
+		terminate(EX_SOFTWARE);
+	}
 #endif
 
-//	Guard guard(sep->se_state.lock);
-//	if (!sep->se_state.running || !sep->se_state.enabled) {
-//		return;
-//	}
-
+	sep->se_state.running = false;
 	if (sep->se_accept && sep->se_socktype == SOCK_STREAM && iocp.Enabled()) {
-#ifdef SANITY_CHECK
-		if (FD_ISSET(sep->se_fd, &allsock)) {
-			syslog(LOG_ERR,
-			    "%s: %s: stream is sync", __func__, sep->se_service);
-			terminate(EX_SOFTWARE);
-			return;
-		}
-#endif
-
-//		sep->se_state.enabled = false;
 		if (! iocp.Cancel(sep->se_listener)) {
 			terminate(EX_SOFTWARE);
 			return;
 		}
 
 	} else {
-#ifdef SANITY_CHECK
-		if (!FD_ISSET(sep->se_fd, &allsock)) {
-			syslog(LOG_ERR,
-			    "%s: %s: not on", __func__, sep->se_service);
-			terminate(EX_SOFTWARE);
-			return;
-		}
-		if (nsock == 0) {
-			syslog(LOG_ERR, "%s: nsock=0", __func__);
-			terminate(EX_SOFTWARE);
-			return;
-		}
-		nsock--;
-#endif
-//		sep->se_state.enabled = false;
 		FD_CLR(sep->se_fd, &allsock);
+#ifdef SANITY_CHECK
+		--nsock;
+#endif
 	}
 }
 
 static void
 freeserv(struct servtab *sep)
 {
+	inetd::CriticalSection::Guard guard(sep->se_state.lock);
+	sep->se_state.enabled = false;
+
 	freeconfig(static_cast<struct servconfig *>(sep));
 
 	sep->se_children.drain(
@@ -1871,7 +1886,9 @@ freeserv(struct servtab *sep)
 		if (sep->se_argv[i])
 			free((char *)sep->se_argv[i]);
 	free_connlists(sep);
-	delete sep;
+//TODO
+//	delete sep;
+//  garbage collect ...
 }
 
 void
@@ -2011,7 +2028,7 @@ search_conn(struct servtab *sep, int ctrl)
 			return false; //done
 		}
 		memcpy(&ci->co_addr, (struct sockaddr *)&ss, sslen);
-		sep->se_conn[hv].push_front_r(ci);
+		sep->se_conn[hv].push_front_r(*ci);
 		conn = ci;
 		return true; //done
 	});
@@ -2238,14 +2255,13 @@ search_proc(pid_t pid, struct procinfo *add)
 		if (pi) {
 			if (pi->pr_pid == pid) {
 				proc = pi;
-				return true; //matched
+				return true;
 			}
-			return false; //next
 
 		} else if (proc == nullptr /*nomatch*/ && add) {
-			proctable[hv].push_front(add);
+			proctable[hv].push_back(*add);
 			add->pr_pid = pid;
-			return true; //done
+			return true;
 		}
 		return false; //next
 	});
@@ -2275,4 +2291,3 @@ hashval(const char *p, int len)
 	hv = (hv ^ (hv >> 16)) & (PERIPSIZE - 1);
 	return hv;
 }
-
