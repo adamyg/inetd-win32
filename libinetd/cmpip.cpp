@@ -94,39 +94,61 @@
 #define CHTSIZE 	6
 
 typedef struct CTime {
-	unsigned long	ct_Ticks;
-	int		ct_Count;
+	unsigned long	ct_ticks;
+	int		ct_count;
 } CTime;
 
 typedef struct CHash {
 	struct Compare {
 		int operator()(const CHash *a, const CHash *b) const {
-			const int cmp = strcmp(a->ch_Service, b->ch_Service);
+			const int cmp = strcmp(a->ch_service, b->ch_service);
 			if (0 == cmp) {
-				if (a->ch_Family == b->ch_Family) {
-					if (AF_INET == a->ch_Family) {
-						return memcmp(&a->ch_Addr4, &b->ch_Addr4, sizeof(a->ch_Addr4));
+				if (a->ch_family == b->ch_family) {
+					if (AF_INET == a->ch_family) {
+						return memcmp(&a->ch_addrs.addr4, &b->ch_addrs.addr4, sizeof(a->ch_addrs.addr4));
 					} else {
-						return memcmp(&a->ch_Addr6, &b->ch_Addr6, sizeof(a->ch_Addr6));
+						return memcmp(&a->ch_addrs.addr6, &b->ch_addrs.addr6, sizeof(a->ch_addrs.addr6));
 					}
 				}
-				return (a->ch_Family < b->ch_Family ? -1 : 1);
+				return (a->ch_family < b->ch_family ? -1 : 1);
 			}
 			return cmp;
 		}
 	};
 
+	CHash(const struct sockaddr_storage &rss, const char *service) :
+			ch_family(rss.ss_family), ch_addrs(), ch_service(service), ch_ltime(0), ch_times() {
+		if (AF_INET == ch_family) {
+			ch_addrs.addr4 = ((struct sockaddr_in *)&rss)->sin_addr;
+		} else {
+			ch_addrs.addr6 = ((struct sockaddr_in6 *)&rss)->sin6_addr;
+		}
+	}
+
+	CHash(const CHash &chash) {
+		reassign(chash);
+	}
+
+	CHash operator=(const CHash &chash) = delete;
+
+	void reassign(const CHash &chash) {
+		ch_service = chash.ch_service;
+		ch_family = chash.ch_family;
+		ch_addrs = chash.ch_addrs;
+		(void) memset(ch_times, 0, sizeof(ch_times));
+	}
+
 	inetd::Intrusive::TreeMemberHook<CHash> ch_rbnode;
 	inetd::Intrusive::TailMemberHook<CHash> ch_listnode;
 
+	int		ch_family;
 	union {
-		struct in_addr ch_Addr4;
-		struct in6_addr ch_Addr6;
-	};
-	int		ch_Family;
-	time_t		ch_LTime;
-	const char	*ch_Service;
-	CTime		ch_Times[CHTSIZE];
+		struct in_addr addr4;
+		struct in6_addr addr6;
+	} ch_addrs;
+	const char *	ch_service;
+	time_t		ch_ltime;
+	CTime		ch_times[CHTSIZE];
 } CHash;
 
 typedef inetd::Intrusive::TreeContainer<CHash, CHash::Compare, inetd::Intrusive::TreeMemberHook<CHash>, &CHash::ch_rbnode> CHashTree_t;
@@ -150,18 +172,18 @@ public:
 		if (nullptr == (node = get_node(rss, service, now)))
 			return false;
 
-		{	CTime &ct = node->ch_Times[ticks % CHTSIZE];
-			if (ct.ct_Ticks != ticks) {
-				ct.ct_Ticks = ticks;
-				ct.ct_Count = 0;
+		{	CTime &ct = node->ch_times[ticks % CHTSIZE];
+			if (ct.ct_ticks != ticks) {
+				ct.ct_ticks = ticks;
+				ct.ct_count = 0;
 			}
-			++ct.ct_Count;
+			++ct.ct_count;
 		}
 
 		for (unsigned i = 0; i < CHTSIZE; ++i) {
-			const CTime *ct = &node->ch_Times[i];
-			if (ct->ct_Ticks <= ticks && ct->ct_Ticks >= ticks - CHTSIZE) {
-				cnt += ct->ct_Count;
+			const CTime *ct = &node->ch_times[i];
+			if (ct->ct_ticks <= ticks && ct->ct_ticks >= ticks - CHTSIZE) {
+				cnt += ct->ct_count;
 			}
 		}
 
@@ -170,32 +192,21 @@ public:
 
 private:
 	CHash *get_node(const struct sockaddr_storage &rss, const char *service, time_t now) {
-		CHash t_node, *node;
-
-		// temporary node
-
-		(void) memset(&t_node, 0, sizeof(t_node));
-		t_node.ch_Service = (char *)service;
-		t_node.ch_Family = rss.ss_family;
-		if (AF_INET == rss.ss_family) {
-			t_node.ch_Addr4 = ((struct sockaddr_in *)&rss)->sin_addr;
-		} else {
-			t_node.ch_Addr6 = ((struct sockaddr_in6 *)&rss)->sin6_addr;
-		}
+		CHash t_node(rss, service), *node = nullptr;
 
 		// lookup existing
 
 		if (nullptr != (node = tree_.find(t_node))) {
-			list_.remove_self(node);
+			list_.remove(node);
 
 		// expire an existing, re-cycle node
 
 		} else if (nullptr != (node = list_.front()) &&
-				node->ch_LTime < (now - 60)) {
-			list_.remove_self(node);
+				node->ch_ltime < (now - 60)) {
+			list_.remove(node);
 			tree_.remove(node);
 
-			*node = t_node;
+			node->reassign(t_node);
 			tree_.insert(*node);
 
 		// build new
@@ -210,7 +221,7 @@ private:
 		// update
 
 		list_.push_back(*node);
-		node->ch_LTime = now;
+		node->ch_ltime = now;
 		return node;
 	}
 

@@ -258,7 +258,7 @@ public:
 		constexpr size_t hook_offset = offsetof(Member, *PtrToMemberHook);
 		assert(hook);
 		assert(hook->member_ == (void *)((const char *)hook - hook_offset));
-		return static_cast<Member *>(hook->member_);
+		return (Member *)((const char *)hook - hook_offset);
 	}
 
 	static inline const Member *

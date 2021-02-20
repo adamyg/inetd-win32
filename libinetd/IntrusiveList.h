@@ -59,6 +59,12 @@ namespace Intrusive {
 /////////////////////////////////////////////////////////////////////////////////////////
 //	List collection
 
+#if defined(_DEBUG)
+#define assert_value(...) __VA_ARGS__
+#else
+#define assert_value(...)
+#endif
+
 template <typename Member>
 struct ListMemberHook {
 	struct Collection {
@@ -78,7 +84,7 @@ struct ListMemberHook {
 		inline unsigned push_front(Member *member, ListMemberHook *hook) {
 			LIST_INSERT_HEAD(&head, hook, node_);
 			hook->collection_ = this;
-			hook->member_ = member;
+			assert_value(hook->member_ = member;)
 			return ++count;
 		}
 		inline bool exists(ListMemberHook *hook) const {
@@ -115,7 +121,7 @@ struct ListMemberHook {
 		}
 		inline unsigned remove(ListMemberHook *hook) {
 			hook->collection_ = nullptr;
-			hook->member_ = nullptr;
+			assert_value(hook->member_ = nullptr;)
 			LIST_REMOVE(hook, node_);
 			return --count;
 		}
@@ -124,11 +130,11 @@ struct ListMemberHook {
 		unsigned count;
 	};
 
-	ListMemberHook() : node_{}, member_(nullptr) {
+	ListMemberHook() : node_{} assert_value(, member_(nullptr)) {
 	}
 	_LIST_ENTRY(ListMemberHook, ) node_;
 	Collection *collection_;
-	Member *member_;
+	assert_value(Member *member_;)
 };
 
 
@@ -157,13 +163,13 @@ struct TailMemberHook{
 		inline unsigned push_front(Member *member, TailMemberHook *hook) {
 			TAILQ_INSERT_HEAD(&head, hook, node_);
 			hook->collection_ = this;
-			hook->member_ = member;
+			assert_value(hook->member_ = member;)
 			return ++count;
 		}
 		inline unsigned push_back(Member *member, TailMemberHook *hook) {
 			TAILQ_INSERT_TAIL(&head, hook, node_);
 			hook->collection_ = this;
-			hook->member_ = member;
+			assert_value(hook->member_ = member);
 			return ++count;
 		}
 		inline bool exists(TailMemberHook *hook) const {
@@ -200,7 +206,7 @@ struct TailMemberHook{
 		}
 		inline unsigned remove(TailMemberHook *hook) {
 			hook->collection_ = nullptr;
-			hook->member_ = nullptr;
+			assert_value(hook->member_ = nullptr;)
 			TAILQ_REMOVE(&head, hook, node_);
 			return --count;
 		}
@@ -209,12 +215,12 @@ struct TailMemberHook{
 		unsigned count;
 	};
 
-	TailMemberHook() : node_{}, member_(nullptr) {
+	TailMemberHook() : node_{} assert_value(, member_(nullptr)) {
 	}
 
 	_TAILQ_ENTRY(TailMemberHook, ) node_;
 	Collection *collection_;
-	Member *member_;
+	assert_value(Member *member_;)
 };
 
 
@@ -316,7 +322,7 @@ public:
 		constexpr size_t hook_offset = offsetof(Member, *PtrToMemberHook);
 		assert(hook);
 		assert(hook->member_ == (void *)((const char *)hook - hook_offset));
-		return static_cast<Member *>(hook->member_);
+		return (Member *)((const char *)hook - hook_offset);
 	}
 
 public:
@@ -529,6 +535,8 @@ public:
 private:
 	Collection collection_;
 };
+
+#undef  assert_value
 
 }  //namespace Intrusive
 }  //namespace inetd
