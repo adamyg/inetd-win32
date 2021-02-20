@@ -283,7 +283,7 @@ help(void)
     printf(WININETD_PACKAGE " - " WININETD_PACKAGE_NAME " " WININETD_VERSION ", service options\n\n");
 
     printf("NAME:\n\n");
-    printf("inetd_service - high-performance memory object caching system\n\n");
+    printf("inetd_service - internet service daemon\n\n");
 
     printf("SYNOPSIS:\n\n");
     printf("inetd_service [options] <command> [configuration]\n\n");
