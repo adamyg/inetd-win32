@@ -390,7 +390,7 @@ more:
 #ifdef INET6
 		if (v6bind && !params->v6bind_ok) {
 			syslog(LOG_INFO, "IPv6 bind is ignored for %s", sep->se_service);
-			if (v4bind && v4bind_ok)
+			if (v4bind && params->v4bind_ok)
 				v6bind = 0;
 			else {
 				freeconfig(sep);
@@ -399,7 +399,7 @@ more:
 		}
 		if (v6bind) {
 			sep->se_family = AF_INET6;
-			if (!v4bind || !v4bind_ok)
+			if (!v4bind || !params->v4bind_ok)
 				sep->se_nomapped = 1;
 		} else
 #endif

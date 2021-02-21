@@ -532,14 +532,14 @@ body(int argc, char **argv)
 		}
 		if (params.v4bind_ok
 #ifdef INET6
-		    && servparams.v6bind_ok
+		    && params.v6bind_ok
 #endif
 		    )
 			break;
 	} while ((res = res->ai_next) != NULL);
 	if (!params.v4bind_ok
 #ifdef INET6
-	    && !servparams.v6bind_ok
+	    && !params.v6bind_ok
 #endif
 	    ) {
 		syslog(LOG_ERR, "-a %s: unknown address family", hostname);
@@ -1536,10 +1536,12 @@ setup(struct servtab *sep)
 
 	/* tftpd opens a new connection then needs more infos */
 #ifdef INET6
-	if ((sep->se_family == AF_INET6) &&
+#if defined(IPV6_RECVPKTINFO)
+	if ((sep->se_family == AF_INET6) && //Set delivery of the IPV6_PKTINFO control message on incoming datagrams/UDP.
 			(strcmp(sep->se_proto, "udp") == 0) && (sep->se_accept == 0) &&
 			(setsockopt(sep->se_fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, (char *)&on, sizeof (on)) < 0))
 		syslog(LOG_ERR, "setsockopt (IPV6_RECVPKTINFO): %m");
+#endif  
 	if (sep->se_family == AF_INET6) {
 		int flag = sep->se_nomapped ? 1 : 0;
 		if (setsockopt(sep->se_fd, IPPROTO_IPV6, IPV6_V6ONLY, (char *)&flag, sizeof (flag)) < 0)
@@ -1947,8 +1949,14 @@ check_loop(const struct sockaddr *sa, const struct servtab *sep)
 static void
 print_service(const char *action, const struct servtab *sep)
 {
+	const char *se_family = "";
+	switch(sep->se_family) {
+	case AF_INET:  se_family = "-ip4"; break;
+	case AF_INET6: se_family = "-ip6"; break;
+	}
+
 	fprintf(stderr,
-	    "%s: %s proto=%s accept=%d max=%d user=%s group=%s"
+	    "%s: %s proto=%s%s accept=%d max=%d user=%s group=%s"
 #ifdef LOGIN_CAP
 	    "class=%s"
 #endif
@@ -1957,7 +1965,7 @@ print_service(const char *action, const struct servtab *sep)
 	    " policy=\"%s\""
 #endif
 	    "\n",
-	    action, sep->se_service, sep->se_proto,
+	    action, sep->se_service, sep->se_proto, se_family,
 	    sep->se_accept, sep->se_maxchild, sep->se_user, (sep->se_group?sep->se_group:""),
 #ifdef LOGIN_CAP
 	    sep->se_class,

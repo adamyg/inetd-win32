@@ -182,6 +182,8 @@ public:
                                 ::closesocket(fd_);
                                 fd_ = INVALID_SOCKET;
                         }
+                        accept_callback_ = nullptr;
+                        io_callback_ = nullptr;
                         iocp_ = INVALID_HANDLE_VALUE;
                 }
 
@@ -361,14 +363,18 @@ public:
                         return false;
                 }
 
+                // associate completion point.
+                cxt.state_ = Socket::Accept;
+                cxt.accept_callback_ = std::move(callback);
+                cxt.acceptexaddrs_ = listener.acceptexaddrs_;
+
                 // create accept request.
-                // TODO: IP6 support
             retry:;
                 dwBytes = 0;
                 cxt.ovlpex_.reset();
                 (void) memset(&cxt.accept_buffer_, 0, sizeof(cxt.accept_buffer_));
                 if (FALSE == listener.acceptex_(listener, cxt.fd(), cxt.accept_buffer_,
-                                0 /*dont wait for data*/, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16,
+                                0 /*dont wait for data*/, sizeof(SOCKADDR_IN6) + 16, sizeof(SOCKADDR_IN6) + 16,
                                     &dwBytes, cxt.ovlpex_)) {
 
                         // async completion.
@@ -385,18 +391,8 @@ public:
                                 return false;
                         }
 
-                        // associate completion point.
-
-                        cxt.state_ = Socket::Accept;
-                        cxt.accept_callback_ = std::move(callback);
-                        cxt.acceptexaddrs_ = listener.acceptexaddrs_;
-
                 } else {
-                        // async completion, post completion
-
-                        cxt.state_ = Socket::Accept;
-                        cxt.accept_callback_ = std::move(callback);
-                        cxt.acceptexaddrs_ = listener.acceptexaddrs_;
+                        // sync completion, post completion
 
                         if (FALSE == ::PostQueuedCompletionStatus(iocp, 0 /*bytes*/,
                                                 reinterpret_cast<LONG_PTR>(&listener), cxt.ovlpex_)) {
@@ -447,6 +443,8 @@ private:
                                                     WSASyslogx(LOG_ERR, "setsockopt(SO_UPDATE_ACCEPT_CONTEXT)");
                                                     bSuccess = FALSE;
                                             }
+                                    } else {
+                                            ::CancelIoEx(listener, *ovlpex);
                                     }
                                     callback(bSuccess == TRUE);
                                 }

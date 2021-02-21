@@ -2,7 +2,7 @@
 # libinetd makefile.
 #
 #
-# Copyright (c) 2020, Adam Young.
+# Copyright (c) 2020 - 2021, Adam Young.
 # All rights reserved.
 #
 # The applications are free software: you can redistribute it
@@ -82,7 +82,7 @@ LDDEBUG=	@LDDEBUG@
 LDRELEASE=	@LDRELEASE@
 
 CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@
-CEXTRA=		@DEFS@ -DWIN32_SOCKET_MAP_NATIVE
+CEXTRA=		@DEFS@ -DWIN32_SOCKET_MAP_NATIVE -DINET6
 
 ifeq ("$(BUILD_TYPE)","release")
 CFLAGS+=	$(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
