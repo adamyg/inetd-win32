@@ -356,26 +356,10 @@ whichaf(struct request_info *req)
 }
 #endif
 
-#if (XXX)
-static void rb_test()
-{
-        struct test_node  {
-	        inetd::Intrusive::TreeMemberHook<test_node> link_;
-        } nodea, nodeb;
-
-        inetd::Intrusive::TreeMemberHook<test_node>::Collection collection;
-        collection.insert(&nodea, &nodea.link_);
-        collection.find(nodea.link_);
-        collection.remove(&nodea.link_);
-}
-#endif  //XXX
-
 extern "C" int
 inetd_main(int argc, char **argv)
 {
 	int ret = 99;
-
-//      rb_test();
 
 	mainthreadid = GetCurrentThreadId();
 	try {
@@ -693,7 +677,6 @@ body(int argc, char **argv)
 
 		/* network events */
 		for (sep = servtabs; n && sep; sep = sep->se_next) {
-			// TODO: skip async from readable.
 			// TODO: destroy stale async clients.
 			// TODO: clean-up terminated services.
 
@@ -748,9 +731,12 @@ static void async_accept(struct servtab *sep,
 	if (sep->se_listener.is_open()) {	// rearm acceptor
 		std::shared_ptr<inetd::IOCPService::Socket>
 			acceptor = std::make_shared<inetd::IOCPService::Socket>();
+		inetd::IOCPService::AcceptCallback callback(std::bind(&async_accept, sep, acceptor, std::placeholders::_1));
 
-		iocp.Accept(sep->se_listener, *acceptor.get(),
-			std::bind(&async_accept, sep, acceptor, std::placeholders::_1));
+		inetd::CriticalSection::Guard guard(sep->se_state.lock);
+		if (sep->se_state.running) {
+			iocp.Accept(sep->se_listener, *acceptor.get(), std::move(callback));
+		}
 	}
 
 	if (success) {				// connection made

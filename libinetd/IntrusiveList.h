@@ -1,7 +1,7 @@
 #pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * inetd::Instrusive::List
+ * inetd::instrusive_list
  * windows inetd service.
  *
  * Copyright (c) 2020 - 2021, Adam Young.
@@ -35,14 +35,14 @@
   *         inetd::Intrusive::TailMemberHook<tailq_node> link_;
   *         int other_members_;
   *     };
-  *     typedef inetd::Intrusive::ListContainer<tailq_node, inetd::Intrusive::TailMemberHook<tailq_node>, &tailq_node::link_> MYTailq;
+  *     typedef inetd::intrusive_list<tailq_node, inetd::Intrusive::TailMemberHook<tailq_node>, &tailq_node::link_> MYTailq;
   *
   *
   *     struct list_node {
   *         inetd::Intrusive::ListMemberHook<list_node> link_;
   *         int other_members_;
   *     };
-  *     typedef inetd::Intrusive::ListContainer<list_node, inetd::Intrusive::ListMemberHook<list_node>, &list_node::link_> MYList;
+  *     typedef inetd::intrusive_list<list_node, inetd::Intrusive::ListMemberHook<list_node>, &list_node::link_> MYList;
   *
   */
 
@@ -54,7 +54,6 @@
 #include "SimpleLock.h"
 
 namespace inetd {
-namespace Intrusive {
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //	List collection
@@ -65,6 +64,7 @@ namespace Intrusive {
 #define assert_value(...)
 #endif
 
+namespace Intrusive {
 template <typename Member>
 struct ListMemberHook {
 	struct Collection {
@@ -130,17 +130,19 @@ struct ListMemberHook {
 		unsigned count;
 	};
 
-	ListMemberHook() : node_{} assert_value(, member_(nullptr)) {
+	ListMemberHook() : node_{}, collection_(nullptr) assert_value(, member_(nullptr)) {
 	}
 	_LIST_ENTRY(ListMemberHook, ) node_;
 	Collection *collection_;
 	assert_value(Member *member_;)
 };
+};  //namespace intrusive
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //	Tail Queue collection
 
+namespace Intrusive {
 template <typename Member>
 struct TailMemberHook{
 	struct Collection {
@@ -215,22 +217,23 @@ struct TailMemberHook{
 		unsigned count;
 	};
 
-	TailMemberHook() : node_{} assert_value(, member_(nullptr)) {
+	TailMemberHook() : node_{}, collection_(nullptr) assert_value(, member_(nullptr)) {
 	}
 
 	_TAILQ_ENTRY(TailMemberHook, ) node_;
 	Collection *collection_;
 	assert_value(Member *member_;)
 };
+};  //namespace intrusive
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //	List container
 
 template <typename Member, typename Hook, Hook Member::* PtrToMemberHook>
-struct ListContainer {
-	ListContainer(const ListContainer &) = delete;
-	ListContainer operator=(const ListContainer &) = delete;
+struct intrusive_list {
+	intrusive_list(const intrusive_list &) = delete;
+	intrusive_list operator=(const intrusive_list &) = delete;
 
 public:
 	typedef typename Hook::Collection Collection;
@@ -326,9 +329,9 @@ public:
 	}
 
 public:
-	ListContainer() { }
+ 	intrusive_list() { }
 
-	~ListContainer() {
+	~intrusive_list() {
 		assert(empty());
 		assert(0 == count());
 	}
@@ -538,7 +541,6 @@ private:
 
 #undef  assert_value
 
-}  //namespace Intrusive
-}  //namespace inetd
+}   //namespace inetd
 
 //end

@@ -1,6 +1,6 @@
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * inetd::Instrusive::Tree
+ * inetd::Instrusive_tree
  * windows inetd service.
  *
  * Copyright (c) 2020 - 2021, Adam Young.
@@ -32,16 +32,27 @@
   *
   *     struct rb_node {
   *         inetd::Intrusive::TreeMemberHook<rb_node> link_;
+  *         struct compare {
+  *             int operator()(const rb_node *a, const rb_node *b) const {
+  *                 return strcmp(a->key_, b->key_);
+  *             }
+  *         }; 
+  *         const char *key_;
   *         int other_members_;
   *     };
-  *     typedef inetd::Intrusive::TreeContainer<rb_node, inetd::Intrusive::TreeMemberHook<rb_node>, &rb_node::link_> RBTree;
+  *     typedef inetd::intrusive_tree<rb_node, rb_node::compare, inetd::Intrusive::TreeMemberHook<rb_node>, &rb_node::link_> RBTree;
   *
   *
   *     struct splay_node {
   *         inetd::Intrusive::PlayMemberHook<splay_node> link_;
+  *         struct compare {
+  *             int operator()(const rb_node *a, const rb_node *b) const {
+  *                 return strcmp(a->key_, b->key_);
+  *             }
+  *         }; 
   *         int other_members_;
   *     };
-  *     typedef inetd::Intrusive::TreeContainer<splay_node, inetd::Intrusive::PlayMemberHook<splay_node>, &splay_node::link_> SPLAYTree;
+  *     typedef inetd::intrusive_tree<splay_node, splay_node::compare, inetd::Intrusive::PlayMemberHook<splay_node>, &splay_node::link_> SPLAYTree;
   *
   */
 
@@ -55,21 +66,23 @@
 #include "SimpleLock.h"
 
 namespace inetd {
-namespace Intrusive {
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //	Tree node collection
 
+namespace Intrusive {
 template <typename Member>
 struct TreeMemberHook {
-	typedef RB_HEAD(rb, TreeMemberHook) TreeMemberHead;
-
 	struct IComparator {
 		virtual inline int operator()(const TreeMemberHook *a, const TreeMemberHook *b) const = 0;
+			// XXX: an unfortunately messy interface, as the RB implementation requires the comparator
+			//  to be bound at compile-time, creating an unavoidable forward reference.
+			//  The virtual interface should be optimised away.
 	};
 
+	typedef RB_HEAD(rb, TreeMemberHook) MemberHead;
 	struct Collection {
-		Collection(IComparator& comparator) : comparator_(comparator) {
+		Collection(IComparator &comparator) : comparator_(comparator) {
 			reset();
 		}
 
@@ -102,11 +115,11 @@ struct TreeMemberHook {
 		}
 
 		inline TreeMemberHook *find(TreeMemberHook *hook) const {
-			return RB_FIND(rb, &head_, hook);
+			return RB_FIND(rb, const_cast<MemberHead *>(&head_), hook);
 		}
 
 		inline bool exists(TreeMemberHook *hook) const {
-			const TreeMemberHook *existing = RB_FIND(rb, &head_, hook);
+			const TreeMemberHook *existing = RB_FIND(rb, const_cast<MemberHead *>(&head_), hook);
 			return (existing == hook);
 		}
 
@@ -146,30 +159,31 @@ struct TreeMemberHook {
 
 	private:
 		RB_GENERATE(rb, TreeMemberHook, node_, comparator_);
-		IComparator &comparator_;
 
 	private:
 		inetd::CriticalSection cs_;
-		TreeMemberHead head_;
+		IComparator &comparator_;
+		MemberHead head_;
 		unsigned count_;
 	};
 
-	TreeMemberHook() : node_{}, member_(nullptr) {
+	TreeMemberHook() : node_{}, collection_(nullptr), member_(nullptr) {
 	}
 
 	RB_ENTRY(TreeMemberHook) node_;
 	Collection *collection_;
 	Member *member_;
 };
+};  //namespace intrusive
 
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //	Tree container
 
 template <typename Member, typename Comparator, typename Hook, Hook Member::* PtrToMemberHook>
-struct TreeContainer {
-	TreeContainer(const TreeContainer &) = delete;
-	TreeContainer operator=(const TreeContainer &) = delete;
+struct intrusive_tree {
+	intrusive_tree(const intrusive_tree &) = delete;
+	intrusive_tree operator=(const intrusive_tree &) = delete;
 
 public:
 	typedef typename Hook::IComparator IComparator;
@@ -207,7 +221,7 @@ public:
 		iterator& operator++() {
 			if (pointer ptr = ptr_) {
 				MemberHook *hook =
-					TreeContainer::member_hook_assigned(ptr);
+					intrusive_tree::member_hook_assigned(ptr);
 				ptr = nullptr;
 				if (nullptr != (hook = hook->collection_->next(hook))) {
 					ptr = hook_member(hook);
@@ -268,9 +282,9 @@ public:
 	}
 
 public:
-	TreeContainer() : collection_(icomparator_) { }
+	intrusive_tree() : collection_(icomparator_) { }
 
-	~TreeContainer() {
+	~intrusive_tree() {
 		assert(empty());
 		assert(0 == count());
 	}
@@ -464,7 +478,7 @@ public:
 		assert(it.ptr_);
 		assert(it.ptr_->collection_ == &collection_);
 		if (Member *member = it.ptr_) {
-			member->collection_->remove(TreeContainer::member_hook_assigned(member));
+			member->collection_->remove(intrusive_tree::member_hook_assigned(member));
 			it.ptr_ = nullptr;
 		}
 	}
@@ -480,7 +494,6 @@ private:
 	Collection collection_;
 };
 
-}  //Intrusive
 }  //inetd
 
 //end

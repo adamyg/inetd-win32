@@ -70,6 +70,7 @@
 
 #include "SimpleLock.h"
 #include "IntrusiveList.h"              // Intrusive list
+#include "IntrusivePtr.h"               // Intrusive ptr
 #include "IOCPService.h"                // IO completion port support
 
 #if defined(HAVE_AFUNIX_H)
@@ -115,7 +116,7 @@ struct procinfo {
 	struct conninfo	*pr_conn; 	/* associated host connection */
 };
 
-typedef inetd::Intrusive::ListContainer<procinfo, inetd::Intrusive::TailMemberHook<procinfo>, &procinfo::pr_link_> ProcInfoList;
+typedef inetd::intrusive_list<procinfo, inetd::Intrusive::TailMemberHook<procinfo>, &procinfo::pr_link_> ProcInfoList;
 
 struct connprocs {
 	struct Guard : public inetd::SpinLock::Guard {
@@ -140,7 +141,7 @@ struct conninfo {
 	connprocs co_procs;		/* array of child proc entry, from same host/addr */
 };
 
-typedef inetd::Intrusive::ListContainer<conninfo, inetd::Intrusive::ListMemberHook<conninfo>, &conninfo::co_link_> ConnInfoList;
+typedef inetd::intrusive_list<conninfo, inetd::Intrusive::ListMemberHook<conninfo>, &conninfo::co_link_> ConnInfoList;
 
 #define PERIPSIZE	256
 
@@ -151,7 +152,7 @@ struct	stabchild {
 	pid_t	sc_pid;
 };
 
-typedef inetd::Intrusive::ListContainer<stabchild, inetd::Intrusive::ListMemberHook<stabchild>, &stabchild::sc_link_> StabChildList;
+typedef inetd::intrusive_list<stabchild, inetd::Intrusive::ListMemberHook<stabchild>, &stabchild::sc_link_> StabChildList;
 
 struct	servconfig {
 	const char *se_service;		/* name of service */
@@ -206,7 +207,7 @@ struct	servconfig {
 	int	se_maxperip;		/* max number of children per src */
 };
 
-struct	servtab : public servconfig {
+struct	servtab : public servconfig /*, public inetd::intrusive::PtrMemberHook<servtab>*/ {
 	servtab() : servconfig(),
 			se_fd(-1), se_count(0), se_time(), se_next(nullptr) {
 		se_state.running = false;

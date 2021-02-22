@@ -151,8 +151,8 @@ typedef struct CHash {
 	CTime		ch_times[CHTSIZE];
 } CHash;
 
-typedef inetd::Intrusive::TreeContainer<CHash, CHash::Compare, inetd::Intrusive::TreeMemberHook<CHash>, &CHash::ch_rbnode> CHashTree_t;
-typedef inetd::Intrusive::ListContainer<CHash, inetd::Intrusive::TailMemberHook<CHash>, &CHash::ch_listnode> CHashList_t;
+typedef inetd::intrusive_tree<CHash, CHash::Compare, inetd::Intrusive::TreeMemberHook<CHash>, &CHash::ch_rbnode> CHashTree_t;
+typedef inetd::intrusive_list<CHash, inetd::Intrusive::TailMemberHook<CHash>, &CHash::ch_listnode> CHashList_t;
 
 class HostCollection {
 	HostCollection(const HostCollection &) = delete;
