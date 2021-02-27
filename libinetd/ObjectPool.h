@@ -130,6 +130,7 @@ public:
 				assert(ISFREE == node->type_ || ISUSED == node->type_);
 				assert(slabnode == node->slab_);
 				if (ISUSED == node->type_) {
+					assert(this == node->owner_);
 					element_type *element = node_to_element(node);
 					element->~T();
 					++used;

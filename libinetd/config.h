@@ -55,8 +55,8 @@ struct configparams {
 		maxthread = 0;
 		v4bind_ok = 0;
 		v6bind_ok = 0;
-		bind_sa4  = NULL;
-		bind_sa6  = NULL;
+		bind_sa4  = nullptr;
+		bind_sa6  = nullptr;
 	}
 	uid_t	euid;
 	gid_t	egid;
@@ -78,4 +78,3 @@ void	endconfig(void);
 void	freeconfig(struct servconfig *);
 
 /*end*/
-

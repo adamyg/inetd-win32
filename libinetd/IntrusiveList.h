@@ -132,6 +132,7 @@ struct ListMemberHook {
 
 	ListMemberHook() : node_{}, collection_(nullptr) assert_value(, member_(nullptr)) {
 	}
+
 	_LIST_ENTRY(ListMemberHook, ) node_;
 	Collection *collection_;
 	assert_value(Member *member_;)
@@ -329,7 +330,7 @@ public:
 	}
 
 public:
- 	intrusive_list() { }
+	intrusive_list() { }
 
 	~intrusive_list() {
 		assert(empty());

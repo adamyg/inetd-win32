@@ -66,6 +66,7 @@
 
 #include <stdio.h>
 
+#include <memory>
 #include <vector>
 
 #include "SimpleLock.h"
@@ -194,53 +195,57 @@ struct	servconfig {
 	mode_t	se_sockmode;		/* Mode for unix domain socket */
 	u_char	se_type;		/* type: normal, mux, or mux+ */
 	u_char	se_accept;		/* i.e., wait/nowait mode */
+	u_char	se_nomapped;
 #if defined(RPC)
 	u_char	se_rpc;			/* ==1 if RPC service */
 	int	se_rpc_prog;		/* RPC program number */
 	u_int	se_rpc_lowvers;		/* RPC low version */
 	u_int	se_rpc_highvers;	/* RPC high version */
 #endif
-	struct se_flags {
-		u_int se_nomapped : 1;
-		u_int se_reset : 1;
-	} se_flags;
 	int	se_maxperip;		/* max number of children per src */
 };
 
-struct	servtab : public servconfig /*, public inetd::intrusive::PtrMemberHook<servtab>*/ {
+struct	servtab : public servconfig, 
+	    public inetd::intrusive::enable_shared_from_this<servtab> {
 	servtab() : servconfig(),
-			se_fd(-1), se_count(0), se_time(), se_next(nullptr) {
-		se_state.running = false;
-                se_state.enabled = false;
-	}
-	servtab(const servconfig &cfg) : servconfig(cfg), 
-			se_fd(-1), se_count(0), se_time(), se_next(nullptr) {
+			se_fd(-1), se_count(0), se_time() {
 		se_state.running = false;
 		se_state.enabled = false;
 	}
+	servtab(const servconfig &cfg) : servconfig(cfg),
+			se_fd(-1), se_count(0), se_time() {
+		se_state.running = false;
+		se_state.enabled = false;
+	}
+        static void intrusive_deleter(struct servtab *sep);
 	struct {
 		inetd::CriticalSection lock;
 		bool running;		/* is the service running */
 		bool enabled;		/* is the service enabled/accepting connections */
 	} se_state;
+	struct se_flags {  
+		u_int se_checked : 1;	/* looked at during configuration merge */
+		u_int se_reset : 1;	/* channel reset required */ 
+	} se_flags;
 	int	se_fd;			/* open descriptor */
 	inetd::IOCPService::Listener se_listener; /* iocp listener */
 	int	se_count;		/* number started since se_time */
 	struct	timespec se_time;	/* start of se_count */
-	struct	servtab *se_next;
-	u_char	se_checked;		/* looked at during configuration merge */
-
+        
 	ConnInfoList se_conn[PERIPSIZE];/* per host connection management */
-	StabChildList se_children;      /* active child processes */
+	StabChildList se_children;	/* active child processes */
 };
 
-#define	se_nomapped		se_flags.se_nomapped
-#define	se_reset		se_flags.se_reset
+#define	se_reset	se_flags.se_reset
+#define se_checked	se_flags.se_checked
 
 #define	SERVTAB_EXCEEDS_LIMIT(sep)	\
 	((sep)->se_maxchild > 0 && (sep)->se_children.count() >= (sep)->se_maxchild)
 #define	SERVTAB_EXCEEDS_LIMITX(sep, count) \
 	((sep)->se_maxchild > 0 && (count) >= (sep)->se_maxchild)
+
+typedef std::vector<inetd::instrusive_ptr<servtab>> ServiceCollection;
+typedef std::shared_ptr<ServiceCollection> Services;
 
 extern int	debug;
 
@@ -255,6 +260,8 @@ struct biltin {
 };
 
 extern const struct biltin biltins[];
+
+Services	services();
 
 int		cpmip(const struct servtab *sep, int ctrl);
 

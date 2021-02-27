@@ -25,17 +25,21 @@
  * ==end==
  */
 
- /* 
+ /*
   * Intrusive pointer container.
   *
   * Example usage:
   *
   *     struct rb_node : public inetd::intrusive::PtrMemberHook<rb_node> {
+  *             static void intrusive_deleter(struct rb_node *node) {
+  *                     delete node;
+  *             }
   *     };
   *     typedef inetd::intrusive_ptr<rb_node> RBPtr;
   *
   */
 
+#include <type_traits>
 #include <cassert>
 #include <atomic>
 
@@ -45,20 +49,30 @@ namespace intrusive {
 template<class T>
 struct PtrMemberHook {
 	typedef T element_type;
-	constexpr PtrMemberHook() : references_(0) {
+	constexpr PtrMemberHook() : intrusive_ptr_references_(0) {
 	}
-	static void intrusive_ptr_add_ref(element_type *p) {
-		assert(p);
-		++(p->references_);
+	virtual ~PtrMemberHook() {
+		assert(0 == intrusive_ptr_references_);
 	}
-	static void intrusive_ptr_release(element_type *p) {
-		assert(p);
-		if (0 == --(p->references)) {
-			delete p;
+	static void intrusive_ptr_add_ref(element_type *px) {
+		assert(px);
+		++(px->intrusive_ptr_references_);
+	}
+	static void intrusive_ptr_release(element_type *px) {
+		assert(px);
+		if (0 == --(px->intrusive_ptr_references_)) {
+			/*if constexpr (std::enable_if<std::is_function<decltype(element_type::intrusive_deleter)>::value) {
+				element_type::intrusive_deleter(p);
+			} else {
+				delete p;
+                        }*/
+			element_type::intrusive_deleter(px);
 		}
 	}
-private:
-	std::atomic<unsigned> references_;
+	static auto intrusive_ptr_count(const element_type *px) {
+		return px->intrusive_ptr_references_;
+	}
+	std::atomic<unsigned> intrusive_ptr_references_;
 };
 
 }   //namespace intrusive
@@ -67,17 +81,22 @@ template<class T>
 class instrusive_ptr {
 private:
 	typedef T element_type;
+	typedef intrusive::PtrMemberHook<element_type> hook_type;
 
 public:
 	constexpr instrusive_ptr() noexcept : px_(nullptr) { }
 
 	instrusive_ptr(element_type *p, bool incref = true) : px_(p) {
-		if (px_ && incref) intrusive_ptr_add_ref(px_);
+		if (px_ && incref) hook_type::intrusive_ptr_add_ref(px_);
 	}
 
 	template<class U>
-	instrusive_ptr(const instrusive_ptr<U> &rhs) : px_(rhs.get()) {
-		if (px_) intrusive_ptr_add_ref(px_);
+	instrusive_ptr(const instrusive_ptr<U> &rhs) noexcept : px_(rhs.get()) {
+		if (px_) hook_type::intrusive_ptr_add_ref(px_);
+	}
+
+	instrusive_ptr(const instrusive_ptr &rhs) noexcept : px_(rhs.get()) {
+		if (px_) hook_type::intrusive_ptr_add_ref(px_);
 	}
 
 	instrusive_ptr(instrusive_ptr &&rhs) noexcept : px_(rhs.px_) {
@@ -85,7 +104,7 @@ public:
 	}
 
 	~instrusive_ptr() {
-		if (px_) intrusive_ptr_release(px_);
+		if (px_) hook_type::intrusive_ptr_release(px_);
 	}
 
 	template<class U>
@@ -117,7 +136,7 @@ public:
 	}
 
 	element_type* get() const noexcept {
-		return px;
+		return px_;
 	}
 
 	element_type* detach() noexcept {
@@ -140,6 +159,14 @@ public:
 		return (px_ != nullptr);
 	}
 
+	bool unique() const {
+		return (1 == intrusive_ptr_count(px_));
+	}
+
+	auto use_count() const {
+		return intrusive_ptr_count(px_);
+	}
+
 	void swap(instrusive_ptr &rhs) noexcept {
 		element_type* p = px_;
 		px_ = rhs.px_;
@@ -147,9 +174,20 @@ public:
 	}
 
 private:
-	element_type px_;
-
+	element_type *px_;
 };
+
+
+namespace intrusive {
+template<class T>
+class enable_shared_from_this : public PtrMemberHook<T> {
+public:
+	instrusive_ptr<T>
+	shared_from_this() {
+		return instrusive_ptr<T>(static_cast<T*>(this));
+	}
+};
+}   //intrusive
 
 }   //inetd
 

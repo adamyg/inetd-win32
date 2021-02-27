@@ -136,10 +136,10 @@ public:
                         return false;
                 }
 
-//              bool read(void *buffer, size_t buflen, IOCallback callback) {
+//              bool read(void *buffer, size_t buflen) {
 //              }
 
-//              bool write(const void *buffer, size_t buflen, IOCallback callback) {
+//              bool write(const void *buffer, size_t buflen) {
 //              }
 
 //              bool async_read(void *buffer, size_t buflen, IOCallback callback) {

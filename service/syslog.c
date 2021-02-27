@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.1 2020/10/17 18:35:26 cvsuser Exp $")
+__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.2 2021/02/20 09:01:29 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * syslog emulation
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2021, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -175,6 +175,8 @@ vsyslog(int pri, const char *fmt, va_list ap)
 {
         vxsyslog(pri, fmt, ap, NULL);
 }
+
+
 void
 vxsyslog(int pri, const char *fmt, va_list ap, const char *suffix)
 {

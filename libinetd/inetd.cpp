@@ -239,16 +239,16 @@ static void	setalarm(unsigned seconds);
 static int	do_fork(const struct servtab *sep, int ctrl);
 static void	child(struct servtab *sep, int ctrl);
 static void	close_sep(struct servtab *);
+static void	shutdown_sep(struct servtab *);
 static void	sigchld(void);
 static void	sigterm(void);
 static void	flag_signal(int);
 static void	config(void);
-static struct servtab *enter(const struct servconfig *);
 static void	freeserv(struct servtab *sep);
 static void	addchild(struct servtab *, pid_t);
 static void	reapchildren(void);
 static const char *reapchild(pid_t pid);
-static void	enable(struct servtab *);
+static void	enable(struct servtab *sep);
 static void	disable(struct servtab *);
 static void	retry(void);
 static void	setup(struct servtab *);
@@ -273,7 +273,7 @@ static void	unlink_connprocs(struct procinfo *proc);
 static void	clear_connprocs(struct conninfo *conn);
 static void	free_conn(struct conninfo *conn);
 
-static struct procinfo *search_proc(pid_t pid, struct procinfo *add);
+static struct procinfo *search_proc(pid_t pid, struct procinfo *add = nullptr);
 static int	hashval(const char *p, int len);
 static void	free_proc(struct procinfo *);
 
@@ -305,7 +305,6 @@ static int	nsock;
 static mode_t	mask;
 
 static struct configparams params;
-static struct servtab *servtabs;
 
 static const char *CONFIG = _PATH_INETDCONF;
 static const char *pid_file = _PATH_INETDPID;
@@ -392,7 +391,6 @@ terminate(int value)
 static int
 body(int argc, char **argv)
 {
-	struct servtab *sep;
 	int ch;
 #ifdef LOGIN_CAP
 	login_cap_t *lc = NULL;
@@ -676,15 +674,16 @@ body(int argc, char **argv)
 		}
 
 		/* network events */
-		for (sep = servtabs; n && sep; sep = sep->se_next) {
-			// TODO: destroy stale async clients.
-			// TODO: clean-up terminated services.
+                Services current_services(services());
+		for (auto sit : *current_services) {
+			struct servtab *sep = sit.get();
 
-			if (sep->se_fd < 0) {
-				continue;
+			if (n <= 0) {
+				break;
 			}
 
-			if (sep->se_listener.is_open()) {
+			if (sep->se_fd < 0 ||
+					sep->se_listener.is_open()) {
 				continue;
 			}
 
@@ -725,30 +724,27 @@ body(int argc, char **argv)
 	}
 }
 
-static void async_accept(struct servtab *sep,
+static void async_accept(inetd::instrusive_ptr<struct servtab> &service,
 		std::shared_ptr<inetd::IOCPService::Socket> &cxt, bool success)
 {
+	struct servtab *sep(service.get());
+
 	if (sep->se_listener.is_open()) {	// rearm acceptor
 		std::shared_ptr<inetd::IOCPService::Socket>
 			acceptor = std::make_shared<inetd::IOCPService::Socket>();
-		inetd::IOCPService::AcceptCallback callback(std::bind(&async_accept, sep, acceptor, std::placeholders::_1));
+		inetd::IOCPService::AcceptCallback callback(std::bind(&async_accept, service, acceptor, std::placeholders::_1));
 
 		inetd::CriticalSection::Guard guard(sep->se_state.lock);
 		if (sep->se_state.running) {
 			iocp.Accept(sep->se_listener, *acceptor.get(), std::move(callback));
 		}
-	}
 
-	if (success) {				// connection made
-		if (cpmip(sep, cxt->fd()) < 0) {
-			cxt->close();
-		} else {
-			if (-1 == do_accept(sep, cxt->fd())) {
-				sep = NULL;	// service terminated
+		if (success) {			// connection made
+			if (cpmip(sep, cxt->fd()) >= 0) {
+				do_accept(sep, cxt->fd());
 			}
-			cxt->close();
 		}
-	}
+        }
 }
 
 static int
@@ -880,7 +876,7 @@ alarm_timer(PVOID lpParam, BOOLEAN TimerOrWaitFired)
 
 static void
 setalarm(unsigned seconds)
-{   
+{
 	static HANDLE hTimerQueue, hTimer;
 
 	if (hTimer) {				// stop existing
@@ -1147,9 +1143,12 @@ addchild(struct servtab *sep, pid_t pid)
 		terminate(EX_OSERR);
 		return;
 	}
+
 	const int count = (int)sep->se_children.push_front_r(*sc);
-	if (SERVTAB_EXCEEDS_LIMITX(sep, count))
+	inetd::CriticalSection::Guard guard(sep->se_state.lock);
+	if (SERVTAB_EXCEEDS_LIMITX(sep, count)) {
 		disable(sep);
+	}
 }
 
 static void
@@ -1180,13 +1179,14 @@ reapchildren(void)
 static const char *
 reapchild(pid_t pid)
 {
-	struct servtab *sep;
 	const char *ret = NULL;
 
 	//XXX, scanning feels like the wrong solution
-	for (sep = servtabs; sep; sep = sep->se_next) {
-		if (sep->se_children.foreach_r(
-			[sep, pid, &ret](auto sc) {
+	Services current_services(services());
+	for (auto sit : *current_services) {
+		if (sit->se_children.foreach_r(
+			[&sit, pid, &ret](auto sc) {
+				struct servtab *sep = sit.get();
 				if (sc->sc_pid == pid) {
 					const int count = (int)sep->se_children.remove(sc);
 					if (! SERVTAB_EXCEEDS_LIMITX(sep, count))
@@ -1204,12 +1204,39 @@ reapchild(pid_t pid)
 	return ret;
 }
 
+static	inetd::CriticalSection service_lock_;
+static	Services services_ = std::make_shared<ServiceCollection>();
+
+Services
+services()
+{
+	inetd::CriticalSection::Guard guard(service_lock_);
+	return services_;
+}
+
+static struct servtab *
+config_match(Services &services, struct servconfig *cfg)
+{
+	for (auto sit : *services) {
+		struct servtab *sep = sit.get();
+		if (strcmp(sep->se_service, cfg->se_service) == 0 &&
+		    strcmp(sep->se_proto, cfg->se_proto) == 0 &&
+#if defined(RPC)
+		    sep->se_rpc == cfg->se_rpc &&
+#endif
+		    sep->se_socktype == cfg->se_socktype &&
+		    sep->se_family == cfg->se_family) {
+			return sep;
+		}
+	}
+        return nullptr;
+}
+
 static void
 config(void)
 {
-	struct servtab *sep, **sepp;
 	struct servconfig *cfg;
-	int cfgerr = 0, new_nomapped;
+	int cfgerr = 0;
 #ifdef LOGIN_CAP
 	login_cap_t *lc = NULL;
 #endif
@@ -1218,8 +1245,14 @@ config(void)
 		syslog(LOG_ERR, "%s: %m", CONFIG);
 		return;
 	}
-	for (sep = servtabs; sep; sep = sep->se_next)
-		sep->se_checked = 0;
+
+	for (auto sit : *services_)
+		sit->se_checked = 0;
+
+        Services t_services(std::make_shared<ServiceCollection>());
+
+        t_services->reserve(services_->size() > 64 ? services_->size() + 8 : 64);
+
 	while ((cfg = getconfigent(&params, &cfgerr))) {
 #if !defined(_WIN32)
 		if (getpwnam(cfg->se_user) == NULL) {
@@ -1245,17 +1278,18 @@ config(void)
 		}
 		login_close(lc);
 #endif
-		new_nomapped = cfg->se_nomapped;
-		for (sep = servtabs; sep; sep = sep->se_next)
-			if (strcmp(sep->se_service, cfg->se_service) == 0 &&
-			    strcmp(sep->se_proto, cfg->se_proto) == 0 &&
-#if defined(RPC)
-			    sep->se_rpc == cfg->se_rpc &&
-#endif
-			    sep->se_socktype == cfg->se_socktype &&
-			    sep->se_family == cfg->se_family)
-				break;
-		if (sep != 0) {
+
+		if (config_match(t_services, cfg)) {
+			syslog(LOG_ERR,
+				"%s/%s: service duplicated, secondary ignored",
+				cfg->se_service, cfg->se_proto);
+			continue;
+		}
+
+		const int new_nomapped = cfg->se_nomapped;
+		struct servtab *sep = config_match(services_, cfg);
+
+		if (sep != nullptr) {
 			int i;
 
 #define SWAP(t,a, b) { t c = a; a = b; b = c; }
@@ -1273,20 +1307,26 @@ config(void)
 			 * still reflect how many jobs are running so we don't
 			 * throw off our accounting.
 			 */
+			if (debug)
+				warnx("recreating %s", cfg->se_service);
+
 			sep->se_maxcpm = cfg->se_maxcpm;
 			sep->se_maxchild = cfg->se_maxchild;
-			resize_connlists(sep, cfg->se_maxperip);
 			sep->se_maxperip = cfg->se_maxperip;
+			resize_connlists(sep, cfg->se_maxperip);
 			sep->se_bi = cfg->se_bi;
+
 			/* might need to turn on or off service now */
-			if (sep->se_fd >= 0) {
-				if (SERVTAB_EXCEEDS_LIMIT(sep)) {
-					disable(sep);
-				} else {
-					enable(sep);
+			{	inetd::CriticalSection::Guard guard(sep->se_state.lock);
+				if (sep->se_fd >= 0) {
+					if (SERVTAB_EXCEEDS_LIMIT(sep) ||
+							(sep->se_accept != cfg->se_accept)) {
+						disable(sep);
+					}
 				}
 			}
 			sep->se_accept = cfg->se_accept;
+
 			SWAP(const char *, sep->se_user, cfg->se_user);
 			SWAP(const char *, sep->se_group, cfg->se_group);
 #ifdef LOGIN_CAP
@@ -1304,10 +1344,17 @@ config(void)
 			if (debug)
 				print_service("REDO", sep);
 		} else {
-			sep = enter(cfg);
+			if (debug)
+				warnx("creating %s", cfg->se_service);
+			sep = new(std::nothrow) servtab(*cfg);
+			if (sep == nullptr) {
+				syslog(LOG_ERR, "new: %m");
+				terminate(EX_OSERR);
+			}
 			if (debug)
 				print_service("ADD ", sep);
 		}
+		t_services->push_back(sep);
 
 		sep->se_checked = 1;
 		if (ISMUX(sep)) {
@@ -1389,31 +1436,27 @@ config(void)
 		}
 #endif
 		sep->se_reset = 0;
-		if (sep->se_fd == -1)
+		if (sep->se_fd == -1) {
 			setup(sep);
+                } else if (! SERVTAB_EXCEEDS_LIMIT(sep)) {
+			enable(sep);
+		}
 	}
 	if (cfgerr) terminate(cfgerr);
 	endconfig();
 
 	/*
-	 * Purge anything not looked at above.
+	 * Swap resources and purge anything not looked at above.
 	 */
-	sepp = &servtabs;
-	while ((sep = *sepp)) {
-		if (sep->se_checked) {
-			sepp = &sep->se_next;
-			continue;
+	{	inetd::CriticalSection::Guard guard(service_lock_);
+		services_.swap(t_services);
+	}
+
+	for (auto sit : *t_services) {
+		struct servtab *sep = sit.get();
+		if (! sep->se_checked) {
+			shutdown_sep(sep);
 		}
-		*sepp = sep->se_next;
-		if (sep->se_fd >= 0)
-			close_sep(sep);
-		if (debug)
-			print_service("FREE", sep);
-#if defined(RPC)
-		if (sep->se_rpc && sep->se_rpc_prog > 0)
-			unregisterrpc(sep);
-#endif
-		freeserv(sep);
 	}
 }
 
@@ -1474,12 +1517,14 @@ unregisterrpc(struct servtab *sep)
 static void
 retry(void)
 {
-	struct servtab *sep;
-
 	timingout = false;
-	for (sep = servtabs; sep; sep = sep->se_next)
-		if (sep->se_fd == -1 && !ISMUX(sep))
+	Services current_services(services());
+	for (auto sit : *current_services) {
+		struct servtab *sep = sit.get();
+		if (sep->se_fd == -1 && !ISMUX(sep)) {
 			setup(sep);
+                }
+	}
 }
 
 static void
@@ -1712,40 +1757,59 @@ ipsecsetup(struct servtab *sep)
 #endif
 
 /*
- * Finish with a service and its socket.
+ *  Finish with a service and its socket.
  */
+
 static void
 close_sep(struct servtab *sep)
 {
+    	inetd::CriticalSection::Guard guard(sep->se_state.lock);
+
 	if (debug)
 		warnx("closing %s, fd %d", sep->se_service, sep->se_fd);
+
 	if (sep->se_fd >= 0) {
                 disable(sep);
 		iocp.Shutdown(sep->se_listener);
-		(void) sockclose(sep->se_fd);
+		sockclose(sep->se_fd);
 		sep->se_fd = -1;
 	}
-	sep->se_children.reset();	/* forget about any existing children */
+
+	sep->se_children.drain_r(       /* forget about any existing children */
+		[](auto sc) {
+			delete sc;
+		});
 	sep->se_count = 0;		/* reset usage */ 
 }
 
-static struct servtab *
-enter(const struct servconfig *cfg)
+static void
+shutdown_sep(struct servtab *sep)
 {
-	struct servtab *sep;
+	sep->se_state.enabled = false;
+        close_sep(sep);
+}
+
+void servtab::intrusive_deleter(struct servtab *sep)
+{
+	shutdown_sep(sep);
 
 	if (debug)
-		warnx("creating %s", cfg->se_service);
-	sep = new (std::nothrow) struct servtab(*cfg);
-	if (sep == NULL) {
-		syslog(LOG_ERR, "new: %m");
-		terminate(EX_OSERR);
-		return nullptr;
-	}
-	sep->se_next = servtabs;
-	servtabs = sep;
-	return (sep);
+		print_service("FREE", sep);
+#if defined(RPC)
+	if (sep->se_rpc && sep->se_rpc_prog > 0)
+		unregisterrpc(sep);
+#endif
+	free_connlists(sep);
+	freeconfig(static_cast<struct servconfig *>(sep));
+	for (unsigned i = 0; i < MAXARGV; i++)
+		if (sep->se_argv[i])
+			free((char *)sep->se_argv[i]);
+	delete sep;
 }
+
+/*
+ *  Service control
+ */
 
 static void
 enable(struct servtab *sep)
@@ -1798,7 +1862,7 @@ enable(struct servtab *sep)
 			acceptor = std::make_shared<inetd::IOCPService::Socket>();
 
 		if (! iocp.Accept(sep->se_listener, *acceptor.get(),
-			    std::bind(&async_accept, sep, acceptor, std::placeholders::_1))) {
+			    std::bind(&async_accept, sep->shared_from_this(), acceptor, std::placeholders::_1))) {
 			terminate(EX_SOFTWARE);
 			return;
 		}
@@ -1814,7 +1878,6 @@ enable(struct servtab *sep)
 static void
 disable(struct servtab *sep)
 {
-	inetd::CriticalSection::Guard guard(sep->se_state.lock);
 	assert(sep->se_state.enabled);
 	if (! sep->se_state.running) {
 		return;
@@ -1858,27 +1921,6 @@ disable(struct servtab *sep)
 	}
 }
 
-static void
-freeserv(struct servtab *sep)
-{
-	inetd::CriticalSection::Guard guard(sep->se_state.lock);
-	sep->se_state.enabled = false;
-
-	freeconfig(static_cast<struct servconfig *>(sep));
-
-	sep->se_children.drain(
-		[](auto sc) {
-			delete sc;
-		});
-	for (unsigned i = 0; i < MAXARGV; i++)
-		if (sep->se_argv[i])
-			free((char *)sep->se_argv[i]);
-	free_connlists(sep);
-//TODO
-//	delete sep;
-//  garbage collect ...
-}
-
 void
 inetd_setproctitle(const char *a, int s)
 {
@@ -1898,10 +1940,10 @@ inetd_setproctitle(const char *a, int s)
 int
 check_loop(const struct sockaddr *sa, const struct servtab *sep)
 {
-	const struct servtab *se2;
 	char pname[NI_MAXHOST];
 
-	for (se2 = servtabs; se2; se2 = se2->se_next) {
+	Services current_services(services());
+	for (auto se2 : *current_services) {
 		if (!se2->se_bi || se2->se_socktype != SOCK_DGRAM)
 			continue;
 
@@ -1936,7 +1978,8 @@ static void
 print_service(const char *action, const struct servtab *sep)
 {
 	const char *se_family = "";
-	switch(sep->se_family) {
+
+	switch (sep->se_family) {
 	case AF_INET:  se_family = "-ip4"; break;
 	case AF_INET6: se_family = "-ip6"; break;
 	}
@@ -2080,8 +2123,13 @@ reapchild_conn(pid_t pid)
 	if (pid == -1)
 		return;
 
-	if ((proc = search_proc(pid, nullptr)) == NULL)
+	if ((proc = search_proc(pid)) == NULL)
 		return;
+
+//	if ((sep = proc->pr_sep)) != NULL) {
+//		sep->se_children.remove(proc);
+//		proc->pr_sep = NULL;
+//	}
 
 	assert(proc->pr_conn);
 	if ((conn = proc->pr_conn) == NULL)
