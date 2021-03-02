@@ -163,7 +163,7 @@ public:
 	}
 
 	bool check_limit(const struct sockaddr_storage &rss, const char *service, int maxcpm) {
-		const time_t now = time(NULL);
+		const time_t now = time(nullptr);
 		const unsigned int ticks = (unsigned int)(now / CHTGRAN);
 		inetd::CriticalSection::Guard guard(cs_);
 		CHash *node = nullptr;

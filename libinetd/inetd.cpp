@@ -289,7 +289,7 @@ static fd_set	allsock;
 
 static struct	servent *sp;
 static struct	rpcent *rpc;
-static char	*hostname = NULL;
+static char	*hostname = nullptr;
 
 static int	signalpipe[2];
 #ifdef SANITY_CHECK
@@ -302,7 +302,7 @@ static struct configparams params;
 
 static const char *CONFIG = _PATH_INETDCONF;
 static const char *pid_file = _PATH_INETDPID;
-static struct pidfh *pfh = NULL;
+static struct pidfh *pfh = nullptr;
 
 static inetd::ProcessGroup process_group;
 static inetd::IOCPService iocp;
@@ -736,16 +736,16 @@ static int
 do_accept(struct servtab *sep, int ctrl)
 {
 	const int dofork = (!sep->se_bi || sep->se_bi->bi_fork || ISWRAP(sep));
-	struct conninfo *conn = NULL;
-	struct procinfo *proc = NULL;
+	struct conninfo *conn = nullptr;
+	struct procinfo *proc = nullptr;
 	pid_t pid = 0;
 
 	if (sep->se_accept && sep->se_socktype == SOCK_STREAM) {
-		if (dofork && (conn = search_connections(sep, ctrl)) != NULL) {
+		if (dofork && (conn = search_connections(sep, ctrl)) != nullptr) {
 			if (conn == (conninfo *)-1)
 				return 0;
 			if (! new_connection(sep, conn, proc)) {
-				assert(proc == NULL);
+				assert(proc == nullptr);
 				free_conn(conn);
 				return 0;
 			}
@@ -763,11 +763,11 @@ do_accept(struct servtab *sep, int ctrl)
 			sl = sizeof(peer);
 			if (recvfrom(ctrl, buf, sizeof(buf), MSG_PEEK, (struct sockaddr *)&peer, &sl) >= 0) {
 				getnameinfo((struct sockaddr *)&peer, SOCKLEN_SOCKADDR_STORAGE(peer),
-					pname, sizeof(pname), NULL, 0, NI_NUMERICHOST);
+					pname, sizeof(pname), nullptr, 0, NI_NUMERICHOST);
 			}
 		} else {
 			getnameinfo((struct sockaddr *)&peer, SOCKLEN_SOCKADDR_STORAGE(peer),
-				pname, sizeof(pname), NULL, 0, NI_NUMERICHOST);
+				pname, sizeof(pname), nullptr, 0, NI_NUMERICHOST);
 		}
 		syslog(LOG_INFO, "%s from %s", sep->se_service, pname);
 	}
@@ -841,7 +841,7 @@ getservicesprog(char *path, size_t pathlen)
 	unsigned ret;
 
 	assert(pathlen >= 255);
-	if ((ret = ::GetModuleFileNameA(NULL, path, pathlen - sizeof(defservicesprog))) > 0) {
+	if ((ret = ::GetModuleFileNameA(nullptr, path, pathlen - sizeof(defservicesprog))) > 0) {
 		path[ret] = 0;
 		if (char *delim = const_cast<char *>(strrchr(path, '\\'))) {
 			cursor = delim + 1;	// inherit current path.
@@ -873,13 +873,13 @@ setalarm(unsigned seconds)
 		if (! ::DeleteTimerQueueTimer(hTimerQueue, hTimer, INVALID_HANDLE_VALUE)) {
 			syslog(LOG_ERR, "delete timer: %M");
 		}
-		hTimer = NULL;
+		hTimer = nullptr;
 	}
 
 	assert(seconds);
 	if (seconds) {				// reschedule.
-		if (NULL == hTimerQueue &&
-			    NULL == (hTimerQueue = ::CreateTimerQueue())) {
+		if (nullptr == hTimerQueue &&
+			    nullptr == (hTimerQueue = ::CreateTimerQueue())) {
 			syslog(LOG_ERR, "create timer queue: %M");
 			terminate(EX_OSERR);
 			return;
@@ -899,14 +899,14 @@ static int
 do_fork(const struct servtab *sep, int ctrl)
 {
 	const char *service = (sep->se_server_name ? sep->se_server_name : sep->se_service);
-	const char *progname = NULL;
-	const char **argv = NULL;
+	const char *progname = nullptr;
+	const char **argv = nullptr;
 	const char *t_argv[3];
 
 	if (sep->se_bi) {			// inbuilt.
 		t_argv[0] = "-s";
 		t_argv[1] = sep->se_service;
-		t_argv[2] = NULL;
+		t_argv[2] = nullptr;
 		progname = servicesprog;
 		argv = (const char **)t_argv;
 
@@ -928,8 +928,8 @@ do_fork(const struct servtab *sep, int ctrl)
 static void
 child(struct servtab *sep, int ctrl)
 {
-	struct passwd *pwd = NULL;
-	struct group *grp = NULL;
+	struct passwd *pwd = nullptr;
+	struct group *grp = nullptr;
 	char buf[50];
 
 #if defined(TCPMUX)	// deprecated in 2016 by RFC 7805
@@ -938,7 +938,7 @@ child(struct servtab *sep, int ctrl)
 	 */
 	if (sep->se_bi && sep->se_bi->bi_fn == (bi_fn_t *) tcpmux) {
 		sep = tcpmux(ctrl);
-		if (sep == NULL) {
+		if (sep == nullptr) {
 			sockclose(ctrl);
 			_exit(0);
 		}
@@ -999,7 +999,7 @@ child(struct servtab *sep, int ctrl)
 		dup2(0, 1);
 		dup2(0, 2);
 
-		if ((pwd = getpwnam(sep->se_user)) == NULL) {
+		if ((pwd = getpwnam(sep->se_user)) == nullptr) {
 			syslog(LOG_ERR,
 			    "%s/%s: %s: no such user",
 				sep->se_service, sep->se_proto, sep->se_user);
@@ -1008,8 +1008,8 @@ child(struct servtab *sep, int ctrl)
 			_exit(EX_NOUSER);
 		}
 
-		grp = NULL;
-		if (sep->se_group != NULL && (grp = getgrnam(sep->se_group)) == NULL) {
+		grp = nullptr;
+		if (sep->se_group != nullptr && (grp = getgrnam(sep->se_group)) == nullptr) {
 			syslog(LOG_ERR,
 			    "%s/%s: %s: no such group",
 				sep->se_service, sep->se_proto, sep->se_group);
@@ -1018,10 +1018,10 @@ child(struct servtab *sep, int ctrl)
 			_exit(EX_NOUSER);
 		}
 
-		if (grp != NULL)
+		if (grp != nullptr)
 			pwd->pw_gid = grp->gr_gid;
 #ifdef LOGIN_CAP
-		if ((lc = login_getclass(sep->se_class)) == NULL) {
+		if ((lc = login_getclass(sep->se_class)) == nullptr) {
 			/* error syslogged by getclass */
 			syslog(LOG_ERR,
 			    "%s/%s: %s: login class error",
@@ -1257,7 +1257,7 @@ config(void)
 	struct servconfig *cfg;
 	int cfgerr = 0;
 #ifdef LOGIN_CAP
-	login_cap_t *lc = NULL;
+	login_cap_t *lc = nullptr;
 #endif
 
 	if (!setconfig(CONFIG)) {
@@ -1274,13 +1274,13 @@ config(void)
 
 	while ((cfg = getconfigent(&params, &cfgerr))) {
 #if !defined(_WIN32)
-		if (getpwnam(cfg->se_user) == NULL) {
+		if (getpwnam(cfg->se_user) == nullptr) {
 			syslog(LOG_ERR,
 				"%s/%s: no such user '%s', service ignored",
 				cfg->se_service, cfg->se_proto, cfg->se_user);
 			continue;
 		}
-		if (cfg->se_group && getgrnam(cfg->se_group) == NULL) {
+		if (cfg->se_group && getgrnam(cfg->se_group) == nullptr) {
 			syslog(LOG_ERR,
 				"%s/%s: no such group '%s', service ignored",
 				cfg->se_service, cfg->se_proto, cfg->se_group);
@@ -1288,7 +1288,7 @@ config(void)
 		}
 #endif
 #ifdef LOGIN_CAP
-		if ((lc = login_getclass(cfg->se_class)) == NULL) {
+		if ((lc = login_getclass(cfg->se_class)) == nullptr) {
 			/* error syslogged by getclass */
 			syslog(LOG_ERR,
 				"%s/%s: %s: login class error, service ignored",
@@ -1491,9 +1491,9 @@ unregisterrpc(struct servtab *sep)
 	netid4 = sep->se_socktype == SOCK_DGRAM ? udpconf : tcpconf;
 	netid6 = sep->se_socktype == SOCK_DGRAM ? udp6conf : tcp6conf;
 	if (sep->se_family == AF_INET)
-		netid6 = NULL;
+		netid6 = nullptr;
 	else if (sep->se_nomapped)
-		netid4 = NULL;
+		netid4 = nullptr;
 	/*
 	 * Conflict if same prog and protocol - In that case one should look
 	 * to versions, but it is not interesting: having separate servers for
@@ -1511,13 +1511,13 @@ unregisterrpc(struct servtab *sep)
 			    sep->se_rpc_prog != sepp->se_rpc_prog)
 			continue;
 		if (sepp->se_family == AF_INET)
-			netid4 = NULL;
+			netid4 = nullptr;
 		if (sepp->se_family == AF_INET6) {
-			netid6 = NULL;
+			netid6 = nullptr;
 			if (!sep->se_nomapped)
-				netid4 = NULL;
+				netid4 = nullptr;
 		}
-		if (netid4 == NULL && netid6 == NULL)
+		if (netid4 == nullptr && netid6 == nullptr)
 			return;
 	}
 	print_service("UNREG", sep);
@@ -1638,7 +1638,7 @@ setup(struct servtab *sep)
 	if (sep->se_rpc) {
 		u_int i;
 		socklen_t len = sep->se_ctrladdr_size;
-		struct netconfig *netid, *netid2 = NULL;
+		struct netconfig *netid, *netid2 = nullptr;
 #ifdef INET6
 		struct sockaddr_in sock;
 #endif
@@ -1704,8 +1704,8 @@ static void
 ipsecsetup(struct servtab *sep)
 {
 	char *buf;
-	char *policy_in = NULL;
-	char *policy_out = NULL;
+	char *policy_in = nullptr;
+	char *policy_out = nullptr;
 	int level;
 	int opt;
 
@@ -1740,9 +1740,9 @@ ipsecsetup(struct servtab *sep)
 		}
 	}
 
-	if (policy_in != NULL) {
+	if (policy_in != nullptr) {
 		buf = ipsec_set_policy(policy_in, strlen(policy_in));
-		if (buf != NULL) {
+		if (buf != nullptr) {
 			if (setsockopt(sep->se_fd, level, opt,
 					buf, ipsec_get_policylen(buf)) < 0 && debug != 0)
 				syslog(LOG_DEBUG, "%s/%s: ipsec initialization failed; %s",
@@ -1752,9 +1752,9 @@ ipsecsetup(struct servtab *sep)
 			syslog(LOG_ERR, "invalid security policy \"%s\"",
 				policy_in);
 	}
-	if (policy_out != NULL) {
+	if (policy_out != nullptr) {
 		buf = ipsec_set_policy(policy_out, strlen(policy_out));
-		if (buf != NULL) {
+		if (buf != nullptr) {
 			if (setsockopt(sep->se_fd, level, opt,
 					buf, ipsec_get_policylen(buf)) < 0 && debug != 0)
 				syslog(LOG_DEBUG, "%s/%s: ipsec initialization failed; %s",
@@ -1940,7 +1940,7 @@ inetd_setproctitle(const char *a, int s)
 
 	size = sizeof(ss);
 	if (getpeername(s, (struct sockaddr *)&ss, &size) == 0) {
-		getnameinfo((struct sockaddr *)&ss, SOCKLEN_SOCKADDR_STORAGE(ss), pbuf, sizeof(pbuf), NULL, 0, NI_NUMERICHOST);
+		getnameinfo((struct sockaddr *)&ss, SOCKLEN_SOCKADDR_STORAGE(ss), pbuf, sizeof(pbuf), nullptr, 0, NI_NUMERICHOST);
 		(void) sprintf_s(buf, sizeof(buf), "%s [%s]", a, pbuf);
 	} else {
 		(void) sprintf_s(buf, sizeof(buf), "%s", a);
@@ -1973,7 +1973,7 @@ check_loop(const struct sockaddr *sa, const struct servtab *sep)
 			continue;
 		}
 	isloop:
-		getnameinfo(sa, SOCKLEN_SOCKADDR_PTR(sa), pname, sizeof(pname), NULL, 0, NI_NUMERICHOST);
+		getnameinfo(sa, SOCKLEN_SOCKADDR_PTR(sa), pname, sizeof(pname), nullptr, 0, NI_NUMERICHOST);
 		syslog(LOG_WARNING, "%s/%s:%s/%s loop request REFUSED from %s",
 		       sep->se_service, sep->se_proto, se2->se_service, se2->se_proto, pname);
 		return 1;
@@ -2029,14 +2029,14 @@ search_connections(struct servtab *sep, int ctrl)
 	int hv;
 
 	if (sep->se_maxperip <= 0)
-		return NULL;
+		return nullptr;
 
 	/*
 	 * If getpeername() fails, just let it through (if logging is
 	 * enabled the condition is caught elsewhere)
 	 */
 	if (getpeername(ctrl, (struct sockaddr *)&ss, &sslen) != 0)
-		return NULL;
+		return nullptr;
 
 	switch (ss.ss_family) {
 	case AF_INET:
@@ -2052,12 +2052,12 @@ search_connections(struct servtab *sep, int ctrl)
 		 * Since we only support AF_INET and AF_INET6, just
 		 * let other than AF_INET and AF_INET6 through.
 		 */
-		return NULL;
+		return nullptr;
 	}
 
-	if (getnameinfo((struct sockaddr *)&ss, SOCKLEN_SOCKADDR_STORAGE(ss), pname, sizeof(pname), NULL, 0, NI_NUMERICHOST) != 0) {
+	if (getnameinfo((struct sockaddr *)&ss, SOCKLEN_SOCKADDR_STORAGE(ss), pname, sizeof(pname), nullptr, 0, NI_NUMERICHOST) != 0) {
 		syslog(LOG_ERR, "%s getnameinfo error : %M", sep->se_service);
-		return NULL;
+		return nullptr;
 	}
 
 	sep->se_conn[hv].foreach_term_r([hv, &ss, sslen, &sep, &pname, &conn](struct conninfo *ci) {
@@ -2065,7 +2065,7 @@ search_connections(struct servtab *sep, int ctrl)
 			char pname2[NI_MAXHOST];
 
 			if (getnameinfo((const struct sockaddr *)&ci->co_addr,
-				    SOCKLEN_SOCKADDR_STORAGE(ci->co_addr), pname2, sizeof(pname2), NULL, 0, NI_NUMERICHOST) == 0) {
+				    SOCKLEN_SOCKADDR_STORAGE(ci->co_addr), pname2, sizeof(pname2), nullptr, 0, NI_NUMERICHOST) == 0) {
 				if (strcmp(pname, pname2) == 0) {
 					conn = ci;
 					return true; //match
@@ -2109,7 +2109,7 @@ new_connection(const struct servtab *sep, struct conninfo *conn, struct procinfo
 		if (maxchild > 0) { // limit imposed
 			if (getnameinfo((struct sockaddr *)&conn->co_addr,
 				    SOCKLEN_SOCKADDR_STORAGE(conn->co_addr),
-				    pname, sizeof(pname), NULL, 0, NI_NUMERICHOST)) {
+				    pname, sizeof(pname), nullptr, 0, NI_NUMERICHOST)) {
 				syslog(LOG_ERR, "%s getnameinfo error : %M", sep->se_service);
 			}
 			syslog(LOG_ERR, "%s from %s exceeded count (limit %d)",
