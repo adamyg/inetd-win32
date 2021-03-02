@@ -25,6 +25,14 @@
  * ==end==
  */
 
+#ifndef INET4
+#define INET4
+#endif
+
+#ifndef INET6
+#define INET6
+#endif
+
 #ifndef TOOMANY
 #define TOOMANY 	256		/* don't start more than TOOMANY */
 #endif

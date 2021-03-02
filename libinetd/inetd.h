@@ -91,10 +91,10 @@
 #define ISMUXPLUS(sep)	((sep)->se_type == MUXPLUS_TYPE)
 
 #if defined(_WIN32)
-#define SOCKLEN_SOCKADDR(sa) sizeof(struct sockaddr)
-#define SOCKLEN_SOCKADDR_PTR(sa) sizeof(struct sockaddr)
-#define SOCKLEN_SOCKADDR_STORAGE(ss) sizeof(struct sockaddr_storage)
-#define SOCKLEN_SOCKADDR_STORAGE_PTR(ss) sizeof(struct sockaddr_storage)
+#define SOCKLEN_SOCKADDR(__sa) (AF_INET6 == __sa.sa_family ? sizeof(struct sockaddr_in6) :  sizeof(struct sockaddr_in))
+#define SOCKLEN_SOCKADDR_PTR(__sa) (AF_INET6 == __sa->sa_family ? sizeof(struct sockaddr_in6) :  sizeof(struct sockaddr_in))
+#define SOCKLEN_SOCKADDR_STORAGE(__ss) (AF_INET6 == __ss.ss_family ? sizeof(struct sockaddr_in6) :  sizeof(struct sockaddr_in))
+#define SOCKLEN_SOCKADDR_STORAGE_PTR(__ss) (AF_INET6 == __ss->ss_family ? sizeof(struct sockaddr_in6) :  sizeof(struct sockaddr_in))
 #else
 #define SOCKLEN_SOCKADDR(sa) sa.sa_len
 #define SOCKLEN_SOCKADDR_PTR(sa) sa->sa_len
@@ -104,39 +104,56 @@
 
 #define satosin(sa)	((struct sockaddr_in *)(void *)sa)
 #define csatosin(sa)	((const struct sockaddr_in *)(const void *)sa)
-#ifdef INET6
 #define satosin6(sa)	((struct sockaddr_in6 *)(void *)sa)
 #define csatosin6(sa)	((const struct sockaddr_in6 *)(const void *)sa)
-#endif
 
+// process information
 struct procinfo {
-	procinfo() : pr_pid(-1), pr_conn(nullptr) {
+	procinfo(const procinfo &) = delete;
+	procinfo operator=(const procinfo &) = delete;
+
+	procinfo() : pr_pid(-1), pr_conn(nullptr), pr_sep(nullptr) {
 	}
-	inetd::Intrusive::TailMemberHook<procinfo> pr_link_;
-	pid_t	pr_pid;                 /* child pid & linked, otherwise -1 */
-	struct conninfo	*pr_conn; 	/* associated host connection */
+
+	inetd::Intrusive::TailMemberHook<procinfo> pr_procinfo_link_;
+	inetd::Intrusive::ListMemberHook<procinfo> pr_child_link_;
+	pid_t	pr_pid; 		/* child pid & linked, otherwise -1 */
+	struct conninfo	*pr_conn;	/* associated host connection */
+	struct servtab *pr_sep; 	/* associated service */
 };
 
-typedef inetd::intrusive_list<procinfo, inetd::Intrusive::TailMemberHook<procinfo>, &procinfo::pr_link_> ProcInfoList;
+typedef inetd::intrusive_list<procinfo, inetd::Intrusive::TailMemberHook<procinfo>, &procinfo::pr_procinfo_link_> ProcInfoList;
+typedef inetd::intrusive_list<procinfo, inetd::Intrusive::ListMemberHook<procinfo>, &procinfo::pr_child_link_> ChildList;
 
+// host connection collection
 struct connprocs {
-	struct Guard : public inetd::SpinLock::Guard {
-		Guard(connprocs &cps) : inetd::SpinLock::Guard(cps.cp_lock) { }
-	};
+	connprocs(const connprocs &) = delete;
+	connprocs operator=(const connprocs &) = delete;
 
-	connprocs() : cp_maxchild(0) { }
+        connprocs(int maxperip);
+        bool resize(int maxperip);
+        struct procinfo *newproc(struct conninfo *conn, int &maxchild);
+        bool unlink(struct procinfo *proc);
+        void clear(struct conninfo *conn);
 	int numchild() const {
 		return (int)cp_procs.size();
 	}
 
+private:
+	struct Guard;
 	inetd::SpinLock cp_lock;	/* spin lock */
 	std::vector<struct procinfo *> cp_procs; /* child proc entries */
 	int	cp_maxchild;		/* max number of children */
 };
 
+// host connection
 struct conninfo {
-	conninfo() {
-	}
+	conninfo(const conninfo &) = delete;
+	conninfo operator=(const conninfo &) = delete;
+
+        conninfo(int maxperip) : co_procs(maxperip) { 
+        }
+
 	inetd::Intrusive::ListMemberHook<conninfo> co_link_;
 	struct sockaddr_storage	co_addr;/* source address */
 	connprocs co_procs;		/* array of child proc entry, from same host/addr */
@@ -144,18 +161,10 @@ struct conninfo {
 
 typedef inetd::intrusive_list<conninfo, inetd::Intrusive::ListMemberHook<conninfo>, &conninfo::co_link_> ConnInfoList;
 
-#define PERIPSIZE	256
+#define PERIPSIZE	256		/* procinfo hash table size */
 
-struct	stabchild {
-	stabchild(pid_t pid) : sc_pid(pid) {
-	}
-	inetd::Intrusive::ListMemberHook<stabchild> sc_link_;
-	pid_t	sc_pid;
-};
-
-typedef inetd::intrusive_list<stabchild, inetd::Intrusive::ListMemberHook<stabchild>, &stabchild::sc_link_> StabChildList;
-
-struct	servconfig {
+// service configuration
+struct servconfig {
 	const char *se_service;		/* name of service */
 	int	se_socktype;		/* type of socket to use */
 	int	se_family;		/* address family */
@@ -205,39 +214,47 @@ struct	servconfig {
 	int	se_maxperip;		/* max number of children per src */
 };
 
-struct	servtab : public servconfig, 
+// service instance
+struct servtab : public servconfig,
 	    public inetd::intrusive::enable_shared_from_this<servtab> {
+
+	servtab(const servtab &) = delete;
+	servtab operator=(const servtab &) = delete;
+
 	servtab() : servconfig(),
 			se_fd(-1), se_count(0), se_time() {
-		se_state.running = false;
 		se_state.enabled = false;
+		se_state.running = false;
 	}
+
 	servtab(const servconfig &cfg) : servconfig(cfg),
 			se_fd(-1), se_count(0), se_time() {
+		se_state.enabled = true;
 		se_state.running = false;
-		se_state.enabled = false;
 	}
-        static void intrusive_deleter(struct servtab *sep);
+
+	static void intrusive_deleter(struct servtab *sep);
+
 	struct {
 		inetd::CriticalSection lock;
-		bool running;		/* is the service running */
 		bool enabled;		/* is the service enabled/accepting connections */
+		bool running;		/* is the service running */
 	} se_state;
-	struct se_flags {  
+	struct se_flags {
 		u_int se_checked : 1;	/* looked at during configuration merge */
-		u_int se_reset : 1;	/* channel reset required */ 
+		u_int se_reset : 1;	/* channel reset required */
 	} se_flags;
 	int	se_fd;			/* open descriptor */
 	inetd::IOCPService::Listener se_listener; /* iocp listener */
 	int	se_count;		/* number started since se_time */
 	struct	timespec se_time;	/* start of se_count */
-        
+
 	ConnInfoList se_conn[PERIPSIZE];/* per host connection management */
-	StabChildList se_children;	/* active child processes */
+	ChildList se_children;		/* active child processes */
 };
 
 #define	se_reset	se_flags.se_reset
-#define se_checked	se_flags.se_checked
+#define	se_checked	se_flags.se_checked
 
 #define	SERVTAB_EXCEEDS_LIMIT(sep)	\
 	((sep)->se_maxchild > 0 && (sep)->se_children.count() >= (sep)->se_maxchild)

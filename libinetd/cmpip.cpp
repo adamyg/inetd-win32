@@ -104,10 +104,10 @@ typedef struct CHash {
 			const int cmp = strcmp(a->ch_service, b->ch_service);
 			if (0 == cmp) {
 				if (a->ch_family == b->ch_family) {
-					if (AF_INET == a->ch_family) {
-						return memcmp(&a->ch_addrs.addr4, &b->ch_addrs.addr4, sizeof(a->ch_addrs.addr4));
-					} else {
+					if (AF_INET6 == a->ch_family) {
 						return memcmp(&a->ch_addrs.addr6, &b->ch_addrs.addr6, sizeof(a->ch_addrs.addr6));
+					} else {
+						return memcmp(&a->ch_addrs.addr4, &b->ch_addrs.addr4, sizeof(a->ch_addrs.addr4));
 					}
 				}
 				return (a->ch_family < b->ch_family ? -1 : 1);
@@ -118,10 +118,10 @@ typedef struct CHash {
 
 	CHash(const struct sockaddr_storage &rss, const char *service) :
 			ch_family(rss.ss_family), ch_addrs(), ch_service(service), ch_ltime(0), ch_times() {
-		if (AF_INET == ch_family) {
-			ch_addrs.addr4 = ((struct sockaddr_in *)&rss)->sin_addr;
+		if (AF_INET6 == ch_family) {
+			ch_addrs.addr6 = ((const struct sockaddr_in6 *)&rss)->sin6_addr;
 		} else {
-			ch_addrs.addr6 = ((struct sockaddr_in6 *)&rss)->sin6_addr;
+			ch_addrs.addr4 = ((const struct sockaddr_in *)&rss)->sin_addr;
 		}
 	}
 
@@ -237,8 +237,8 @@ static HostCollection hosts;
 int
 cpmip(const struct servtab *sep, int ctrl)
 {
-	struct sockaddr_storage rss;
-	socklen_t rssLen = sizeof(rss);
+        struct sockaddr_storage rss = {0};
+	socklen_t rsslen = sizeof(rss);
 	const int maxcpm = sep->se_maxcpm;
 	int r = 0;
 
@@ -248,15 +248,17 @@ cpmip(const struct servtab *sep, int ctrl)
 	 */
 	if (maxcpm > 0 &&
 		    (sep->se_family == AF_INET || sep->se_family == AF_INET6) &&
-		    getpeername(ctrl, (struct sockaddr *)&rss, &rssLen) == 0 ) {
+		    getpeername(ctrl, (struct sockaddr *)&rss, &rsslen) == 0) {
 
 		if (hosts.check_limit(rss, sep->se_service, maxcpm)) {
-			char pname[NI_MAXHOST];
+			char pname[NI_MAXHOST] = "unknown";
+                        int ret;
 
-			getnameinfo((struct sockaddr *)&rss,
-				    SOCKLEN_SOCKADDR_PTR((struct sockaddr *)&rss),
-				    pname, sizeof(pname), NULL, 0,
-				    NI_NUMERICHOST);
+			if ((ret = getnameinfo((struct sockaddr *)&rss, SOCKLEN_SOCKADDR_STORAGE(rss),
+				    pname, sizeof(pname), NULL, 0, NI_NUMERICHOST)) != 0) {
+				syslog(LOG_ERR, "%s getnameinfo error : %M", sep->se_service);
+			}
+
 			syslog(LOG_ERR,
 			    "%s from %s exceeded counts/min (limit %d/min)",
 			    sep->se_service, pname, maxcpm);

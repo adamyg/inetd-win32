@@ -133,6 +133,10 @@ struct ListMemberHook {
 	ListMemberHook() : node_{}, collection_(nullptr) assert_value(, member_(nullptr)) {
 	}
 
+        bool is_hooked() const { 
+                return (collection_ != nullptr);
+        }
+
 	_LIST_ENTRY(ListMemberHook, ) node_;
 	Collection *collection_;
 	assert_value(Member *member_;)
@@ -145,7 +149,7 @@ struct ListMemberHook {
 
 namespace Intrusive {
 template <typename Member>
-struct TailMemberHook{
+struct TailMemberHook {
 	struct Collection {
 		Collection() {
 			reset();
@@ -220,6 +224,10 @@ struct TailMemberHook{
 
 	TailMemberHook() : node_{}, collection_(nullptr) assert_value(, member_(nullptr)) {
 	}
+
+        bool is_hooked() const { 
+                return (collection_ != nullptr);
+        }
 
 	_TAILQ_ENTRY(TailMemberHook, ) node_;
 	Collection *collection_;

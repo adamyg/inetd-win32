@@ -475,7 +475,7 @@ more:
 				goto more;
 			}
 			if (debug && !sep->se_accept && val != 1)
-				warnx("maxchild=%lu for wait service %s"
+				syslog(LOG_WARNING, "maxchild=%lu for wait service %s"
 					" not recommended", val, sep->se_service);
 			sep->se_maxchild = val;
 		}

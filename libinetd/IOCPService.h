@@ -104,7 +104,7 @@ public:
                 };
 
         public:
-                Socket(int fd = INVALID_SOCKET) : state_(State::Closed),
+                Socket(int fd = INVALID_SOCKET) : state_(fd >= 0 ? State::Connected : State::Closed),
                                 fd_(fd), iocp_(INVALID_HANDLE_VALUE), ovlpex_(this) {
                         (void) memset(&accept_buffer_, 0, sizeof(accept_buffer_));
                 }
@@ -113,8 +113,17 @@ public:
                         close();
                 }
 
+                // Returns a handle to the managed socket if any. 
                 int fd() const {
                         return fd_;
+                }
+
+                // Releases the ownership of the managed socket if any. fd() returns -1 after the call. 
+                int release() {
+                        int t_fd = fd_;
+                        fd_ = INVALID_SOCKET;
+                        close();
+                        return t_fd;
                 }
 
                 bool getendpoints(struct sockaddr &local, struct sockaddr &remote) const {
