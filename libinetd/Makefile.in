@@ -113,6 +113,7 @@ LIBCSOURCES=\
 LIBCPPSOURCES=\
 	inetd.cpp \
 	cmpip.cpp \
+	connprocs.cpp \
 	config.cpp \
 	builtins.cpp
 

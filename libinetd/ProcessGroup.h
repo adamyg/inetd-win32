@@ -43,18 +43,19 @@ class ProcessGroup {
 
 private:
 	struct Process {
-		Process() : exitcode_(0) { }
+		Process() : exitcode_(0), attempts(0) { }
 		HANDLE take_process_handle() {
-		    return pid_.take_process_handle();
+			return pid_.take_process_handle();
 		}
 		HANDLE process_handle() const {
-		    return pid_.process_handle();
+			return pid_.process_handle();
 		}
 		DWORD process_id() const {
-		    return pid_.process_id();
+			return pid_.process_id();
 		}
 		ScopedProcessId pid_;
 		DWORD exitcode_;
+		unsigned attempts;
 	};
 
 private:
@@ -175,21 +176,27 @@ public:
 
 	int wait(bool nohang, int &status) {
 		while (true) {
-			ScopedHandle handle;
-			int pid = 0;
+			std::unique_ptr<Process> process;
 
 			{	inetd::CriticalSection::Guard guard(completelock_);
 				if (! complete_.empty()) {
-					handle.Set(complete_.front()->take_process_handle());
-					pid = complete_.front()->process_id();
+					process.swap(complete_.front());
 					complete_.pop_front();
 				}
 			}
 
-			if (handle.IsValid() && pid > 0) {
-				if (wait_handle(handle.Get(), nohang, status)) {
-					return pid;
+			if (process) {
+				if (wait_handle(process->process_handle(), nohang, status)) {
+					return process->process_id();
 				}
+
+				if (errno == EAGAIN && ++process->attempts < 3) {
+					// XXX: incomplete termination
+					inetd::CriticalSection::Guard guard(completelock_);
+					complete_.push_back(std::move(process));
+					sigchld(); //retrigger
+				}
+
 				return -1;
 			}
 
@@ -238,8 +245,8 @@ private:
 						auto it = processes.find(process_id);
 						if (it != processes.end()) {
 							assert(::GetExitCodeProcess(it->second->pid_.process_handle(), &it->second->exitcode_));
-							{   inetd::CriticalSection::Guard guard(self->completelock_);
-							    self->complete_.push_back(std::move(it->second));
+							{	inetd::CriticalSection::Guard guard(self->completelock_);
+								self->complete_.push_back(std::move(it->second));
 							}
 							processes.erase(it);
 							gensignal = true;
@@ -292,9 +299,11 @@ private:
 	}
 
 	void sigchld() {
+		// XXX: consider using a timer to trigger, allowing complete process termination.
 		if (sigchld_) { 		// optional
 			sigchld_();
 		}
+
 		if (waitevent_.IsValid()) {	// optional
 			::SetEvent(waitevent_.Get());
 		}
@@ -310,9 +319,9 @@ private:
 			errno = ECHILD; 	// special handle, ignore
 
 		} else if ((rc = ::WaitForSingleObject(handle, (nohang ? 0 : INFINITE))) == WAIT_OBJECT_0 &&
-				    ::GetExitCodeProcess(handle, (LPDWORD)&dwStatus)) {
+					::GetExitCodeProcess(handle, (LPDWORD)&dwStatus)) {
 			/*
-			 *  Normal termination:     lo-byte = 0,	    hi-byte = child exit code.
+			 *  Normal termination:     lo-byte = 0,            hi-byte = child exit code.
 			 *  Abnormal termination:   lo-byte = term status,  hi-byte = 0.
 			 */
 			if (0 == (dwStatus & 0xff)) {
