@@ -1,9 +1,9 @@
 # -*- mode: mak; -*-
-# $Id: Makefile.in,v 1.4 2020/10/23 15:58:53 cvsuser Exp $
+# $Id: $
 # inetd-win32 makefile.
 #
 #
-# Copyright (c) 2020, Adam Young.
+# Copyright (c) 2020 - 2021, Adam Young.
 # All rights reserved.
 #
 # The applications are free software: you can redistribute it
@@ -213,12 +213,13 @@ BINS=\
 	$(D_BIN)/control$(E)		\
 	$(D_BIN)/clients$(E)		\
 	$(D_BIN)/examples$(E)
-        
+
 LIBS+=\
 	$(LW)w32$(A)			\
 	$(LW)compat$(A)			\
 	$(LW)sthread$(A)		\
 	$(LW)NTService$(A)		\
+	$(LW)iptable$(A)		\
 	$(LW)inetd$(A)
 
 IMPORT=
@@ -328,6 +329,7 @@ clean:
 		$(MAKE) -C services clean
 		$(MAKE) -C service clean
 		$(MAKE) -C libinetd clean
+		$(MAKE) -C libiptable clean
 		$(MAKE) -C libNTService clean
 		$(MAKE) -C libsthread clean
 		$(MAKE) -C libcompat clean
@@ -345,6 +347,7 @@ distclean:		clean
 			service/Makefile \
 			services/Makefile \
 			libinetd/Makefile \
+			libiptable/Makefile \
 			libNTService/Makefile \
 			libsthread/Makefile \
 			libcompat/Makefile \

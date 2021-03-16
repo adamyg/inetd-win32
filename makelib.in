@@ -3,7 +3,7 @@
 # -*- mode: perl; tabs: 8; indent-width: 4; -*-
 # makelib configuration
 #
-# Copyright (c) 2020, Adam Young.
+# Copyright (c) 2020 - 2021, Adam Young.
 # All rights reserved.
 #
 # The applications are free software: you can redistribute it
@@ -61,6 +61,7 @@ $PACKAGE_FILE   = 'package.h';
         'libcompat',
         'libsthread',
         'libNTService',
+        'libiptable',
         'libinetd',
         'service',
         'services',
@@ -159,4 +160,3 @@ Configure()
 #
 
 1;
-
