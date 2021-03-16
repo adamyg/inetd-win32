@@ -48,6 +48,9 @@ namespace intrusive {
 
 template<class T>
 struct PtrMemberHook {
+        PtrMemberHook(const PtrMemberHook &) = delete;
+        PtrMemberHook& operator=(const PtrMemberHook &) = delete;
+
 	typedef T element_type;
 	constexpr PtrMemberHook() : intrusive_ptr_references_(0) {
 	}

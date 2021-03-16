@@ -287,8 +287,6 @@ static int	wrap_bi = 0;
 static int	dolog = 0;
 static fd_set	allsock;
 
-static struct	servent *sp;
-static struct	rpcent *rpc;
 static char	*hostname = nullptr;
 
 static int	signalpipe[2];
@@ -594,8 +592,6 @@ body(int argc, char **argv)
 #ifdef SANITY_CHECK
 	nsock++;
 #endif
-
-	setalarm(10);
 
 	for (;;) {
 		int n;
@@ -1393,9 +1389,11 @@ config(void)
 			break;
 #endif
 		}
+
 #if defined(RPC)
 		if (!sep->se_rpc) {
 #endif
+			struct servent *sp = nullptr;
 #if defined(AF_UNIX)
 			if (sep->se_family != AF_UNIX) {
 #endif
@@ -1430,7 +1428,7 @@ config(void)
 				close_sep(sep);
 #if defined(RPC)
 		} else {
-			rpc = getrpcbyname(sep->se_service);
+			struct rpcent rpc = getrpcbyname(sep->se_service);
 			if (rpc == 0) {
 				syslog(LOG_ERR, "%s/%s unknown RPC service",
 					sep->se_service, sep->se_proto);
@@ -1439,8 +1437,7 @@ config(void)
 				sep->se_fd = -1;
 				continue;
 			}
-			if (sep->se_reset != 0 ||
-			    rpc->r_number != sep->se_rpc_prog) {
+			if (sep->se_reset != 0 || rpc->r_number != sep->se_rpc_prog) {
 				if (sep->se_rpc_prog)
 					unregisterrpc(sep);
 				sep->se_rpc_prog = rpc->r_number;
@@ -1494,6 +1491,7 @@ unregisterrpc(struct servtab *sep)
 		netid6 = nullptr;
 	else if (sep->se_nomapped)
 		netid4 = nullptr;
+
 	/*
 	 * Conflict if same prog and protocol - In that case one should look
 	 * to versions, but it is not interesting: having separate servers for
@@ -1505,8 +1503,7 @@ unregisterrpc(struct servtab *sep)
 	for (sepp = servtabs; sepp; sepp = sepp->se_next) {
 		if (sepp == sep)
 			continue;
-		if (sepp->se_checked == 0 ||
-			    !sepp->se_rpc ||
+		if (sepp->se_checked == 0 || !sepp->se_rpc ||
 			    strcmp(sep->se_proto, sepp->se_proto) != 0 ||
 			    sep->se_rpc_prog != sepp->se_rpc_prog)
 			continue;

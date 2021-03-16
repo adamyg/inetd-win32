@@ -30,6 +30,9 @@
 
 namespace inetd {
 struct SpinLock {
+	SpinLock(const SpinLock &) = delete;
+	SpinLock& operator=(const SpinLock &) = delete;
+
 	struct Guard {
 		Guard(SpinLock &lock) : lock_(lock) {
 			while (lock.flag_.test_and_set(std::memory_order_acquire))
@@ -41,13 +44,16 @@ struct SpinLock {
 		SpinLock &lock_;
 	};
 
-	SpinLock() : flag_{ ATOMIC_FLAG_INIT } {
+	SpinLock() : flag_{ATOMIC_FLAG_INIT} {
 	}
 
 	std::atomic_flag flag_;
 };
 
 struct CriticalSection {
+	CriticalSection(const CriticalSection &) = delete;
+	CriticalSection& operator=(const CriticalSection &) = delete;
+
 	class Guard {
 		Guard(const Guard &) = delete;
 		Guard& operator=(const Guard &) = delete;

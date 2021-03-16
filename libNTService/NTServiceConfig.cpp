@@ -5,7 +5,7 @@ __CIDENT_RCSID(NTServiceConfig_cpp, "$Id: NTServiceConfig.cpp,v 1.2 2020/10/21 0
 /*
  * CNTService - Classic window services framework (tweaked).
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2021, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.

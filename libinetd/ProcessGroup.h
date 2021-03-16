@@ -43,6 +43,9 @@ class ProcessGroup {
 
 private:
 	struct Process {
+		Process(const Process &) = delete;
+		Process& operator=(const Process &) = delete;
+
 		Process() : exitcode_(0), attempts(0) { }
 		HANDLE take_process_handle() {
 			return pid_.take_process_handle();
