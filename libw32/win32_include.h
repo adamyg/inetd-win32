@@ -1,7 +1,7 @@
 #ifndef LIBW32_WIN32_INCLUDE_H_INCLUDED
 #define LIBW32_WIN32_INCLUDE_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_include_h,"$Id: win32_include.h,v 1.1 2020/10/17 18:35:23 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_include_h,"$Id: win32_include.h,v 1.2 2021/03/16 13:26:26 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */

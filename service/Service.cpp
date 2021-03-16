@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.4 2021/02/13 13:53:13 cvsuser Exp $")
+__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.6 2021/03/16 13:26:26 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * inetd service adapter
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2021, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.

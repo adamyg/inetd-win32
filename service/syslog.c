@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.2 2021/02/20 09:01:29 cvsuser Exp $")
+__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.3 2021/03/16 13:26:26 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -62,6 +62,7 @@ static int              syslog_network(void *, int op, int pri, const char *mess
 
 static SYSLOGPROXYCB    syslog_proxy = syslog_network;
 static void *           syslog_data;
+
 
 void
 openlog(const char* ident, int option, int facility)
@@ -213,7 +214,7 @@ vxsyslog(int pri, const char *fmt, va_list ap, const char *suffix)
                         char *f, ch;
 
                         for (f = fmt_copy; 0 != (ch = *fmt++) && left;) {
-                                if ('%' == ch && left > 4) {//strerror
+                                if ('%' == ch && left > 4) { //strerror
                                         if ('m' == *fmt) {
                                                 int len = snprintf(f, left, "%s", strerror(saved_errno));
                                                 if (len < 0 || len >= left) len = left;
