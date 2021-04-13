@@ -1,5 +1,5 @@
 # -*- mode: mak; -*-
-# $Id: $
+# $Id: Makefile.in,v 1.5 2021/03/16 13:26:25 cvsuser Exp $
 # inetd-win32 makefile.
 #
 #

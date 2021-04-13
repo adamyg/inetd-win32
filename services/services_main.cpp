@@ -198,10 +198,11 @@ inetd_setproctitle(const char *a, int s)
 
 	size = sizeof(ss);
 	if (getpeername(s, (struct sockaddr *)&ss, &size) == 0) {
-		    getnameinfo((struct sockaddr *)&ss, size, pbuf, sizeof(pbuf), NULL, 0, NI_NUMERICHOST);
+		getnameinfo((struct sockaddr *)&ss, SOCKLEN_SOCKADDR_STORAGE(ss), pbuf, sizeof(pbuf), NULL, 0, NI_NUMERICHOST);
 		(void) sprintf_s(buf, sizeof(buf), "%s [%s]", a, pbuf);
-	} else
+	} else {
 		(void) sprintf_s(buf, sizeof(buf), "%s", a);
+        }    		
 	setproctitle("%s", buf);
 }
 

@@ -155,8 +155,7 @@ public:
 //		}
 
 		bool async_read(void *buffer, size_t buflen, IOCallback callback) {
-			if (!callback)
-				return false;
+			assert (callback);
 
 			if (INVALID_HANDLE_VALUE == iocp_ || INVALID_SOCKET == fd_ ||
 					nullptr == buffer || 0 == buflen || Connected != state_) {
@@ -192,8 +191,7 @@ public:
 		}
 
 		bool async_write(const void *buffer, size_t buflen, IOCallback callback) {
-			if (!callback)
-				return false;
+			assert(callback);
 
 			if (INVALID_HANDLE_VALUE == iocp_ || INVALID_SOCKET == fd_ ||
 					nullptr == buffer || 0 == buflen || Connected != state_) {
