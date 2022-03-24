@@ -1,9 +1,9 @@
 # -*- mode: mak; -*-
-# $Id: Makefile.in,v 1.4 2020/10/23 15:58:53 cvsuser Exp $
+# $Id: Makefile.in,v 1.6 2022/03/24 13:11:39 cvsuser Exp $
 # inetd-win32 makefile.
 #
 #
-# Copyright (c) 2020, Adam Young.
+# Copyright (c) 2020 - 2021, Adam Young.
 # All rights reserved.
 #
 # The applications are free software: you can redistribute it
@@ -44,6 +44,9 @@ PACKAGE_VERSION	= @PACKAGE_VERSION@
 ifeq ("","$(PACKAGE_VERSION)")
 PACKAGE_VERSION	= 0.0.1
 endif
+PKG_VERSION_1	=$(word 1,$(subst ., ,$(PACKAGE_VERSION)))
+PKG_VERSION_2	=$(word 2,$(subst ., ,$(PKG_VERSION)))
+PKG_VERSION_3	=$(word 3,$(subst ., ,$(PKG_VERSION)))
 
 PATH_SEPARATOR	= @PATH_SEPARATOR@
 
@@ -77,8 +80,8 @@ libexecdir	= @libexecdir@
 libdir		= @libdir@
 datadir		= @datadir@
 
-        # package directories
-pkgname		= inetd-win32
+	# package directories
+pkgname		= @PACKAGE@
 ifeq (rief,$(findstring rief,$(libexecdir)))
 pkglibexecdir	= $(libexecdir)
 pkglibdir	= $(libdir)
@@ -111,16 +114,60 @@ LP=		lib
 E=		.exe
 
 CLEAN=		*.bak *~ *.BAK *.swp *.tmp core *.core a.out
-XCLEAN=
+XCLEAN=		$(D_BIN)/*.map
 
 # Configuration
 
-ifeq ("$(BUILD_TYPE)","")	#default
-BUILD_TYPE=	debug
-MAKEFLAGS+=	BUILD_TYPE=debug
+ifneq "" "$(filter win32,@build_os@)"
+BUSYBOX=	@BUSYBOX@
+ifeq ($(BUSYBOX),busybox)
+BUSYBOX=	$(shell which busybox 2>/dev/null)
 endif
-ifneq ("$(BUILD_TYPE)","release")
+ECHO=		$(BUSYBOX) echo
+else
+ECHO=		echo
+endif
+
+ifeq ("$(BUILD_TYPE)","")	#default
+
+.PHONY:				help clean vclean build package
+help clean vclean build package:
+ifneq ("$(word 1,$(MAKECMDGOALS))","debug")
+ifneq ("$(word 1,$(MAKECMDGOALS))","release")
+	@$(ECHO) -n -e "\
+		|\n\
+		| make [release or debug] target \n\
+		|\n\
+		|	Build one or more of the following targets recursively within each sub-directory. \n\
+		|\n\
+		| Targets: \n\
+		|\n\
+		|	build   - build everything. \n\
+		|	package - build package. \n\
+		|	clean   - delete everything which can be remade. \n\
+		|	vclean  - delete all. \n\
+		|	help    - command line usage. \n\
+		"
+endif
+endif
+	@echo .
+
+.PHONY:				release
+release:
+		$(MAKE) BUILD_TYPE=release $(filter-out release, $(MAKECMDGOALS))
+
+.PHONY:				debug
+debug:
+		$(MAKE) BUILD_TYPE=debug $(filter-out debug, $(MAKECMDGOALS))
+
+else	# BUILD_TYPE
+
+ifeq ("$(BUILD_TYPE)","debug")
 RTSUFFIX=d
+else
+ifneq ("$(BUILD_TYPE)","release")
+$(error invalid BUILD_TYPE; debug or release expected)
+endif
 endif
 
 # Directories
@@ -129,7 +176,6 @@ D_INC=		$(ROOT)/include
 D_BIN=		$(ROOT)/bin@TOOLCHAINEXT@/$(BUILD_TYPE)
 D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
 D_OBJ=		$(ROOT)/objects@TOOLCHAINEXT@/$(BUILD_TYPE)
-LW=		$(D_LIB)/$(LP)
 
 D_ETC=		$(D_BIN)/etc
 D_PLUGIN=	$(D_BIN)/plugin
@@ -148,6 +194,8 @@ CP=		@CP@
 RC=		@RC@
 PERL=		@PERL@
 TAR=		@TAR@
+WGET=		@WGET@
+
 INSTALL=	@INSTALL@
 INSTALL_PROGRAM=@INSTALL_PROGRAM@
 INSTALL_DATA=	@INSTALL_DATA@
@@ -155,11 +203,6 @@ INSTALL_DATA=	@INSTALL_DATA@
 INNO=		@INNO@
 ifeq ($(INNO),) # Inno5: allowing legacy XP installations
 INNO=		"C:/Program Files (x86)/Inno Setup 5/Compil32"
-endif
-
-BUSYBOX=	@BUSYBOX@
-ifeq ($(BUSYBOX),busybox)
-BUSYBOX=	$(shell which busybox 2>/dev/null)
 endif
 
 # Common flags
@@ -184,11 +227,15 @@ LDFLAGS=	$(LDDEBUG) @LDFLAGS@
 endif
 LDLIBS=		-L$(D_LIB) @LIBS@ @EXTRALIBS@
 
+ARFLAGS=	rcv
 RMFLAGS=	-f
 RMDFLAGS=	-rf
 
+
 #########################################################################################
 # Targets
+
+LW=		$(D_LIB)/$(LP)
 
 ifeq ("wcl386","$(CC)")
 ifeq ("@TOOLCHAIN@","owc20")
@@ -233,11 +280,29 @@ endif
 # rules
 
 .DEFAULT:
-.PHONY:			build release debug
+.PHONY:				build directories
 build:			directories buildinfo libs bins import
+.PHONY:				help
+help:
+	@$(ECHO) -e "\
+		|\n\
+		| make [release or debug] target \n\
+		|\n\
+		|	Build one or more of the following targets recursively within each sub-directory. \n\
+		|\n\
+		| Targets: \n\
+		|\n\
+		|	build   - build everything. \n\
+		|	package - build all packages. \n\
+		|	clean   - delete everything which can be remade. \n\
+		|	help    - command line usage. \n\
+		"
 
+.PHONY:				release
 release:
 		$(MAKE) BUILD_TYPE=release $(filter-out release, $(MAKECMDGOALS))
+
+.PHONY:				debug
 debug:
 		$(MAKE) BUILD_TYPE=debug $(filter-out debug, $(MAKECMDGOALS))
 
@@ -314,7 +379,12 @@ $(D_BIN)/$(PLBRNAME).dll:	$(LIBPLBRPATH)
 		@$(CP) -f $(subst /,\,$^) $@
 endif
 
-install:		all
+.PHONY:		package
+package:	import packageinfo
+	$(INNO) ./win32/gr-inno-setup.iss
+	-$(RM) $(PACKAGEINFO)
+
+install:		build
 		-mkdir -p $(BINDIR)
 		-mkdir -p $(DATADIR)
 		$(INSTALL_PROGRAM) -m 0755 -c -o bin -g bin $(D_BIN)/rlogin$(E) $(BINDIR)
@@ -328,6 +398,7 @@ clean:
 		$(MAKE) -C services clean
 		$(MAKE) -C service clean
 		$(MAKE) -C libinetd clean
+		$(MAKE) -C libiptable clean
 		$(MAKE) -C libNTService clean
 		$(MAKE) -C libsthread clean
 		$(MAKE) -C libcompat clean
@@ -345,6 +416,7 @@ distclean:		clean
 			service/Makefile \
 			services/Makefile \
 			libinetd/Makefile \
+			libiptable/Makefile \
 			libNTService/Makefile \
 			libsthread/Makefile \
 			libcompat/Makefile \
@@ -352,3 +424,5 @@ distclean:		clean
 			Makefile
 
 #end
+
+endif	# BUILD_TYPE
