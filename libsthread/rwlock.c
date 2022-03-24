@@ -1,7 +1,7 @@
 /*
  *  Simple win32 threads - read-write locks.
  *
- *  Copyright (c) 2020 - 2021, Adam Young.
+ *  Copyright (c) 2020 - 2022, Adam Young.
  *  All rights reserved.
  *
  *  This file is part of inetd-win32.

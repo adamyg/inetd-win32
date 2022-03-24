@@ -10,7 +10,7 @@
  *      each of the pthreads functions that can return an error, POSIX.1-2001
  *      specifies that the function can never fail with the error EINTR.
  *
- *  Copyright (c) 2020 - 2021, Adam Young.
+ *  Copyright (c) 2020 - 2022, Adam Young.
  *  All rights reserved.
  *
  *  This file is part of inetd-win32.
