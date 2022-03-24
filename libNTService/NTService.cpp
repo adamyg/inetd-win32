@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(NTService_cpp, "$Id: NTService.cpp,v 1.2 2020/10/21 09:46:54 cvsuser Exp $")
+__CIDENT_RCSID(NTService_cpp, "$Id: NTService.cpp,v 1.4 2022/03/24 12:39:04 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * CNTService - Classic window services framework (tweaked).
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * Based on the MSDN example service framework.
  * All rights reserved.
  *
@@ -45,6 +45,7 @@ extern "C" _WCRTLINK extern int asctime_s(char *__s, size_t __maxsize, const str
 
 #include "NTService.h"                          // public interface
 #include "NTServiceGetOpt.h"
+#include "NTString.h"
 
 #include "NTServMsg.h"                          // event msg identifiers
 
@@ -64,9 +65,6 @@ extern "C" _WCRTLINK extern int asctime_s(char *__s, size_t __maxsize, const str
 #include <comdef.h>
 #endif
 #include <psapi.h>
-
-#include <string>
-
 
 CNTService* CNTService::__serviceInstance = NULL;
         // Service singleton --
@@ -1159,7 +1157,7 @@ void CNTService::ControlHandler(DWORD dwOpcode)
                 break;
         case SERVICE_CONTROL_TRIGGEREVENT:  // 0x20
                 break:
-  */
+     */
         default:
                 if (dwOpcode >= SERVICE_CONTROL_USER) {
                         if (! pService->OnUserControl(dwOpcode)) {
@@ -1288,14 +1286,14 @@ BOOL WINAPI CNTService::ConsoleHandler(DWORD dwCtrlType)
 // Debugging support
 
 struct ModuleProfile {
-        std::string Comments;
-        std::string CompanyName;
-        std::string FileDescription;
-        std::string FileVersion;
-        std::string LegalCopyright;
-        std::string LegalTrademarks;
-        std::string ProductName;
-        std::string ProductVersion;
+        NTService::CString Comments;
+        NTService::CString CompanyName;
+        NTService::CString FileDescription;
+        NTService::CString FileVersion;
+        NTService::CString LegalCopyright;
+        NTService::CString LegalTrademarks;
+        NTService::CString ProductName;
+        NTService::CString ProductVersion;
 };
 
 static bool
@@ -1397,7 +1395,7 @@ void CNTService::ShowVersion()
 
 #ifdef _WIN64
 static BOOL CALLBACK
-ModuleEnumCb(PCSTR ModuleName,  DWORD64 ModuleBase, ULONG ModuleSize, PVOID UserContext)
+ModuleEnumCb(PCSTR ModuleName, DWORD64 ModuleBase, ULONG ModuleSize, PVOID UserContext)
 #else
 static BOOL CALLBACK
 ModuleEnumCb(PCSTR ModuleName, ULONG ModuleBase, ULONG ModuleSize, PVOID UserContext)
