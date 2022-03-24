@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.2 2020/10/18 15:34:32 cvsuser Exp $")
+__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.7 2022/03/24 13:47:43 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * inetd service adapter
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -547,7 +547,7 @@ Service::logger_body(PipeEndpoint *endpoint)
                             if (sz) {
                                 unsigned t_sz = sz;
 
-                                if ('\r' == line[sz - 1]) --t_sz; // \r\n
+                                if ('\r' == line[t_sz-1]) --t_sz; // \r\n
                                 if (t_sz) {
                                     ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, line, t_sz);
                                     if (INVALID_HANDLE_VALUE != hStdout) {

@@ -1,7 +1,7 @@
 /*
  * inetd service ...
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -30,6 +30,7 @@
 #include <sys/resource.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <getopt.h>
 #include <unistd.h>
 
 #include "Service.h"                            // Service implementation.
@@ -282,7 +283,7 @@ help(void)
     printf(WININETD_PACKAGE " - " WININETD_PACKAGE_NAME " " WININETD_VERSION ", service options\n\n");
 
     printf("NAME:\n\n");
-    printf("inetd_service - high-performance memory object caching system\n\n");
+    printf("inetd_service - internet service daemon\n\n");
 
     printf("SYNOPSIS:\n\n");
     printf("inetd_service [options] <command> [configuration]\n\n");
@@ -327,7 +328,7 @@ license(void)
 {
     printf(WININETD_PACKAGE " - " WININETD_PACKAGE_NAME " " WININETD_VERSION "\n\n");
 
-    printf("Copyright (C) 2020 Adam Young, All rights reserved.\n");
+    printf("Copyright (C) 2020 - 2022 Adam Young, All rights reserved.\n");
     printf("Licensed under GNU General Public License version 3.0.\n");
 
     printf("\n\nThis program comes with ABSOLUTELY NO WARRANTY. This is free software,\n");
