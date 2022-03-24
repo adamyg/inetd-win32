@@ -131,12 +131,12 @@ extern char *rindex(const char *s, int c);
 #endif
 #endif /*HAVE_RINDEX*/
 
-#if !defined(HAVE_MKSTEMP)
-extern int mkstemp(char *path);
-#if !defined(LIBCOMPAT_SOURCE)
-#define HAVE_MKSTEMP
-#endif
-#endif /*HAVE_MKSTEMP*/
+//#if !defined(HAVE_MKSTEMP)
+//extern int mkstemp(char *path);
+//#if !defined(LIBCOMPAT_SOURCE)
+//#define HAVE_MKSTEMP
+//#endif
+//#endif /*HAVE_MKSTEMP*/
 
 #if !defined(HAVE_MKTEMP)
 extern char *mktemp(char *path);
