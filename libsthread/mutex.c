@@ -1,7 +1,7 @@
 /*
  *  Simple win32 threads - mutexs.
  *
- *  Copyright (c) 2020, Adam Young.
+ *  Copyright (c) 2020 - 2021, Adam Young.
  *  All rights reserved.
  *
  *  This file is part of inetd-win32.
@@ -64,14 +64,14 @@ pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
     if (NULL == mutex) {
         return EINVAL;
     }
-    assert(0xBABEFACE != mutex->flag);          /* trap double init, yet *could* be a false positive */
+    assert(MUTEX_MAGIC != mutex->flag);         /* trap double init, yet *could* be a false positive */
     mutex->lock = 1;                            /* initialisation is unconditional */
 #if defined(MUTEX_SPINCOUNT)
     InitializeCriticalSectionAndSpinCount(&mutex->cs, MUTEX_SPINCOUNT);
 #else
     InitializeCriticalSection(&mutex->cs);
 #endif
-    mutex->flag = 0xBABEFACE;
+    mutex->flag = MUTEX_MAGIC;
     mutex->nest = 0;
     mutex->lock = 0;
     return 0;
@@ -84,15 +84,15 @@ mutex_init_once(pthread_mutex_t *mutex)
 #if !defined(NDEBUG)
     const long lock = mutex->lock; assert(0 == lock || 1 == lock);
 #endif
-    if (0xBABEFACE != mutex->flag) {
+    if (MUTEX_MAGIC != mutex->flag) {
         satomic_lock(&mutex->lock);
-        if (0xBABEFACE != mutex->flag) {        /* runtime initialisation */
+        if (MUTEX_MAGIC != mutex->flag) {       /* runtime initialisation */
 #if defined(MUTEX_SPINCOUNT)
             InitializeCriticalSectionAndSpinCount(&mutex->cs, MUTEX_SPINCOUNT);
 #else
             InitializeCriticalSection(&mutex->cs);
 #endif
-            mutex->flag = 0xBABEFACE;
+            mutex->flag = MUTEX_MAGIC;
             mutex->nest = 0;
         }
         satomic_unlock(&mutex->lock);
@@ -108,7 +108,7 @@ pthread_mutex_destroy(pthread_mutex_t *mutex)
     }
 
     if (mutex->flag) {
-        assert(0xBABEFACE == mutex->flag);
+        assert(MUTEX_MAGIC == mutex->flag);
         assert(0 == mutex->nest);               /* shouldnt be owned */
         mutex->flag = 0;
         DeleteCriticalSection(&mutex->cs);
@@ -158,7 +158,7 @@ pthread_mutex_unlock(pthread_mutex_t *mutex)
         return EINVAL;
     }
 
-    assert(0xBABEFACE == mutex->flag);          /* initialised */
+    assert(MUTEX_MAGIC == mutex->flag);         /* initialised */
     assert(1 == mutex->nest);                   /* should be locked */
     --mutex->nest;
 

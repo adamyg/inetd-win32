@@ -1,7 +1,7 @@
 /*
  *  Simple win32 threads - conditions.
  *
- *  Copyright (c) 2020, Adam Young.
+ *  Copyright (c) 2020 - 2021, Adam Young.
  *  All rights reserved.
  *
  *  This file is part of inetd-win32.

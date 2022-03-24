@@ -3,10 +3,9 @@
  *
  *  API semnatics are not 100% POSIX,
  *   o avoid cloning pthread_t handles.
- *   o pthread_self() may only return a pseudo handle hence can not be used within pthread_detach().
  *   o pthread_join() avoid concurrent use
  *
- *  Copyright (c) 2020, Adam Young.
+ *  Copyright (c) 2020 - 2021, Adam Young.
  *  All rights reserved.
  *
  *  This file is part of inetd-win32.
@@ -40,6 +39,8 @@
 #include <assert.h>
 #include <unistd.h>
 
+#include "satomic.h"
+
 #define ATTRIBUTE_MAGIC         0
 #define ATTRIBUTE_STACKSIZE     1
 #define ATTRIBUTE_DETACHED      2
@@ -47,18 +48,164 @@
 #define VALID_HANDLE(_h)        (_h && INVALID_HANDLE_VALUE != _h)
 #define CURRENT_THREAD          ((HANDLE)(-2))  /* current thread psuedo handle */
 
-typedef struct {
+typedef struct pthread_instance {
+    unsigned magic;
+    HANDLE handle;
+    satomic_lock_t joining;
+    DWORD id;
     void *(*routine)(void *);
     void *arg;
-} start_t;
+    void *ret;
+
+//#define PTHREAD_MAX_KEYS      32
+#if defined(PTHREAD_MAX_KEYS)
+    void *keys[PTHREAD_MAX_KEYS];
+#endif
+} instance_t;
+
+#if defined(PTHREAD_MAX_KEYS)
+typedef void (*destructor_t)(void *);
+
+#define KEY_DESTRUCTOR_NULL     ((destructor_t)-1)
+static pthread_rwlock_t key_lock_ = PTHREAD_RWLOCK_INITIALIZER;
+static destructor_t key_destructors_[PTHREAD_MAX_KEYS] = {0};
+#endif
+
+static pthread_once_t thread_once_ = RTL_RUN_ONCE_INIT; 
+static DWORD thread_tls_ = 0;
+
+
+static instance_t *
+instance_new()
+{      
+    instance_t *instance;
+    if (NULL != (instance = calloc(sizeof(instance_t), 1))) {
+        instance->magic = THREAD_MAGIC;
+    }
+    return instance;
+}
+
+
+static void
+instance_free(instance_t *instance)
+{      
+    assert(THREAD_MAGIC == instance->magic);
+    instance->magic = 0;
+    free(instance);
+}
+
+
+static void
+thread_tls_once(void)
+{
+    thread_tls_ = TlsAlloc();
+}
+
+
+static instance_t *
+thread_instance(int create)
+{
+    instance_t *instance;
+
+    pthread_once(&thread_once_, thread_tls_once);
+    if (NULL == (instance = (instance_t *) TlsGetValue(thread_tls_))) {
+        if (create) {           
+            if (NULL != (instance = instance_new())) {
+                TlsSetValue(thread_tls_, (void *)instance);
+            }
+        }
+    }
+    return instance;
+}
+
+
+#if defined(PTHREAD_MAX_KEYS)
+static pthread_key_t
+thread_key_new(destructor_t destructor)
+{
+    pthread_key_t val = (pthread_key_t)-1;
+    unsigned key;
+
+    pthread_rwlock_wrlock(&key_lock_);
+    for (key = 0; key < PTHREAD_MAX_KEYS; ++key) {
+        if (NULL == key_destructors_[key]) {
+            key_destructors_[key] =
+                    (destructor ? destructor : KEY_DESTRUCTOR_NULL);
+            val = key;
+             break;
+        }
+    }
+    pthread_rwlock_unlock(&key_lock_);
+    return val;
+}
+
+
+static pthread_key_t
+thread_key_delete(pthread_key_t key)
+{
+    if (key > PTHREAD_MAX_KEYS)
+        return EINVAL;
+
+    pthread_rwlock_wrlock(&key_lock_);
+    key_destructors_[key] = NULL;
+    pthread_rwlock_unlock(&key_lock_);
+    return 0;
+}
+
+
+static void
+thread_key_cleanup(instance_t *instance)
+{  
+    unsigned i, key;
+
+    /* Both pthread_getspecific() and pthread_setspecific() may be called from a thread-specific 
+       data destructor function. A call to pthread_getspecific() for the thread-specific data key being
+       destroyed shall return the value NULL, unless the value is changed (after the destructor starts)
+       by a call to pthread_setspecific().  Calling pthread_setspecific() from a thread-specific data
+       destructor routine may result either in lost storage (after at least PTHREAD_DESTRUCTOR_ITERATIONS
+       attempts at destruction) or in an infinite loop.
+    */
+    for (i = 0; i < PTHREAD_DESTRUCTOR_ITERATIONS; ++i) {
+        unsigned count = 0;
+
+        for (key = 0; key < PTHREAD_MAX_KEYS; ++key) {
+            void *val = instance->keys[key];
+
+            if (val) {
+                destructor_t destructor;
+
+                pthread_rwlock_rdlock(&key_lock_);
+                destructor = key_destructors_[key];
+                if (destructor) { //assigned
+                    instance->keys[key] = NULL;
+                    if (KEY_DESTRUCTOR_NULL != destructor)
+                        destructor(val);
+                    ++count;
+                }
+                pthread_rwlock_unlock(&key_lock_);
+            }
+        }
+
+        if (0 == count) return;
+    }   
+}
+#endif  /*PTHREAD_MAX_KEYS*/
 
 
 static unsigned _stdcall
 windows_thread(void *arg)
 {
-    start_t *start = (start_t *)arg;
-    start->routine(start->arg);
-    free((void *)start);
+    instance_t *instance = (instance_t *)arg;
+
+    assert(THREAD_MAGIC == instance->magic);
+    TlsSetValue(thread_tls_, instance);
+    instance->ret = instance->routine(instance->arg);
+    if (0 == instance->handle) {                    /* detached? */
+        if (0 == satomic_read(&instance->joining)) { /* join in process? */
+            TlsSetValue(thread_tls_, (void *)-1);
+            instance_free(instance);
+        }
+    }
     return 0;
 }
 
@@ -67,34 +214,36 @@ int
 pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)
 {
     if (thread && start_routine) {
-        start_t *start = malloc(sizeof(*start));
+        pthread_once(&thread_once_, thread_tls_once);
+        if (TLS_OUT_OF_INDEXES != thread_tls_) {
+            instance_t *instance = instance_new(1);
 
-        if (start) {
-            start->routine = start_routine;
-            start->arg = arg;
+            if (instance) {
+                instance->routine = start_routine;
+                instance->arg = arg;
 
-            {   unsigned id = 0, stacksize = 0;
-                if (attr) {                     /* optional stacksize? */
-                    assert(0xBABEFACE == attr->attributes[ATTRIBUTE_MAGIC]);
-                    stacksize = (unsigned)attr->attributes[ATTRIBUTE_STACKSIZE];
-                }
-                uintptr_t handle = _beginthreadex(NULL, stacksize, windows_thread, start, 0, &id);
-                if (handle != (uintptr_t)-1) {
-                    if (attr) {                 /* detached? */
-                        if (PTHREAD_CREATE_DETACHED == attr->attributes[ATTRIBUTE_DETACHED]) {
-                            CloseHandle((HANDLE) handle);
-                            handle = 0;
-                        }
+                {   unsigned id = 0, stacksize = 0;
+                    if (attr) {                     /* optional stacksize? */
+                        assert(0xBABEFACE == attr->attributes[ATTRIBUTE_MAGIC]);
+                        stacksize = (unsigned)attr->attributes[ATTRIBUTE_STACKSIZE];
                     }
-                    thread->handle = (HANDLE) handle;
-                    thread->id = id;
-                    return 0;
+                    uintptr_t handle = _beginthreadex(NULL, stacksize, windows_thread, instance, 0, &instance->id);
+                    if (handle != (uintptr_t)-1) {
+                        instance->handle = (HANDLE) handle;
+                        if (attr) {                 /* detached? */
+                            if (PTHREAD_CREATE_DETACHED == attr->attributes[ATTRIBUTE_DETACHED]) {
+                                instance->handle = (HANDLE) 0;
+                                CloseHandle((HANDLE) handle);
+                            }
+                        }
+                        *thread = instance;
+                        return 0;
+                    }
                 }
+                instance_free(instance);
             }
-
-            free((void *)start);
         }
-        thread->handle = 0;
+        *thread = 0;
     }
     return EINVAL;
 }
@@ -103,14 +252,19 @@ pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_rout
 int
 pthread_detach(pthread_t thread)
 {
-    if (VALID_HANDLE(thread.handle)) {
-        if (CURRENT_THREAD == thread.handle) {
-            assert(CURRENT_THREAD != thread.handle);
-            return ENOSYS;                      /* pthread_detach(pthread_self()) */
+    if (thread) {
+        instance_t *instance = (instance_t *) thread;
+
+        assert(THREAD_MAGIC == instance->magic);
+        if (THREAD_MAGIC == instance->magic) {
+            HANDLE handle = instance->handle;
+            if (handle) {
+                    /* Attempting to detach an already detached thread results in unspecified behavior. */
+                instance->handle = 0;
+                CloseHandle(handle);
+                return 0;
+            }
         }
-        CloseHandle(thread.handle);
-        thread.handle = 0;
-        return 0;
     }
     return EINVAL;
 }
@@ -119,34 +273,62 @@ pthread_detach(pthread_t thread)
 void
 pthread_exit(void *value_ptr)
 {
-    assert(sizeof(char *) <= sizeof(unsigned));
-    _endthreadex((unsigned)value_ptr);          /* does not explicity close the handle */
+    instance_t *instance = pthread_self();
+
+    if (instance) {
+        if (satomic_read(&instance->joining) || /* join in process? */
+                instance->handle) {             /* attached ?*/
+            instance->ret = value_ptr;
+        } else {
+            TlsSetValue(thread_tls_, (void *)-1);
+            instance_free(instance);
+        }
+    }
+    _endthreadex(0);                            /* does not explicity close the handle */
 }
 
 
 int
 pthread_join(pthread_t thread, void **value_ptr)
 {
-    HANDLE handle = thread.handle;
-    if (VALID_HANDLE(handle)) {
-        if (CURRENT_THREAD != handle) {
-            const DWORD ret = WaitForSingleObject(handle, INFINITE);
-                /* Note: wont guard against concurrent join's */
-            if (WAIT_OBJECT_0 == ret) {
-                if (value_ptr) {                /* optional return value */
-                    DWORD retval = 0;
-                    if (! GetExitCodeThread(handle, &retval)) {
-                        retval = 0;
-                    }
-                    *value_ptr = (void *)retval;
-                }
-                CloseHandle(thread.handle);
-                thread.handle = 0;
-                return 0;
-            }
-            return ESRCH;                       /* no thread could be found; cloned handle? */
+    if (thread) {
+        instance_t *instance = (instance_t *) thread;
+
+        assert(THREAD_MAGIC == instance->magic);
+        if (THREAD_MAGIC != instance->magic) {
+                /* The thread specified by thread must be joinable. */
+                /* Joining with a thread that has previously been joined results in
+                   undefined behavior. */
+            return EINVAL;
         }
-        return EDEADLK;                         /* deadlock was detected; self reference. */
+
+        if (thread == pthread_self()) {
+            return EDEADLK;                     /* deadlock was detected; self reference. */
+        }
+
+        if (! satomic_try_lock(&instance->joining)) {
+            return EINVAL;                      /* another thread is already waiting */
+                /* If multiple threads simultaneously try to join with the same thread, 
+                   the results are undefined. */
+        }
+
+        if (CURRENT_THREAD == instance->handle /*root thread*/ ||
+                WaitForSingleObject(instance->handle, INFINITE) != WAIT_OBJECT_0) {
+            satomic_unlock(&instance->joining);
+
+        } else {
+            assert(instance->joining);
+            if (instance->handle) {             /* still attached ? */
+                if (value_ptr) {                /* optional return value */
+                    *value_ptr = instance->ret;
+                }
+                CloseHandle(instance->handle);
+                instance_free(instance);
+                return 0;                       /* complete */
+            }
+            instance_free(instance);
+        }
+        return ESRCH;                           /* no thread could be found; cloned handle? */
     }
     return EINVAL;                              /* invalid/not-joinable. */
 }
@@ -155,19 +337,26 @@ pthread_join(pthread_t thread, void **value_ptr)
 pthread_t
 pthread_self(void)
 {
-    pthread_t pt = {0};
- // pt.handle = GetCurrentThread();             /* note: returns only a psuedo handle. */
- // assert(CURRENT_THREAD == pt.handle);
-    pt.handle = 0;
-    pt.id = GetCurrentThreadId();
-    return pt;
+    instance_t *instance = thread_instance(0);
+
+    if (NULL == instance) {                     /* main thread */
+        if (NULL != (instance = thread_instance(1))) {
+            instance->handle = GetCurrentThread();
+            instance->id = GetCurrentThreadId();
+        }
+    } else if ((void *)-1 == instance) {
+        instance = NULL;                        /* terminated; shouldnt occur */
+    } else {
+        assert(THREAD_MAGIC == instance->magic);
+    }
+    return (pthread_t) instance;
 }
 
 
 int
 pthread_equal(pthread_t t1, pthread_t t2)
 {
-    return (t1.id == t2.id);                    /* note: ignore handles as detached wont have one reported */
+    return (t1 && t1 == t2);
 }
 
 
@@ -224,7 +413,7 @@ pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate)
 int
 pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize)
 {
-    if (NULL == attr) {
+    if (NULL == attr || stacksize < PTHREAD_STACK_MIN) {
         return EINVAL;
     }
     assert(0xBABEFACE == attr->attributes[ATTRIBUTE_MAGIC]);
@@ -269,4 +458,3 @@ pthread_attr_getstackaddr(const pthread_attr_t *attr, void **stackaddr)
 }
 
 /*end*/
-

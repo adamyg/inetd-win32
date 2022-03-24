@@ -3,7 +3,7 @@
 /*
  *  Simple win32 threads - atomic operations
  *
- *  Copyright (c) 2020, Adam Young.
+ *  Copyright (c) 2020 - 2021, Adam Young.
  *  All rights reserved.
  *
  *  This file is part of inetd-win32.
@@ -66,6 +66,13 @@ satomic_lock(volatile satomic_lock_t *lock) {
         }
         ++k;
     }
+}
+
+
+static __inline long
+satomic_read(volatile satomic_lock_t *lock) {
+    SATOMIC_FENCE
+    return *lock;
 }
 
 
