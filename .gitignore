@@ -13,6 +13,7 @@ CVS/
 .vscode/
 Makefile
 .created
+testcerts/
 .#*
 wd*.bat
 *.00*
