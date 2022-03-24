@@ -6,7 +6,7 @@
  * Get command line options.
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -204,7 +204,6 @@ private:
                                 return -100;
                         }
                 }
-
 
                 if ((optopt_ = (int)*place_++) == (int)':' || NULL == (oli = strchr(ostr_, optopt_))) {
                         if (!*place_) ++optind_;

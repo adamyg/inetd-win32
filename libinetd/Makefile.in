@@ -2,7 +2,7 @@
 # libinetd makefile.
 #
 #
-# Copyright (c) 2020, Adam Young.
+# Copyright (c) 2020 - 2022, Adam Young.
 # All rights reserved.
 #
 # The applications are free software: you can redistribute it
@@ -112,6 +112,9 @@ LIBCSOURCES=\
 
 LIBCPPSOURCES=\
 	inetd.cpp \
+	cmpip.cpp \
+	connprocs.cpp \
+	config.cpp \
 	builtins.cpp
 
 LIBHSOURCES=\
