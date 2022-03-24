@@ -1,12 +1,14 @@
 #ifndef LIBW32_GRP_H_INCLUDED
 #define LIBW32_GRP_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_grp_h,"$Id: grp.h,v 1.1 2020/10/17 18:35:20 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_grp_h,"$Id: grp.h,v 1.2 2022/03/24 12:42:42 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
- * Copyright (c) 1998 - 2020, Adam Young.
+ * win32 <grp.h> implementation
+ *
+ * Copyright (c) 2007, 2012 - 2022 Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -30,7 +32,9 @@ __CPRAGMA_ONCE
  * ==end==
  */
 
-#include <sys/cdefs.h>
+#include <sys/cdefs.h>                          /* __BEGIN_DECLS, __PDECL */
+#include <sys/utypes.h>                         /* uid_t */
+#include <stddef.h>                             /* size_t */
 
 __BEGIN_DECLS
 
@@ -45,11 +49,16 @@ struct group {
     const char **       gr_mem;
 };
 
-LIBW32_API struct group *getgrent(void);
 LIBW32_API struct group *getgrgid(int);
 LIBW32_API struct group *getgrnam(const char *);
+
 LIBW32_API void         setgrent(void);
+LIBW32_API struct group *getgrent(void);
 LIBW32_API void         endgrent(void);
+LIBW32_API int          getgrent_r(struct group *grp, char *buf, size_t buflen, struct group **result);
+
+LIBW32_API int          getgrgid_r(gid_t, struct group *, char *, size_t, struct group **);
+LIBW32_API int          getgrnam_r(const char *name, struct group *grp, char *buf, size_t buflen, struct group **result);
 
 LIBW32_API int          getgroups(int gidsetsize, gid_t grouplist[]);
 LIBW32_API int          setgroups(size_t size, const gid_t *gidset);

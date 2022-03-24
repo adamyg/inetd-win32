@@ -1,14 +1,14 @@
 #ifndef LIBW32_WIN32_TIME_H_INCLUDED
 #define LIBW32_WIN32_TIME_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_time_h,"$Id: win32_time.h,v 1.1 2020/10/17 18:35:23 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_time_h,"$Id: win32_time.h,v 1.2 2022/03/24 12:42:45 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
  * win32 time functionality.
  *
- * Copyright (c) 1998 - 2020, Adam Young.
+ * Copyright (c) 1998 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.

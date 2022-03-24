@@ -3,7 +3,7 @@
 /*
  * RGB Colors -- win32 slang emulation.
  *
- * Copyright (c) 2015 - 2020, Adam Young.
+ * Copyright (c) 2015 - 2022, Adam Young.
  *
  * This file is part of inetd-win32.
  *
