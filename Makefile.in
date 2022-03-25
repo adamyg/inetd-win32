@@ -3,7 +3,7 @@
 # inetd-win32 makefile.
 #
 #
-# Copyright (c) 2020 - 2021, Adam Young.
+# Copyright (c) 2020 - 2022, Adam Young.
 # All rights reserved.
 #
 # The applications are free software: you can redistribute it
@@ -260,12 +260,13 @@ BINS=\
 	$(D_BIN)/control$(E)		\
 	$(D_BIN)/clients$(E)		\
 	$(D_BIN)/examples$(E)
-        
+
 LIBS+=\
 	$(LW)w32$(A)			\
 	$(LW)compat$(A)			\
 	$(LW)sthread$(A)		\
 	$(LW)NTService$(A)		\
+	$(LW)iptable$(A)		\
 	$(LW)inetd$(A)
 
 IMPORT=
