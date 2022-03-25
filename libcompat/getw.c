@@ -54,4 +54,3 @@ __stdlibrary_has_getw(void)
 }
 
 #endif
-
