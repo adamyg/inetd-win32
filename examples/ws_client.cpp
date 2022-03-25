@@ -8,6 +8,7 @@
 #define __STDC_LIMIT_MACROS 1
 #pragma warning(disable:4244) // 'xxx': conversion from 'xxx' to 'xxx', possible loss of data
 #pragma warning(disable:4503) // 'xxx': decorated name length exceeded, name was truncated)
+#pragma warning(disable:4309) // 'static_cast': truncation of constant value 
 #endif
 
 #include <iostream>
@@ -39,8 +40,9 @@ static struct inetd::Getopt::Option long_options[] = {
     { NULL }
 };
 
-static int          ssl = -1;
-static std::string  host, path;
+static std::string host, path;
+static int ssl = -1;
+
 
 namespace {                                     // client specialisation (CRTP style)
     template <typename Transport>
@@ -59,6 +61,7 @@ namespace {                                     // client specialisation (CRTP s
         }
     };
 };
+
 
 int
 main(int argc, const char **argv)
