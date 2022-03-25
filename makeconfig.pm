@@ -4,7 +4,7 @@
 # Automake emulation for non-unix environments.
 #
 #
-# Copyright (c) 2020, Adam Young.
+# Copyright (c) 2020 - 2022, Adam Young.
 # All rights reserved.
 #
 # The applications are free software: you can redistribute it
