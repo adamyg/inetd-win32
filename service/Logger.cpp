@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.2 2020/10/22 17:14:24 cvsuser Exp $")
+__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.3 2022/03/24 15:59:59 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -837,6 +837,7 @@ Logger::stop()
 //      logger->push(msg, msglen);
 //      return 1;
 //  }
+
 
 //  #if (XXX)   //move into a non-member util function.
 //  void

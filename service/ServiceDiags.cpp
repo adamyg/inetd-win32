@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiags.cpp,v 1.3 2022/03/24 13:47:43 cvsuser Exp $")
+__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiags.cpp,v 1.4 2022/03/24 15:59:59 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -186,4 +186,4 @@ ServiceDiags::LoggerAdapter::push(Logger &logger, enum loglevel type, const char
     logger.pushv(iovec, 2);
 }  
 
- /*end*/
+/*end*/

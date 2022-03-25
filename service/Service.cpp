@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.7 2022/03/24 13:47:43 cvsuser Exp $")
+__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.8 2022/03/24 15:59:59 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -322,7 +322,7 @@ Service::Initialise()
         arguments[0] = this;
         arguments[1] = endpoint;
 
-        logger_stop_event_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+        logger_stop_event_ = ::CreateEventA(NULL, TRUE, FALSE, NULL);
         logger_thread_ = ::CreateThread(NULL, 0, logger_thread, (void *)arguments, 0, NULL);
 
         if (NULL == logger_stop_event_ || NULL == logger_thread_ ||
@@ -350,7 +350,7 @@ Service::Initialise()
         }
     }
 
-    server_stopped_event_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+    server_stopped_event_ = ::CreateEventA(NULL, TRUE, FALSE, NULL);
     server_thread_ = ::CreateThread(NULL, 0, server_thread, (void *)this, 0, NULL);
     if (NULL == logger_stop_event_ || NULL == server_thread_) {
         diags().ferror("unable to create server thread: %M");
@@ -534,6 +534,7 @@ Service::logger_body(PipeEndpoint *endpoint)
                         }
                     }
                     break;
+
                 case PipeEndpoint::EP_READING:
                     if (dwRead) {
                         const char *scan = endpoint->cursor;
@@ -551,7 +552,7 @@ Service::logger_body(PipeEndpoint *endpoint)
                                 if (t_sz) {
                                     ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, line, t_sz);
                                     if (INVALID_HANDLE_VALUE != hStdout) {
-                                        if (! ::WriteConsole(hStdout, line, sz + 1, NULL, NULL)) {
+                                        if (! ::WriteConsoleA(hStdout, line, sz + 1, NULL, NULL)) {
                                             ::CloseHandle(hStdout);
                                             hStdout = INVALID_HANDLE_VALUE;
                                                 // TODO: move into logger, as console may block.
@@ -573,7 +574,7 @@ Service::logger_body(PipeEndpoint *endpoint)
                                                 // otherwise on buffer full; flush
                             ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, endpoint->buffer, endpoint->size);
                             if (INVALID_HANDLE_VALUE != hStdout) {
-                                ::WriteConsole(hStdout, endpoint->buffer, endpoint->size, NULL, NULL);
+                                ::WriteConsoleA(hStdout, endpoint->buffer, endpoint->size, NULL, NULL);
                             }
                             endpoint->reset();
                         }
@@ -581,11 +582,13 @@ Service::logger_body(PipeEndpoint *endpoint)
                         endpoint->state = PipeEndpoint::EP_READY;
                     }
                     break;
+
                 default:
                     diags().ferror("unexpected endpoint state : %u", (unsigned)endpoint->state);
                     assert(false);
                     break;
                 }
+
             } else {
                 DWORD dwError = GetLastError();
                 diags().ferror("unexpected io completion : %u", (unsigned)dwError);
@@ -839,6 +842,7 @@ Service::ConfigGet(const char *csKey, DWORD &dwValue, unsigned flags)
                 dwValue = (DWORD)ret;
                 return true;
             }
+
             diags().fwarning("parameter <%s> should be a numeric", csKey);
             return false;
         }
