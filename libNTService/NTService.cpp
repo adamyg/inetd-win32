@@ -137,6 +137,7 @@ CNTService::~CNTService()
 //                              SetStatus(SERVICE_START_PENDING);
 //                      }
 //              }
+
                 if (m_hServiceStatus) {
                         if (m_Status.dwCurrentState != SERVICE_STOPPED) {
                                 SetStatus(SERVICE_STOPPED);
@@ -836,6 +837,7 @@ bool CNTService::SetVersion(unsigned major, unsigned minor, unsigned release /*=
         if (m_bIsRunning || registry_.is_open()) {
                 return false;
         }
+
         m_iMajorVersion = major;
         m_iMinorVersion = minor;
         m_iReleaseVersion = release;
@@ -1157,7 +1159,7 @@ void CNTService::ControlHandler(DWORD dwOpcode)
                 break;
         case SERVICE_CONTROL_TRIGGEREVENT:  // 0x20
                 break:
-     */
+        */
         default:
                 if (dwOpcode >= SERVICE_CONTROL_USER) {
                         if (! pService->OnUserControl(dwOpcode)) {
