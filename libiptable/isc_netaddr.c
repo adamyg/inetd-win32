@@ -544,3 +544,5 @@ isc_netaddr_isloopback(const isc_netaddr_t *na) {
 		return (false);
 	}
 }
+
+//end
