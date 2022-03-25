@@ -213,8 +213,7 @@ public:
 
 	inline void
 	check() const {
-		size_t total = 0, used = 0,
-		    bucketsize = bucket_first_;
+		size_t total = 0, used = 0, bucketsize = bucket_first_;
 
 		const Node *slabnode;
 		TAILQ_FOREACH(slabnode, &slabs_, node_) {

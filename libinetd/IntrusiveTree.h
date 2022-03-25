@@ -25,7 +25,7 @@
  * ==end==
  */
 
- /* 
+ /*
   * Intrusive RB and SPLAY based containers; see <sys/tree.h>
   *
   * Example usage:
@@ -36,7 +36,7 @@
   *             int operator()(const rb_node *a, const rb_node *b) const {
   *                 return strcmp(a->key_, b->key_);
   *             }
-  *         }; 
+  *         };
   *         const char *key_;
   *         int other_members_;
   *     };
@@ -49,7 +49,7 @@
   *             int operator()(const rb_node *a, const rb_node *b) const {
   *                 return strcmp(a->key_, b->key_);
   *             }
-  *         }; 
+  *         };
   *         int other_members_;
   *     };
   *     typedef inetd::intrusive_tree<splay_node, splay_node::compare, inetd::Intrusive::PlayMemberHook<splay_node>, &splay_node::link_> SPLAYTree;
@@ -214,10 +214,12 @@ public:
 			assert(ptr_);
 			return *ptr_;
 		}
+
 		pointer operator->() {
 			assert(ptr_);
 			return ptr_;
 		}
+
 		iterator& operator++() {
 			if (pointer ptr = ptr_) {
 				MemberHook *hook =
@@ -230,17 +232,20 @@ public:
 			}
 			return *this;
 		}
+
 		iterator operator++(int) {
 			iterator tmp(*this);
 			++(*this);
 			return tmp;
 		}
+
 		friend bool operator== (const iterator& a, const iterator& b) {
 			return a.ptr_ == b.ptr_;
-		};
+		}
+
 		friend bool operator!= (const iterator& a, const iterator& b) {
 			return a.ptr_ != b.ptr_;
-		};
+		}
 	private:
 		pointer ptr_;
 	};

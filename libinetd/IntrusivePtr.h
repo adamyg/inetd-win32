@@ -48,19 +48,22 @@ namespace intrusive {
 
 template<class T>
 struct PtrMemberHook {
-        PtrMemberHook(const PtrMemberHook &) = delete;
-        PtrMemberHook& operator=(const PtrMemberHook &) = delete;
+	PtrMemberHook(const PtrMemberHook &) = delete;
+	PtrMemberHook& operator=(const PtrMemberHook &) = delete;
 
 	typedef T element_type;
 	constexpr PtrMemberHook() : intrusive_ptr_references_(0) {
 	}
+
 	virtual ~PtrMemberHook() {
 		assert(0 == intrusive_ptr_references_);
 	}
-	static void intrusive_ptr_add_ref(element_type *px) {
+
+        static void intrusive_ptr_add_ref(element_type *px) {
 		assert(px);
 		++(px->intrusive_ptr_references_);
 	}
+
 	static void intrusive_ptr_release(element_type *px) {
 		assert(px);
 		if (0 == --(px->intrusive_ptr_references_)) {
@@ -72,9 +75,11 @@ struct PtrMemberHook {
 			element_type::intrusive_deleter(px);
 		}
 	}
+
 	static auto intrusive_ptr_count(const element_type *px) {
 		return px->intrusive_ptr_references_;
 	}
+
 	std::atomic<unsigned> intrusive_ptr_references_;
 };
 

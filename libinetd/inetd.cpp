@@ -2079,7 +2079,7 @@ search_connections(struct servtab *sep, int ctrl)
 			return false; //done
 		}
 
-                static_assert(sizeof(ci->co_addr) == sizeof(ss), "address structures");
+		static_assert(sizeof(ci->co_addr) == sizeof(ss), "address structures");
 		memcpy(&ci->co_addr, &ss, sizeof(ci->co_addr));
 		sep->se_conn[hv].push_front_r(*ci);
 		conn = ci;

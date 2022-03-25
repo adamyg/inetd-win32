@@ -161,7 +161,7 @@ public:
 					nullptr == buffer || 0 == buflen || Connected != state_) {
 				callback(0U, false);
 				return false;
-                        }
+			}
 
 			DWORD dwBytes = 0, dwFlags = 0;
 			WSABUF wsabuf;

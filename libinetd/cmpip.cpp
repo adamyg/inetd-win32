@@ -252,7 +252,7 @@ cpmip(const struct servtab *sep, int ctrl)
 
 		if (hosts.check_limit(rss, sep->se_service, maxcpm)) {
 			char pname[NI_MAXHOST] = "unknown";
-                        int ret;
+			int ret;
 
 			if ((ret = getnameinfo((struct sockaddr *)&rss, SOCKLEN_SOCKADDR_STORAGE(rss),
 				    pname, sizeof(pname), NULL, 0, NI_NUMERICHOST)) != 0) {

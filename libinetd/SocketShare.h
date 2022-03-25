@@ -71,9 +71,9 @@ private:
 	};
 
 	struct Names {
-#define PARENT_EVENT_SPEC   "Local\\%s-parent"
-#define CHILD_EVENT_SPEC    "Local\\%s-child"
-#define PIPE_NAME_SPEC	    "\\\\.\\pipe\\%s"
+#define PARENT_EVENT_SPEC	"Local\\%s-parent"
+#define CHILD_EVENT_SPEC	"Local\\%s-child"
+#define PIPE_NAME_SPEC		"\\\\.\\pipe\\%s"
 
 		Names(const char *basename) {
 			sprintf_s(parentEvent, sizeof(parentEvent), PARENT_EVENT_SPEC, basename);
@@ -94,21 +94,26 @@ public:
 		Server(HANDLE job_handle, const char *progname, const char **argv = 0) :
 			profile_(), job_handle_(job_handle), progname_(progname), argv_(argv) {
 		}
+
 		Server(const char *progname, const char **argv = 0) :
 			profile_(), job_handle_(nullptr), progname_(progname), argv_(argv) {
 		}
+
 		bool publish(SOCKET socket) {
 			if (! profile_.hPipe.IsValid()) {
 				return PushSocket(profile_, socket, job_handle_, progname_, argv_);
 			}
 			return WriteSocket(profile_, socket);
 		}
+
 		const ScopedProcessId &child() const {
 			return profile_.child;
 		}
+
 		HANDLE process_handle() const {
 			profile_.child.process_handle();
 		}
+
 		int pid() const {
 			return profile_.child.pid();
 		}
@@ -126,15 +131,19 @@ public:
 		Client(const char *basename) :
 			profile_(basename) {
 		}
+
 		bool wait(DWORD timeout = INFINITE) {
 			return WaitSocket(profile_, timeout);
 		}
+
 		SOCKET get(DWORD dwFlags = WSA_FLAG_OVERLAPPED) {
 			if (! profile_.hFile.IsValid()) {
 				return GetSocket(profile_, dwFlags);
 			}
+
 		return ReadSocket(profile_, dwFlags);
 		}
+
 	private:
 		ClientProfile profile_;
 	};

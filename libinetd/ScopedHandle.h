@@ -32,58 +32,58 @@
 
 namespace inetd {
 class ScopedHandle {
-        ScopedHandle(const ScopedHandle &) = delete;
-        ScopedHandle& operator=(const ScopedHandle &) = delete;
+	ScopedHandle(const ScopedHandle &) = delete;
+	ScopedHandle& operator=(const ScopedHandle &) = delete;
 
 public:
-        ScopedHandle(HANDLE handle) : handle_(handle) {
-        }
+	ScopedHandle(HANDLE handle) : handle_(handle) {
+	}
 
-        ScopedHandle() : handle_(nullptr) {
-        }
+	ScopedHandle() : handle_(nullptr) {
+	}
 
-        ~ScopedHandle() {
-                Close();
-        }
+	~ScopedHandle() {
+		Close();
+	}
 
-        ScopedHandle& operator=(ScopedHandle&& other) {
-                Set(other.Take());
-                return *this;
-        }
+	ScopedHandle& operator=(ScopedHandle&& other) {
+		Set(other.Take());
+		return *this;
+	}
 
-        void Set(HANDLE handle) {
-                if (handle_ != handle) {
-                        Close();
-                        handle_ = handle;
-                }
-        }
+	void Set(HANDLE handle) {
+		if (handle_ != handle) {
+			Close();
+			handle_ = handle;
+		}
+	}
 
-        HANDLE Get() const {
-                return handle_;
-        }
+	HANDLE Get() const {
+		return handle_;
+	}
 
-        HANDLE Take() {
-                HANDLE handle = handle_;
-                handle_ = nullptr;
-                return handle;
-        }
+	HANDLE Take() {
+		HANDLE handle = handle_;
+		handle_ = nullptr;
+		return handle;
+	}
 
-        operator HANDLE() const {
-                return handle_;
-        }
+	operator HANDLE() const {
+		return handle_;
+	}
 
-        bool IsValid() const {
-                return (handle_ != nullptr && handle_ != INVALID_HANDLE_VALUE);
-        }
+	bool IsValid() const {
+		return (handle_ != nullptr && handle_ != INVALID_HANDLE_VALUE);
+	}
 
-        void Close() {
-                if (IsValid()) {
-                        ::CloseHandle(handle_), handle_ = nullptr;
-                }
-        }
+	void Close() {
+		if (IsValid()) {
+			::CloseHandle(handle_), handle_ = nullptr;
+		}
+	}
 
 private:
-        HANDLE handle_;
+	HANDLE handle_;
 };
 
 };  //namespace inetd

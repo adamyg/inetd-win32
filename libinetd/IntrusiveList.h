@@ -26,7 +26,7 @@
  * ==
  */
 
- /* 
+ /*
   * Intrusive TAILQ and LIST based containers
   *
   * Example usage:
@@ -71,22 +71,27 @@ struct ListMemberHook {
 		Collection() {
 			reset();
 		}
+
 		inline void reset() {
 			LIST_INIT(&head);
 			count = 0;
 		}
+
 		inline bool empty() const {
 			return LIST_EMPTY(&head);
 		}
+
 		inline ListMemberHook *front() {
 			return LIST_FIRST(&head);
 		}
+
 		inline unsigned push_front(Member *member, ListMemberHook *hook) {
 			LIST_INSERT_HEAD(&head, hook, node_);
 			hook->collection_ = this;
 			assert_value(hook->member_ = member;)
 			return ++count;
 		}
+
 		inline bool exists(ListMemberHook *hook) const {
 			ListMemberHook *existing;
 			LIST_FOREACH(existing, &head, node_) {
@@ -96,6 +101,7 @@ struct ListMemberHook {
 			}
 			return false;
 		}
+
 		template<class Parent, class Functor, class... TParameter>
 		int foreach(Parent &parent, Functor functor, TParameter... params) {
 			ListMemberHook *hook;
@@ -106,6 +112,7 @@ struct ListMemberHook {
 			}
 			return 0;
 		}
+
 		template<class Parent, class Functor, class... TParameter>
 		int foreach_safe(Parent &parent, Functor functor, TParameter... params) {
 			ListMemberHook *hook, *t_hook;
@@ -116,15 +123,18 @@ struct ListMemberHook {
 			}
 			return 0;
 		}
+
 		inline ListMemberHook *next(ListMemberHook *hook) {
 			return LIST_NEXT(hook, node_);
 		}
+
 		inline unsigned remove(ListMemberHook *hook) {
 			hook->collection_ = nullptr;
 			assert_value(hook->member_ = nullptr;)
 			LIST_REMOVE(hook, node_);
 			return --count;
 		}
+
 		inetd::CriticalSection cs;
 		LIST_HEAD(, ListMemberHook) head;
 		unsigned count;
@@ -133,9 +143,9 @@ struct ListMemberHook {
 	ListMemberHook() : node_{}, collection_(nullptr) assert_value(, member_(nullptr)) {
 	}
 
-        bool is_hooked() const { 
-                return (collection_ != nullptr);
-        }
+	bool is_hooked() const {
+		return (collection_ != nullptr);
+	}
 
 	LIST_ENTRY(ListMemberHook) node_;
 	Collection *collection_;
@@ -154,31 +164,38 @@ struct TailMemberHook {
 		Collection() {
 			reset();
 		}
+
 		inline void reset() {
 			TAILQ_INIT(&head);
 			count = 0;
 		}
+
 		inline bool empty() const {
 			return TAILQ_EMPTY(&head);
 		}
+
 		inline TailMemberHook *front() {
 			return TAILQ_FIRST(&head);
 		}
+
 		inline TailMemberHook *back() {
 			return TAILQ_LAST(&head, TailHead);
 		}
+
 		inline unsigned push_front(Member *member, TailMemberHook *hook) {
 			TAILQ_INSERT_HEAD(&head, hook, node_);
 			hook->collection_ = this;
 			assert_value(hook->member_ = member;)
 			return ++count;
 		}
+
 		inline unsigned push_back(Member *member, TailMemberHook *hook) {
 			TAILQ_INSERT_TAIL(&head, hook, node_);
 			hook->collection_ = this;
 			assert_value(hook->member_ = member);
 			return ++count;
 		}
+
 		inline bool exists(TailMemberHook *hook) const {
 			TailMemberHook *existing;
 			TAILQ_FOREACH(existing, &head, node_) {
@@ -188,6 +205,7 @@ struct TailMemberHook {
 			}
 			return false;
 		}
+
 		template<class Parent, class Functor, class... TParameter>
 		int foreach(Parent &parent, Functor functor, TParameter... params) {
 			TailMemberHook *hook;
@@ -198,6 +216,7 @@ struct TailMemberHook {
 			}
 			return 0;
 		}
+
 		template<class Parent, class Functor, class... TParameter>
 		int foreach_safe(Parent &parent, Functor functor, TParameter... params) {
 			TailMemberHook *hook, *t_hook;
@@ -208,26 +227,29 @@ struct TailMemberHook {
 			}
 			return 0;
 		}
+
 		inline TailMemberHook *next(TailMemberHook *hook) {
 			return TAILQ_NEXT(hook, node_);
 		}
+
 		inline unsigned remove(TailMemberHook *hook) {
 			hook->collection_ = nullptr;
 			assert_value(hook->member_ = nullptr;)
 			TAILQ_REMOVE(&head, hook, node_);
 			return --count;
 		}
+
 		inetd::CriticalSection cs;
 		TAILQ_HEAD(TailHead, TailMemberHook) head;
 		unsigned count;
-	};
+	}
 
 	TailMemberHook() : node_{}, collection_(nullptr) assert_value(, member_(nullptr)) {
 	}
 
-        bool is_hooked() const { 
-                return (collection_ != nullptr);
-        }
+	bool is_hooked() const {
+		return (collection_ != nullptr);
+	}
 
 	TAILQ_ENTRY(TailMemberHook) node_;
 	Collection *collection_;
@@ -276,10 +298,12 @@ public:
 			assert(ptr_);
 			return *ptr_;
 		}
+
 		pointer operator->() {
 			assert(ptr_);
 			return ptr_;
 		}
+
 		iterator& operator++() {
 			if (pointer ptr = ptr_) {
 				MemberHook *hook =
@@ -292,17 +316,21 @@ public:
 			}
 			return *this;
 		}
+
 		iterator operator++(int) {
 			iterator tmp(*this);
 			++(*this);
 			return tmp;
 		}
+
 		friend bool operator== (const iterator& a, const iterator& b) {
 			return a.ptr_ == b.ptr_;
-		};
+		}
+
 		friend bool operator!= (const iterator& a, const iterator& b) {
 			return a.ptr_ != b.ptr_;
-		};
+		}
+
 	private:
 		pointer ptr_;
 	};

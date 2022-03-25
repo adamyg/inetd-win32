@@ -130,11 +130,11 @@ struct connprocs {
 	connprocs(const connprocs &) = delete;
 	connprocs operator=(const connprocs &) = delete;
 
-        connprocs(int maxperip);
-        bool resize(int maxperip);
-        struct procinfo *newproc(struct conninfo *conn, int &maxchild);
-        bool unlink(struct procinfo *proc);
-        void clear(struct conninfo *conn);
+	connprocs(int maxperip);
+	bool resize(int maxperip);
+	struct procinfo *newproc(struct conninfo *conn, int &maxchild);
+	bool unlink(struct procinfo *proc);
+	void clear(struct conninfo *conn);
 	int numchild() const {
 		return (int)cp_procs.size();
 	}
@@ -151,8 +151,8 @@ struct conninfo {
 	conninfo(const conninfo &) = delete;
 	conninfo operator=(const conninfo &) = delete;
 
-        conninfo(int maxperip) : co_procs(maxperip) { 
-        }
+	conninfo(int maxperip) : co_procs(maxperip) { 
+	}
 
 	inetd::Intrusive::ListMemberHook<conninfo> co_link_;
 	struct sockaddr_storage	co_addr;/* source address */
