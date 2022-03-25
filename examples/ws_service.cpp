@@ -59,9 +59,10 @@ main(int argc, const char **argv)
     SimpleWeb::Crypto::unit_tests();
 #endif
 
-    ssl = true;
+    ssl  = false;
 //  cert = "cert://service,user,local/localhost";
-    cert = "cert://localhost";
+    cert = "cert://test.wininetd.dev";
+    cert = "cert://test2.wininetd.dev";
 //  cert = "hash://03:74:62:3a:2c:ac:ef:52:ee:dc:0e:11:42:16:83:ff:e8:d5:ad:05";
 //  cert = "hash://0374623a2cacef52eedc0e11421683ffe8d5ad05";
 //  cacerts = "store://CA";
@@ -72,10 +73,10 @@ main(int argc, const char **argv)
         case 'i':   // interface
             basename = options.optarg();
             break;
-        case 1002:  // --ip4
+        case 1001:  // --ip4
             ip6 = false;
             break;
-        case 1001:  // --ip6
+        case 1002:  // --ip6
             ip6 = true;
             break;
 
@@ -132,16 +133,16 @@ usage(const char *fmt, ...)
         "Usage: %s [options] -i interface\n\n", PROGNAME);
     fprintf(stderr,
         "options:\n"
-        "   -i <interface>      Parent interface.\n"
-        "   --ip[46]            Interface type; default ip4.\n"
-//      "   --[no]wait          nowait/wait mode; default nowait.\n"
-//      "   --multi             Multisocket mode.\n"
+        "   -i <interface>              Parent interface.\n"
+        "   --ip[46]                    Interface type; default ip4.\n"
+//      "   --[no]wait                  nowait/wait mode; default nowait.\n"
+//      "   --multi                     Multisocket mode.\n"
 #if defined(HAVE_OPENSSL)
-        "   --ssl               SSL mode.\n"
-        "   --cert <cert>       Server certificate.\n"
-        "   --privkey <key>     Private key, if required.\n"
-        "   --cacerts <certs>   Client verification certificates.\n"
-        "   --ciphers <list>    Cipher list.\n"
+        "   --ssl                       SSL mode.\n"
+        "   --cert <cert>               Server certificate.\n"
+        "   --privkey <key>             Private key, if required.\n"
+        "   --cacerts <certs>           Client verification certificates.\n"
+        "   --ciphers <list>            Cipher list.\n"
 #endif
         );
     exit(3);
