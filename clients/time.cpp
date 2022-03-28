@@ -28,6 +28,7 @@
 #define  _WINSOCK_DEPRECATED_NO_WARNINGS        /* gethostbyname */
 #define  _CRT_SECURE_NO_WARNINGS
 #define  WINDOWS_MEAN_AND_LEAN
+
 #include <Winsock2.h>
 #include <Windows.h>
 

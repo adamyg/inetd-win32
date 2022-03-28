@@ -109,4 +109,3 @@ private:
 #endif  //SERVICE_H_INCLUDED
 
 //end
-

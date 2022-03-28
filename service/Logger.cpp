@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.3 2022/03/24 15:59:59 cvsuser Exp $")
+__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.4 2022/03/25 17:04:04 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
  * Simple File logger.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it

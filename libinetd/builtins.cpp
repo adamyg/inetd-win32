@@ -338,9 +338,9 @@ echo_stream(int s, struct servtab *sep)
 
 	inetd_setproctitle(sep->se_service, s);
 	while ((i = sockread(s, buffer, sizeof(buffer))) > 0 &&
-                        sockwrite(s, buffer, i) > 0) {
+			sockwrite(s, buffer, i) > 0) {
 		;
-        }
+	}
 	exit(0);
 }
 

@@ -77,7 +77,8 @@ public:
 	private:
 		typedef LONG (NTAPI *NtSetInformationFile_t)(HANDLE, ULONG_PTR*, void*, ULONG, ULONG);
 
-		static NtSetInformationFile_t getNtSetInformationFile() {
+		static NtSetInformationFile_t getNtSetInformationFile()
+		{
 			static NtSetInformationFile_t volatile *function = nullptr;
 			void* t_function = ::InterlockedCompareExchangePointer((void **) &function, 0, 0);
 			if (t_function == nullptr) {
@@ -108,28 +109,33 @@ public:
 
 	public:
 		Socket(int fd = INVALID_SOCKET) : state_(fd >= 0 ? State::Connected : State::Closed),
-				fd_(fd), iocp_(INVALID_HANDLE_VALUE), ovlpex_(this) {
+				fd_(fd), iocp_(INVALID_HANDLE_VALUE), ovlpex_(this)
+                {
 			(void) memset(&accept_buffer_, 0, sizeof(accept_buffer_));
 		}
 
-		~Socket() {
+		~Socket()
+		{
 			close();
 		}
 
 		// Returns a handle to the managed socket if any.
-		int fd() const {
+		int fd() const
+		{
 			return fd_;
 		}
 
 		// Releases the ownership of the managed socket if any. fd() returns -1 after the call.
-		int release() {
+		int release()
+		{
 			int t_fd = fd_;
 			fd_ = INVALID_SOCKET;
 			close();
 			return t_fd;
 		}
 
-		bool getendpoints(struct sockaddr &local, struct sockaddr &remote) const {
+		bool getendpoints(struct sockaddr &local, struct sockaddr &remote) const
+		{
 			assert(Socket::Connected == state_);
 			if (Socket::Connected == state_ && acceptexaddrs_) {
 				// decode accept result buffer
@@ -154,7 +160,8 @@ public:
 //		bool write(const void *buffer, size_t buflen) {
 //		}
 
-		bool async_read(void *buffer, size_t buflen, IOCallback callback) {
+		bool async_read(void *buffer, size_t buflen, IOCallback callback)
+		{
 			assert (callback);
 
 			if (INVALID_HANDLE_VALUE == iocp_ || INVALID_SOCKET == fd_ ||
@@ -190,14 +197,15 @@ public:
 			return true;
 		}
 
-		bool async_write(const void *buffer, size_t buflen, IOCallback callback) {
+		bool async_write(const void *buffer, size_t buflen, IOCallback callback)
+		{
 			assert(callback);
 
 			if (INVALID_HANDLE_VALUE == iocp_ || INVALID_SOCKET == fd_ ||
 					nullptr == buffer || 0 == buflen || Connected != state_) {
 				callback(0U, false);
 				return false;
-                        }
+			}
 
 			DWORD dwBytes = 0;
 			WSABUF wsabuf;
@@ -226,7 +234,8 @@ public:
 			return true;
 		}
 
-		bool iocp_associate(HANDLE iocp) {
+		bool iocp_associate(HANDLE iocp)
+		{
 			HANDLE handle = reinterpret_cast<HANDLE>(fd_);
 			HANDLE t_iocp = ::CreateIoCompletionPort(handle, iocp, 0, 0);
 			if (NULL == t_iocp || iocp != t_iocp) {
@@ -237,7 +246,8 @@ public:
 			return true;
 		}
 
-		bool iocp_release() {
+		bool iocp_release()
+		{
 			if (INVALID_SOCKET != fd_) {
 				NtSetInformationFile_t SetInformationFile = getNtSetInformationFile();
 				HANDLE handle = reinterpret_cast<HANDLE>(fd_);
@@ -254,7 +264,8 @@ public:
 			return false;
 		}
 
-		void close() {
+		void close()
+		{
 			state_ = Socket::Closed;
 			if (INVALID_SOCKET != fd_) {
 				::closesocket(fd_);
@@ -278,13 +289,15 @@ public:
 	};
 
 public:
-	IOCPService() : numthreads_(0), iocp_global_(INVALID_HANDLE_VALUE) {
+	IOCPService() : numthreads_(0), iocp_global_(INVALID_HANDLE_VALUE)
+	{
 		for (unsigned i = 0; i < _countof(threads_); ++i) {
 			threads_[i] = INVALID_HANDLE_VALUE;
 		}
 	}
 
-	~IOCPService() {
+	~IOCPService()
+	{
 		Terminate();
 		Close();
 		if (iocp_global_ != INVALID_HANDLE_VALUE) {
@@ -293,7 +306,8 @@ public:
 		}
 	}
 
-	bool Initialise(int threads) {
+	bool Initialise(int threads)
+	{
 		if (threads < 1) {
 			threads = 1;
 		}
@@ -321,11 +335,13 @@ public:
 		return true;
 	}
 
-	bool Enabled() const {
+	bool Enabled() const
+	{
 		return (numthreads_ > 0);
 	}
 
-	void Terminate() {
+	void Terminate()
+	{
 		if (numthreads_ > 0) {		// signal workers; if any
 			for (int i = 0; i < numthreads_; ++i) {
 				::PostQueuedCompletionStatus(iocp_global_, 0, 0, NULL);
@@ -345,14 +361,16 @@ public:
 		}
 	}
 
-	void Close() {
+	void Close()
+	{
 		if (iocp_global_ != INVALID_HANDLE_VALUE) {
 			::CloseHandle(iocp_global_);
 			iocp_global_ = INVALID_HANDLE_VALUE;
 		}
 	}
 
-	bool Listen(Listener &listener, int fd) {
+	bool Listen(Listener &listener, int fd)
+	{
 		HANDLE iocp;
 
 		if (INVALID_HANDLE_VALUE == (iocp = iocp_global_) ||
@@ -399,7 +417,8 @@ public:
 		return true;
 	}
 
-	bool Cancel(Listener &listener) {
+	bool Cancel(Listener &listener)
+	{
 		if (listener.fd_ != INVALID_SOCKET) {
 			(void) ::CancelIoEx(listener, NULL);
 			return true;
@@ -407,7 +426,8 @@ public:
 		return false;
 	}
 
-	bool Shutdown(Listener &listener) {
+	bool Shutdown(Listener &listener)
+	{
 		if (listener.fd_ != INVALID_SOCKET) {
 			(void) ::CancelIoEx(listener, NULL);
 			listener.fd_ = -1;
@@ -416,7 +436,8 @@ public:
 		return false;
 	}
 
-	bool Accept(Listener &listener, Socket &cxt, AcceptCallback callback) {
+	bool Accept(Listener &listener, Socket &cxt, AcceptCallback callback)
+	{
 		HANDLE iocp;
 		DWORD dwBytes;
 
@@ -482,7 +503,8 @@ public:
 	}
 
 private:
-	static unsigned __stdcall Worker(void *void_context) {
+	static unsigned __stdcall Worker(void *void_context)
+	{
 		HANDLE iocp = (HANDLE)void_context;
 
 		//
@@ -555,6 +577,6 @@ private:
 	HANDLE threads_[MAX_WORKERS];
 };
 
-};  //namespace inetd
+}; //namespace inetd
 
 //end

@@ -2,13 +2,33 @@
 //  WS/WSS client example,
 //  utilising https://gitlab.com/eidheim/Simple-WebSocket-Server
 //
+//  Copyright (c) 2020 - 2022, Adam Young.
+//
+//  The applications are free software: you can redistribute it
+//  and/or modify it under the terms of the GNU General Public License as
+//  published by the Free Software Foundation, version 3.
+//
+//  Redistributions of source code must retain the above copyright
+//  notice, and must be distributed with the license document above.
+//
+//  Redistributions in binary form must reproduce the above copyright
+//  notice, and must include the license document above in
+//  the documentation and/or other materials provided with the
+//  distribution.
+//
+//  This project is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  license for more details.
+//  ==end==
+//
 
 #if defined(_MSC_VER)
 #define _SCL_SECURE_NO_WARNINGS 1
 #define __STDC_LIMIT_MACROS 1
 #pragma warning(disable:4244) // 'xxx': conversion from 'xxx' to 'xxx', possible loss of data
 #pragma warning(disable:4503) // 'xxx': decorated name length exceeded, name was truncated)
-#pragma warning(disable:4309) // 'static_cast': truncation of constant value 
+#pragma warning(disable:4309) // 'static_cast': truncation of constant value
 #endif
 
 #include <iostream>
@@ -53,10 +73,13 @@ namespace {                                     // client specialisation (CRTP s
         Specialisation(Args&&... args) :
                 ws::ClientCommon<Specialisation<Transport>,Transport>(std::forward<Args>(args)...) {
         }
+
         void on_open(std::shared_ptr<Connection> &connection) {
         }
+
         void on_close(std::shared_ptr<Connection> &connection, bool success) {
         }
+
         void on_message(std::shared_ptr<Connection> &connection, std::shared_ptr<InMessage> &inmessage) {
         }
     };

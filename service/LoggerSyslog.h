@@ -52,4 +52,4 @@ struct LoggerSyslog {
 
 #endif  //LOGGERSYSLOG_H_INCLUDED
 
-//endw
+//end

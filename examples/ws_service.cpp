@@ -2,12 +2,34 @@
 //  WS/WSS Service example,
 //  utilising https://gitlab.com/eidheim/Simple-WebSocket-Server
 //
+//  Copyright (c) 2020 - 2022, Adam Young.
+//
+//  The applications are free software: you can redistribute it
+//  and/or modify it under the terms of the GNU General Public License as
+//  published by the Free Software Foundation, version 3.
+//
+//  Redistributions of source code must retain the above copyright
+//  notice, and must be distributed with the license document above.
+//
+//  Redistributions in binary form must reproduce the above copyright
+//  notice, and must include the license document above in
+//  the documentation and/or other materials provided with the
+//  distribution.
+//
+//  This project is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  license for more details.
+//  ==end==
+//
 
 #if defined(_MSC_VER)
 #define _SCL_SECURE_NO_WARNINGS 1
+#define _CRT_SECURE_NO_WARNINGS 1
 #define __STDC_LIMIT_MACROS 1
 #pragma warning(disable:4244) // 'xxx': conversion from 'xxx' to 'xxx', possible loss of data
 #pragma warning(disable:4503) // 'xxx': decorated name length exceeded, name was truncated)
+#pragma warning(disable:4309) // 'static_cast': truncation of constant value
 #endif
 
 #include "../libinetd/ServiceGetOpt.h"
@@ -17,6 +39,7 @@
 #include "wss_service.h"
 #endif
 #include "ws_service.h"
+#include "ws_sslutil.h"
 
 #define PROGNAME    "ws_service"
 
@@ -61,11 +84,13 @@ main(int argc, const char **argv)
 
     ssl  = false;
 //  cert = "cert://service,user,local/localhost";
-    cert = "cert://test.wininetd.dev";
+//  cert = "cert://test.wininetd.dev";
     cert = "cert://test2.wininetd.dev";
 //  cert = "hash://03:74:62:3a:2c:ac:ef:52:ee:dc:0e:11:42:16:83:ff:e8:d5:ad:05";
 //  cert = "hash://0374623a2cacef52eedc0e11421683ffe8d5ad05";
+
 //  cacerts = "store://CA";
+
     ciphers = "ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS";
 
     while (-1 != options.shift(argc, argv, msg)) {
@@ -151,6 +176,25 @@ usage(const char *fmt, ...)
 
 namespace {
     template <typename Type>
+    typename std::enable_if<std::is_same<typename Type::Transport, SimpleWeb::WS>::value, void>::type
+    peer_summary(std::shared_ptr<typename Type::Connection> &connection)
+    {
+    }
+
+    template <typename Type>
+    typename std::enable_if<std::is_same<typename Type::Transport, SimpleWeb::WSS>::value, void>::type
+    peer_summary(std::shared_ptr<typename Type::Connection> &connection)
+    {
+        struct Output {
+            void operator()(unsigned line, const char *msg) {
+                std::cout << msg << '\n';
+            }
+        };
+
+        sslutil::summary(Output(), connection->get_socket().native_handle());
+    }
+
+    template <typename Type>
     int Service(Type &server, SOCKET socket)
     {
         //
@@ -167,7 +211,51 @@ namespace {
         };
 
         // Can modify handshake response headers here if needed
-        echo.on_handshake = [](std::shared_ptr<typename Type::Connection> /*connection*/, SimpleWeb::CaseInsensitiveMultimap & /*response_header*/) {
+        echo.on_handshake = [](std::shared_ptr<typename Type::Connection> &connection, SimpleWeb::CaseInsensitiveMultimap &response_header) {
+
+            // [RFC6455]
+            //  The request MAY include a header field with the name |Sec-WebSocket-Protocol|.
+            //  If present, this value indicates one or more comma-separated subprotocol the client wishes to
+            //  speak, ordered by preference.  The elements that comprise this value MUST be non-empty strings
+            //  with characters in the range U+0021 to U+007E not including separator characters as defined
+            //  in [RFC2616] and MUST all be unique strings. The ABNF for the value of this header field is 1
+            //  #token, where the definitions of constructs and rules are as given in [RFC2616].
+            //
+            //  Sec-WebSocket-Protocol: subprotocols
+            //      A comma-separated list of subprotocol names, in the order of preference.
+            //      The subprotocols may be selected from the IANA WebSocket Subprotocol Name Registry
+            //      or may be a custom name jointly understood by the client and the server.
+            //
+            // [RFC6455]
+            //  The request MAY include a header field with the name |Sec-WebSocket-Extensions|.
+            //  If present, this value indicates the protocol-level extension(s) the client wishes to speak.
+            //  The interpretation and format of this header field is described in Section 9.1.
+            //
+            //  Sec-WebSocket-Extensions: extensions
+            //      A comma-separated list of extensions to request (or agree to support).
+            //      These should be selected from the IANA WebSocket Extension Name Registry.
+            //      Extensions which take parameters do so by using semicolon delineation.
+            //
+            peer_summary<Type>(connection);
+
+            std::string protocols;
+            auto protocol_it = connection->header.equal_range("Sec-WebSocket-Protocol");
+            for(auto it(protocol_it.first); it != protocol_it.second; it++) {
+              if (it->second.length()) {
+                if (protocols.length()) protocols += ", ";
+                protocols += it->second;
+              }
+            }
+
+            std::string extensions;
+            auto extensions_it = connection->header.equal_range("Sec-WebSocket-Extensions");
+            for(auto it(extensions_it.first); it != extensions_it.second; it++) {
+              if (it->second.length()) {
+                if (extensions.length()) extensions += ", ";
+                extensions += it->second;
+              }
+            }
+
             return SimpleWeb::StatusCode::information_switching_protocols; // Upgrade to websocket
         };
 

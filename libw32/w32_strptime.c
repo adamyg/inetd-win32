@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_strptime_c,"$Id: w32_strptime.c,v 1.1 2022/03/24 12:42:45 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_strptime_c,"$Id: w32_strptime.c,v 1.2 2022/03/24 15:21:40 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -586,7 +586,7 @@ literal:
 			break;
 
 		case 'Z':
-			tzset();
+			_tzset();
 			if (strncmp((const char *)bp, gmt, 3) == 0) {
 				tm->tm_isdst = 0;
 #ifdef TM_GMTOFF
@@ -852,7 +852,7 @@ _find_string(const unsigned char *bp, int *tgt, const char * const *n1,
 	for (; n1 != NULL; n1 = n2, n2 = NULL) {
 		for (i = 0; i < c; i++, n1++) {
 			len = strlen(*n1);
-			if (strncasecmp(*n1, (const char *)bp, len) == 0) {
+			if (_strnicmp(*n1, (const char *)bp, len) == 0) {
 				*tgt = i;
 				return bp + len;
 			}

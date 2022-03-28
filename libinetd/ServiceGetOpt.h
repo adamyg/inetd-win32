@@ -3,7 +3,7 @@
 #define LIBINETD_GETOPT_H_INCLUDED
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * Get command line options.
+ * Command line options.
  * windows inetd service.
  *
  * Copyright (c) 2020 - 2022, Adam Young.

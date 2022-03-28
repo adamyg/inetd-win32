@@ -29,7 +29,8 @@
 //	allocator
 
 static void *
-isc_mem_get(isc_mem_t *mctx, size_t size) {
+isc_mem_get(isc_mem_t *mctx, size_t size)
+{
 	assert(mctx != NULL);
 	switch (size) {
 	case sizeof(isc_radix_tree_t):
@@ -48,21 +49,24 @@ isc_mem_get(isc_mem_t *mctx, size_t size) {
 }
 
 static void
-isc_mem_put(isc_mem_t *mctx, void *ptr, size_t size) {
+isc_mem_put(isc_mem_t *mctx, void *ptr, size_t size)
+{
 	assert(mctx != NULL);
 	assert(sizeof(isc_radix_tree_t) == size || sizeof(isc_prefix_t) == size || sizeof(isc_radix_node_t) == size);
 	free(ptr);
 }
 
 static void
-isc_mem_attach(isc_mem_t *mctx, isc_mem_t **child) {
+isc_mem_attach(isc_mem_t *mctx, isc_mem_t **child)
+{
 	assert(mctx != NULL);
 	assert(*child == NULL);
 	*child = mctx;
 }
 
 static void
-isc_mem_putanddetach(isc_mem_t **mctx, void *ptr, size_t size) {
+isc_mem_putanddetach(isc_mem_t **mctx, void *ptr, size_t size)
+{
 	isc_mem_put(*mctx, ptr, size);
 	*mctx = NULL;
 }
@@ -72,29 +76,34 @@ isc_mem_putanddetach(isc_mem_t **mctx, void *ptr, size_t size) {
 //	reference counting
 
 static void
-isc_refcount_init(isc_refcount_t *ref, unsigned count) {
+isc_refcount_init(isc_refcount_t *ref, unsigned count)
+{
 	assert(1 == count);
 	*ref = count;
 }
 
 static void
-isc_refcount_destroy(isc_refcount_t *ref) {
+isc_refcount_destroy(isc_refcount_t *ref)
+{
 	assert(0 == *ref);
 }
 
 static isc_refcount_t
-isc_refcount_current(isc_refcount_t *ref) {
+isc_refcount_current(isc_refcount_t *ref)
+{
 	return *ref;
 }
 
 static void
-isc_refcount_increment(isc_refcount_t *ref) {
+isc_refcount_increment(isc_refcount_t *ref)
+{
 	assert(*ref >= 1);
 	++(*ref);
 }
 
 static isc_refcount_t
-isc_refcount_decrement(isc_refcount_t *ref) {
+isc_refcount_decrement(isc_refcount_t *ref)
+{
 	assert(*ref >= 1);
 	return (*ref)--;    //return original value
 }
@@ -150,7 +159,8 @@ _new_prefix(isc_mem_t *mctx, isc_prefix_t **target, int family, void *dest, int 
 }
 
 static void
-_deref_prefix(isc_prefix_t *prefix) {
+_deref_prefix(isc_prefix_t *prefix)
+{
 	if (prefix != NULL) {
 		if (isc_refcount_decrement(&prefix->refcount) == 1) {
 			isc_refcount_destroy(&prefix->refcount);
@@ -160,7 +170,8 @@ _deref_prefix(isc_prefix_t *prefix) {
 }
 
 static isc_result_t
-_ref_prefix(isc_mem_t *mctx, isc_prefix_t **target, isc_prefix_t *prefix) {
+_ref_prefix(isc_mem_t *mctx, isc_prefix_t **target, isc_prefix_t *prefix)
+{
 	assert(prefix != NULL);
 	assert((prefix->family == AF_INET && prefix->bitlen <= 32) ||
 	       (prefix->family == AF_INET6 && prefix->bitlen <= 128) ||
@@ -185,7 +196,8 @@ _ref_prefix(isc_mem_t *mctx, isc_prefix_t **target, isc_prefix_t *prefix) {
 }
 
 static int
-_comp_with_mask(void *addr, void *dest, u_int mask) {
+_comp_with_mask(void *addr, void *dest, u_int mask)
+{
 	/* Mask length of zero matches everything */
 	if (mask == 0) {
 		return (1);
@@ -204,7 +216,8 @@ _comp_with_mask(void *addr, void *dest, u_int mask) {
 }
 
 isc_result_t
-isc_radix_create(isc_mem_t *mctx, isc_radix_tree_t **target, int maxbits) {
+isc_radix_create(isc_mem_t *mctx, isc_radix_tree_t **target, int maxbits)
+{
 	isc_radix_tree_t *radix;
 
 	assert(target != NULL && *target == NULL);
@@ -229,7 +242,8 @@ isc_radix_create(isc_mem_t *mctx, isc_radix_tree_t **target, int maxbits) {
  */
 
 static void
-_clear_radix(isc_radix_tree_t *radix, isc_radix_destroyfunc_t func) {
+_clear_radix(isc_radix_tree_t *radix, isc_radix_destroyfunc_t func)
+{
 	assert(radix != NULL);
 
 	if (radix->head != NULL) {
@@ -272,7 +286,8 @@ _clear_radix(isc_radix_tree_t *radix, isc_radix_destroyfunc_t func) {
 }
 
 void
-isc_radix_destroy(isc_radix_tree_t *radix, isc_radix_destroyfunc_t func) {
+isc_radix_destroy(isc_radix_tree_t *radix, isc_radix_destroyfunc_t func)
+{
 	assert(radix != NULL);
 	_clear_radix(radix, func);
 	isc_mem_putanddetach(&radix->mctx, radix, sizeof(*radix));
@@ -282,7 +297,8 @@ isc_radix_destroy(isc_radix_tree_t *radix, isc_radix_destroyfunc_t func) {
  * func will be called as func(node->prefix, node->data)
  */
 void
-isc_radix_process(isc_radix_tree_t *radix, isc_radix_processfunc_t func) {
+isc_radix_process(isc_radix_tree_t *radix, isc_radix_processfunc_t func)
+{
 	isc_radix_node_t *node;
 
 	assert(func != NULL);
@@ -292,7 +308,8 @@ isc_radix_process(isc_radix_tree_t *radix, isc_radix_processfunc_t func) {
 }
 
 isc_result_t
-isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix) {
+isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix) 
+{
 	isc_radix_node_t *node;
 	isc_radix_node_t *stack[RADIX_MAXBITS + 1];
 	u_char *addr;
@@ -362,7 +379,8 @@ isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_p
 
 isc_result_t
 isc_radix_insert(isc_radix_tree_t *radix, isc_radix_node_t **target,
-		 isc_radix_node_t *source, isc_prefix_t *prefix) {
+		 isc_radix_node_t *source, isc_prefix_t *prefix)
+{
 	isc_radix_node_t *node, *new_node, *parent, *glue = NULL;
 	u_char *addr, *test_addr;
 	uint32_t bitlen, fam, check_bit, differ_bit;
@@ -667,7 +685,8 @@ isc_radix_insert(isc_radix_tree_t *radix, isc_radix_node_t **target,
 }
 
 void
-isc_radix_remove(isc_radix_tree_t *radix, isc_radix_node_t *node) {
+isc_radix_remove(isc_radix_tree_t *radix, isc_radix_node_t *node)
+{
 	isc_radix_node_t *parent, *child;
 
 	assert(radix != NULL);

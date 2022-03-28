@@ -19,7 +19,8 @@
 #include "isc_util.h"
 
 int
-isc_compare_eqprefix(const isc_prefix_t *a, const isc_prefix_t *b, unsigned int prefixlen) {
+isc_compare_eqprefix(const isc_prefix_t *a, const isc_prefix_t *b, unsigned int prefixlen)
+{
 	const unsigned char *pa = NULL, *pb = NULL;
 	unsigned int ipabytes = 0;	/* Length of whole IP address in bytes */
 	unsigned int nbytes;		/* Number of significant whole bytes */

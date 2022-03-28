@@ -33,7 +33,7 @@
 #include "ScopedHandle.h"
 #include "ScopedProcessId.h"
 
-#pragma comment(lib, "Rpcrt4.lib")              // UUID
+#pragma comment(lib, "Rpcrt4.lib")		// UUID
 
 namespace inetd {
 class SocketShare {

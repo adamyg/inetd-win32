@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_itimer_c,"$Id: w32_itimer.c,v 1.1 2022/03/24 12:42:43 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_itimer_c,"$Id: w32_itimer.c,v 1.2 2022/03/24 15:22:09 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -167,7 +167,7 @@ timer_thread(LPVOID param)
             waitms = INFINITE;
 
         } else {
-            assert(false); //debug trap
+            assert(0); //debug trap
         }
     }
     return 0;

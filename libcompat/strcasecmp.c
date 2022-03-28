@@ -28,4 +28,5 @@ void
 __stdlibrary_has_strcasecmp(void)
 {
 }
+
 #endif

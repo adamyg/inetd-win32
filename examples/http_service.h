@@ -1,14 +1,41 @@
+#pragma once
+#ifndef HTTP_SERVICE_H_INCLUDED
+#define HTTP_SERVICE_H_INCLUDED
 //
-//  HTTP Service, 
+//  HTTP Service,
 //  extended https://gitlab.com/eidheim/Simple-Web-Server
+//
+//  Copyright (c) 2020 - 2022, Adam Young.
+//
+//  The applications are free software: you can redistribute it
+//  and/or modify it under the terms of the GNU General Public License as
+//  published by the Free Software Foundation, version 3.
+//
+//  Redistributions of source code must retain the above copyright
+//  notice, and must be distributed with the license document above.
+//
+//  Redistributions in binary form must reproduce the above copyright
+//  notice, and must include the license document above in
+//  the documentation and/or other materials provided with the
+//  distribution.
+//
+//  This project is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  license for more details.
+//  ==end==
+//
 
-#define  USE_STANDALONE_ASIO 1
+#if !defined(ASIO_STANDALONE)
+#define ASIO_STANDALONE 1
+#endif
+
 #include <server_http.hpp>
 
 class http_service : public SimpleWeb::Server<SimpleWeb::HTTP> {
 public:
-    http_service() : 
-            SimpleWeb::Server<SimpleWeb::HTTP>() {  
+    http_service() :
+            SimpleWeb::Server<SimpleWeb::HTTP>() {
     }
 
     void start(SOCKET socket) {
@@ -17,7 +44,7 @@ public:
             internal_io_service = true;
         }
 
-        after_bind(); 
+        after_bind();
         accept(socket);
 
 #if (TODO)
@@ -68,4 +95,5 @@ public:
     }
 };
 
+#endif //HTTP_SERVICE_H_INCLUDED
 //end

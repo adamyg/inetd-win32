@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: makelib.in,v 1.6 2022/03/24 13:11:39 cvsuser Exp $
+# $Id: makelib.in,v 1.7 2022/03/28 03:16:32 cvsuser Exp $
 # -*- mode: perl; tabs: 8; indent-width: 4; -*-
 # makelib configuration
 #
@@ -32,7 +32,7 @@
 
 $PACKAGE        = 'inetd-win32';
 $PACKAGE_NAME   = 'Windows inetd service';
-$PACKAGE_VERSION = '0.0.1';
+$PACKAGE_VERSION = '0.1.1';
 
 $PACKAGE_URL    = 'https://github.com/adamyg/inetd-win32';
 

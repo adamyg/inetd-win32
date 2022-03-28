@@ -915,6 +915,7 @@ do_fork(const struct servtab *sep, int ctrl)
 		process_group.track(server.child());
 		return server.pid();		// resulting process identifier
 	}
+
 	errno = EINVAL;
 	return -1;
 }
@@ -1099,7 +1100,15 @@ flag_signal(int signo)
 	size_t len;
 
 	if (debug) {
-		syslog(LOG_DEBUG, "signal L %d", signo);
+		const char *name = "NA";
+		switch (signo) {
+		case SIGHUP: name = "HUP"; break;
+		case SIGTERM: name = "TERM"; break;
+		case SIGCHLD: name = "CHLD"; break;
+		default:
+			break;
+		}
+		syslog(LOG_DEBUG, "signal L %d (SIG%s)", signo, name);
 	}
 
 	len = sockwrite(signalpipe[1], &signo, sizeof(signo));
@@ -1355,6 +1364,7 @@ config(void)
 #endif
 			freeconfig(cfg);
 			print_service("REDO", sep);
+
 		} else {
 			if (debug)
 				syslog(LOG_DEBUG, "creating %s", cfg->se_service);
@@ -1940,7 +1950,7 @@ inetd_setproctitle(const char *a, int s)
 		(void) sprintf_s(buf, sizeof(buf), "%s [%s]", a, pbuf);
 	} else {
 		(void) sprintf_s(buf, sizeof(buf), "%s", a);
-        }
+	}
 	setproctitle("%s", buf);
 }
 
@@ -2250,3 +2260,4 @@ hashval(const char *p, int len)
 	return hv;
 }
 
+//end

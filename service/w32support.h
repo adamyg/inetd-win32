@@ -51,6 +51,7 @@
 #endif
 #endif  //BOOST_DELETED_FUNCTION
 
+
 #if defined(__WATCOMC__) && (__WATCOMC__ <= 1300)
 #if defined(__cplusplus)                        /* std::nothrow() emulation */
     #include <cstddef>

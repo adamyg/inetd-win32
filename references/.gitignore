@@ -1,7 +1,5 @@
 CVS/
-001/
-002/
 asio-standalone/
-source/
+*.ref/
 *.zip
 

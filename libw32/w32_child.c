@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_child_c,"$Id: w32_child.c,v 1.2 2022/03/24 12:42:43 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_child_c,"$Id: w32_child.c,v 1.3 2022/03/26 04:55:39 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -661,9 +661,11 @@ w32_child_execA(
     si.hStdOutput = hStdOut;
     si.hStdError  = hStdErr;
 
+#if !defined(NDEBUG)
     if (hStdIn)  { DWORD flags; assert(GetHandleInformation(hStdIn,  &flags) && (HANDLE_FLAG_INHERIT & flags)); }
     if (hStdOut) { DWORD flags; assert(GetHandleInformation(hStdOut, &flags) && (HANDLE_FLAG_INHERIT & flags)); }
     if (hStdErr) { DWORD flags; assert(GetHandleInformation(hStdErr, &flags) && (HANDLE_FLAG_INHERIT & flags)); }
+#endif
 
     si.dwFlags = STARTF_USESTDHANDLES;
     si.dwFlags |= STARTF_USESHOWWINDOW;
@@ -782,9 +784,11 @@ w32_child_execW(
     si.hStdOutput = hStdOut;
     si.hStdError  = hStdErr;
 
+#if !defined(NDEBUG)
     if (hStdIn)  { DWORD flags; assert(GetHandleInformation(hStdIn,  &flags) && (HANDLE_FLAG_INHERIT & flags)); }
     if (hStdOut) { DWORD flags; assert(GetHandleInformation(hStdOut, &flags) && (HANDLE_FLAG_INHERIT & flags)); }
     if (hStdErr) { DWORD flags; assert(GetHandleInformation(hStdErr, &flags) && (HANDLE_FLAG_INHERIT & flags)); }
+#endif
 
     si.dwFlags = STARTF_USESTDHANDLES;
     si.dwFlags |= STARTF_USESHOWWINDOW;
@@ -1155,7 +1159,6 @@ BuildEnvA(const char **envv)
  *      null, "_wenviron" is used instead. File handle info is passed in the environment
  *      if _fileinfo is !0.
  */
-
 static int
 BuildVectorsW(win32_spawnw_t *args, wchar_t **argblk,  wchar_t **envblk)
 {

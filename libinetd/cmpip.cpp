@@ -90,8 +90,8 @@
 #include "ObjectPool.h"
 #include "inetd.h"
 
-#define CHTGRAN 	10
-#define CHTSIZE 	6
+#define CHTGRAN		10
+#define CHTSIZE		6
 
 typedef struct CTime {
 	unsigned long	ct_ticks;
@@ -237,7 +237,7 @@ static HostCollection hosts;
 int
 cpmip(const struct servtab *sep, int ctrl)
 {
-        struct sockaddr_storage rss = {0};
+	struct sockaddr_storage rss = {0};
 	socklen_t rsslen = sizeof(rss);
 	const int maxcpm = sep->se_maxcpm;
 	int r = 0;

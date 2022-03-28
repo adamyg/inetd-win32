@@ -203,7 +203,8 @@ netaddr_pton4m(const char *src, const char *end, struct netaddr *res /*uint8_t *
 
 
 int
-getmasklength(const struct netaddr *res) {
+getmasklength(const struct netaddr *res)
+{
 	unsigned int nbits = 0, nbytes = 0, ipbytes = 0, i;
 	const unsigned char *p;
 

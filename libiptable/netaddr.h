@@ -17,7 +17,7 @@ struct netaddr {
 	union {
 		struct in_addr v4;
 		struct in6_addr v6;
-                uint64_t u64;
+		uint64_t u64;
 	} network;
 	union {
 		struct in_addr v4;

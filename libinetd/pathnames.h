@@ -39,3 +39,5 @@
 #endif
 #define	_PATH_INETDCONF	"/etc/inetd.conf"
 #define	_PATH_INETDPID	_PATH_VARRUN "inetd.pid"
+
+//end

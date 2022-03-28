@@ -242,7 +242,7 @@ struct TailMemberHook {
 		inetd::CriticalSection cs;
 		TAILQ_HEAD(TailHead, TailMemberHook) head;
 		unsigned count;
-	}
+	};
 
 	TailMemberHook() : node_{}, collection_(nullptr) assert_value(, member_(nullptr)) {
 	}

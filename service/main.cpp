@@ -179,6 +179,7 @@ main(int argc, const char **argv)
                 case OVERSION: version(); break;
                 }
             }
+
         } else {
             service.LogMessage(msg[0] ? msg : "unexpected service option <%s>", argv[ooptind]);
         }

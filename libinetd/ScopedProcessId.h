@@ -36,7 +36,8 @@ class ScopedProcessId {
 	ScopedProcessId& operator=(const ScopedProcessId &) = delete;
 
 private:
-	static bool dup_emplace(HANDLE &handle) {
+	static bool dup_emplace(HANDLE &handle)
+	{
 		HANDLE current_process = ::GetCurrentProcess(), result = nullptr;
 		if (::DuplicateHandle(current_process, handle, current_process,
 				&result, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
@@ -47,27 +48,32 @@ private:
 	}
 
 public:
-	ScopedProcessId() {
+	ScopedProcessId()
+	{
 		(void) memset(&pid_, 0, sizeof(pid_));
 	}
 
-	~ScopedProcessId() {
+	~ScopedProcessId()
+	{
 		Close();
 	}
 
-	ScopedProcessId& operator=(ScopedProcessId&& other) {
+	ScopedProcessId& operator=(ScopedProcessId&& other)
+	{
 		Set(other.Take());
 		return *this;
 	}
 
-	void Set(const PROCESS_INFORMATION &other) {
+	void Set(const PROCESS_INFORMATION &other)
+	{
 		if (&pid_ != &other) {
 			Close();
 			pid_ = other;
 		}
 	}
 
-	bool Clone(const ScopedProcessId &other) {
+	bool Clone(const ScopedProcessId &other)
+	{
 		if (this != &other) {
 			PROCESS_INFORMATION temp = other.pid_;
 			if (dup_emplace(temp.hProcess)) {
@@ -84,54 +90,65 @@ public:
 		return false;
 	}
 
-	operator PROCESS_INFORMATION *() {
+	operator PROCESS_INFORMATION *()
+	{
 		return &pid_;
 	}
 
-	PROCESS_INFORMATION Take() {
+	PROCESS_INFORMATION Take()
+	{
 		PROCESS_INFORMATION temp = pid_;
 		(void) memset(&pid_, 0, sizeof(pid_));
 		return temp;
 	}
 
-	HANDLE take_process_handle() {
+	HANDLE take_process_handle()
+	{
 		HANDLE temp = pid_.hProcess;
 		pid_.hProcess = nullptr;
 		return temp;
 	}
 
-	HANDLE process_handle() const {
+	HANDLE process_handle() const
+	{
 		return pid_.hProcess;
 	}
 
-	DWORD process_id() const {
+	DWORD process_id() const
+	{
 		return pid_.dwProcessId;
 	}
 
-	int pid() const {
+	int pid() const
+	{
 		assert(((int)process_id()) > 0);
 		return (int)process_id();
 	}
 
-	HANDLE take_process_thread() {
+	HANDLE take_process_thread()
+	{
 		HANDLE temp = pid_.hThread;
 		pid_.hThread = nullptr;
 		return temp;
 	}
 
-	HANDLE process_thread() const {
+	HANDLE process_thread() const
+	{
 		return pid_.hThread;
 	}
 
-	DWORD process_tid() const {
+	DWORD process_tid() const
+	{
 		return pid_.dwThreadId;
 	}
 
-	bool IsValid() const {
+	bool IsValid() const
+	{
 		return (pid_.hProcess != nullptr && pid_.hProcess != INVALID_HANDLE_VALUE);
 	}
 
-	void Close() {
+	void Close()
+	{
 		if (pid_.hThread)  ::CloseHandle(pid_.hThread);
 		if (pid_.hProcess) ::CloseHandle(pid_.hProcess);
 		pid_.hThread = pid_.hProcess = 0;
@@ -143,4 +160,3 @@ private:
 };
 
 };  //namespace inetd
-

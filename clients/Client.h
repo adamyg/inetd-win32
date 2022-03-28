@@ -39,19 +39,23 @@ class Client {
     Client& operator=(const Client &) = delete;
 
 public:
-    Client() : socket_(0) {
+    Client() : socket_(0)
+    {
         initialise();
     }
 
-    Client(SOCKET socket) : socket_(socket) {
+    Client(SOCKET socket) : socket_(socket)
+    {
     }
 
-    ~Client() {
+    ~Client()
+    {
         close();
     }
 
     static unsigned
-    getservport(const char *name, const char *proto = "tcp") {
+    getservport(const char *name, const char *proto = "tcp")
+    {
         struct servent *sp = ::getservbyname(name, proto);
         if (NULL == sp) {
             return 0;
@@ -60,7 +64,8 @@ public:
     }
 
     bool
-    connect(const char *hostname, int port) {
+    connect(const char *hostname, int port)
+    {
         struct hostent *hp = NULL;
         struct sockaddr_in serveraddr = {0};
         SOCKET fd;
@@ -97,7 +102,8 @@ public:
     }
 
     void
-    close() {
+    close() 
+    {
         if (socket_) {
             ::closesocket(socket_);
             socket_ = 0;
@@ -105,7 +111,8 @@ public:
     }
 
     int
-    read(void *buffer, size_t nbyte) {
+    read(void *buffer, size_t nbyte)
+    {
         int ret;
 
         if (! socket_) {
@@ -122,7 +129,8 @@ public:
     }
 
     int
-    write(const void *buffer, size_t nbyte) {
+    write(const void *buffer, size_t nbyte)
+    {
         int ret;
 
         if (! socket_) {
@@ -139,7 +147,8 @@ public:
     }
 
     size_t
-    readline(void *buffer, size_t sz) {
+    readline(void *buffer, size_t sz)
+    {
         unsigned total = 0;
         char *buf = (char *)buffer;
         char ch;
@@ -172,7 +181,8 @@ public:
 
 public:
     static void
-    initialise() {
+    initialise()
+    {
         static WSADATA wsaData = {0};
         if (0 == wsaData.wVersion) {
             if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {

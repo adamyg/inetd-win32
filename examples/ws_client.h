@@ -1,10 +1,35 @@
+#pragma once
+#ifndef WS_CLIENT_H_INCLUDED
+#define WS_CLIENT_H_INCLUDED
 //  WebSocket Client,
 //  extended https://gitlab.com/eidheim/Simple-WebSocket-Server
+//
+//  Copyright (c) 2020 - 2022, Adam Young.
+//
+//  The applications are free software: you can redistribute it
+//  and/or modify it under the terms of the GNU General Public License as
+//  published by the Free Software Foundation, version 3.
+//
+//  Redistributions of source code must retain the above copyright
+//  notice, and must be distributed with the license document above.
+//
+//  Redistributions in binary form must reproduce the above copyright
+//  notice, and must include the license document above in
+//  the documentation and/or other materials provided with the
+//  distribution.
+//
+//  This project is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//  license for more details.
+//  ==end==
+//
 
-#if defined(USE_STANDALONE_ASIO)
+#if defined(ASIO_STANDALONE)
 #define ASIO_DISABLE_BOOST_BIND 1
 #endif
 
+#include <cstdarg>
 #include <cassert>
 #include <string>
 
@@ -19,13 +44,15 @@
 #endif
 #endif  //HAVE_OPENSSL
 
+#include "ws_diagnostics.h"
+
 namespace ws {
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //  Client interface
 //
 
-#ifdef USE_STANDALONE_ASIO
+#ifdef ASIO_STANDALONE
 namespace error = asio::error;
 using error_code = std::error_code;
 using errc = std::errc;
@@ -49,14 +76,15 @@ using WSClient = SimpleWeb::SocketClient<SimpleWeb::WS>;
 using WSSClient = SimpleWeb::SocketClient<SimpleWeb::WSS>;
 #endif
 
-struct Diagnostics {
-};
-
+/////////////////////////////////////////////////////////////////////////////////////////
+//  Configuration
+//
 
 struct Configuration {
     Configuration() : reconnect_interval(0), reconnect_interval_max(0),
         verify_host(2 /*full*/), max_depth(0), self_signed(false) {
     }
+
     unsigned reconnect_interval;                //!< Reconnection interval; default=none.
     unsigned reconnect_interval_max;            //!< Uupper bounds; interval is extended until exceeded then capped at max; default=none.
     unsigned verify_host;                       //!< Verify remote host; default=yes.
@@ -71,6 +99,9 @@ struct Configuration {
     std::string verify_certificates_file;       //!< Optional server certificate(s); default=none
 };
 
+/////////////////////////////////////////////////////////////////////////////////////////
+//  Client
+//
 
 class Client {
 public:
@@ -81,7 +112,8 @@ public:
 
     template <template <class> class Specialisation>
     static std::shared_ptr<Client>
-    factory(Diagnostics &diags, bool ssl) {
+    factory(Diagnostics &diags, bool ssl)
+    {
         if (ssl) {
 #if defined(HAVE_OPENSSL)
             return std::make_shared<typename Specialisation<WSSClient>>(std::ref(diags));
@@ -94,7 +126,8 @@ public:
 
     template <template <class> class Specialisation>
     static std::shared_ptr<Client>
-    ssl_factory(Diagnostics &diags) {
+    ssl_factory(Diagnostics &diags)
+    {
 #if defined(HAVE_OPENSSL)
         return std::make_shared<typename Specialisation<WSSClient>>(std::ref(diags));
 #else
@@ -104,11 +137,11 @@ public:
 
     template <template <class> class Specialisation>
     static std::shared_ptr<Client>
-    std_factory(Diagnostics &diags) {
+    std_factory(Diagnostics &diags)
+    {
         return std::make_shared<typename Specialisation<WSClient>>(std::ref(diags));
     }
 };
-
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //  Client implementation
@@ -125,10 +158,24 @@ public:
     typedef typename Transport::InMessage InMessage;
 
 private:
+#if defined(HAVE_LIBCERTSTORE)
+    struct DiagnosticsCertSink : public CertStore::ICertSink {
+        DiagnosticsCertSink(Diagnostics &diags) : diags_(diags) {
+        }
+
+        virtual void message(const char *msg) {
+            diags_.message(msg);
+        }
+
+        Diagnostics &diags_;
+    };
+#endif
+
     class ClientDecorator : public SessionType {
     public:
-        ClientDecorator(const Configuration &cfg, const std::string &endpoint)
-                : SessionType(endpoint) {
+        ClientDecorator(const Configuration &cfg, Diagnostics &diags, const std::string &endpoint)
+                : SessionType(endpoint), diags_(diags)
+        {
             common(cfg);
             transport(cfg);
 #if defined(_DEBUG)
@@ -138,7 +185,8 @@ private:
 
     private:
         /// common configuration
-        void common(const Configuration &cfg) {
+        void common(const Configuration &cfg)
+        {
             config.proxy_server = cfg.proxy_server;
             config.protocol = cfg.protocol;
             if (! cfg.authorisation.empty()) {
@@ -149,38 +197,44 @@ private:
         /// ws specific configuration
         template<class Q = Transport>
         typename std::enable_if<std::is_same<Q, WSClient>::value, void>::type
-        transport(const Configuration &cfg) {
+        transport(const Configuration &cfg)
+        {
         }
 
         /// wws specific configuration
         template<class Q = Transport>
         typename std::enable_if<std::is_same<Q, WSSClient>::value, void>::type
-        transport(const Configuration &cfg) {
+        transport(const Configuration &cfg)
+        {
+#if defined(HAVE_LIBCERTSTORE)
+            DiagnosticsCertSink sink(diags_);
+#endif
+
 #if defined(HAVE_OPENSSL)
-#if defined(_WIN32) && (HAVE_LIBCERTSTORE)          // optional client certificate
-            if (-1 == CertStore::ssl_certificate::load(context.native_handle(), cfg.certification_file.c_str()))
-#endif
-#endif
+#if defined(_WIN32) && (HAVE_LIBCERTSTORE)      // optional client certificate
+            if (-1 == CertStore::ssl_certificate::load(sink, context.native_handle(), cfg.certification_file.c_str()))
+#endif //HAVE_LIBCERTSTORE
+#endif //HAVE_OPENSSL
                 set_certification(cfg.certification_file, cfg.private_key_file);
 
 #if defined(HAVE_OPENSSL)
-#if defined(_WIN32) && (HAVE_LIBCERTSTORE)          // optional server ca-certificates
-            if (-1 == CertStore::ssl_cacertificates::load(context.native_handle(), cfg.verify_certificates_file.c_str() /*true - cache*/))
-#endif
-#endif
+#if defined(_WIN32) && (HAVE_LIBCERTSTORE)      // optional server ca-certificates
+            if (-1 == CertStore::ssl_cacertificates::load(sink, context.native_handle(), cfg.verify_certificates_file.c_str() /*true - cache*/))
+#endif //HAVE_LIBCERTSTORE
+#endif //HAVE_OPENSSL
                 set_verify_certificates(cfg.verify_certificates_file);
 
-                                                    // server verify options
+                                                // server verify options
             set_verify_options(0 == cfg.verify_host ? Transport::none :
                 (1 == cfg.verify_host ? Transport::basic : Transport::rfc2818), cfg.max_depth, cfg.self_signed);
 
             {   const char *ciphers = cfg.cipher_list.c_str();
-	        if (0 == strcmp(ciphers, "default") || 0 == strcmp(ciphers, "secure")) {
-		    ciphers = CIPHERS_DEFAULT;
+                if (0 == strcmp(ciphers, "default") || 0 == strcmp(ciphers, "secure")) {
+                    ciphers = CIPHERS_DEFAULT;
                 } else if (0 == strcmp(ciphers, "compat") || 0 == strcmp(ciphers, "legacy")) {
                     ciphers = CIPHERS_COMPAT;
                 }
-                set_cipher_list(ciphers);           // cipher list
+                set_cipher_list(ciphers);       // cipher list
             }
         }
 
@@ -188,14 +242,16 @@ private:
         /// ws diagnostics
         template<class Q = Transport>
         typename std::enable_if<std::is_same<Q, WSClient>::value, bool>::type
-        diagnostics() {
+        diagnostics()
+        {
             return false;
         }
 
-        /// wws specific configuration; SSL status hook.
+        /// wss specific configuration; SSL status hook.
         template<class Q = Transport>
         typename std::enable_if<std::is_same<Q, WSSClient>::value, bool>::type
-        diagnostics() {
+        diagnostics()
+        {
             if (SSL_CTX *ctx = context.native_handle()) {
                 assert(ctx);
                 if (! SSL_CTX_get_info_callback(ctx)) {
@@ -208,7 +264,8 @@ private:
 
 #if defined(HAVE_OPENSSL)
         /// Connection run-time diagnositics.
-        static void ssl_ctx_info_cb(const SSL *ssl, int where, int ret) {
+        static void ssl_ctx_info_cb(const SSL *ssl, int where, int ret)
+        {
               char message[1024];
               const char *str;
               int w;
@@ -236,35 +293,43 @@ private:
                     std::cout << message << '\n';
               }
         }
-#endif  //HAVE_OPENSSL
+#endif //HAVE_OPENSSL
+
+    private:
+        Diagnostics &diags_;
     };
 
 public:
     ClientCommon(Diagnostics &diags) :
-        reconnect_interval_(0), reconnect_interval_max_(0), connect_attempt_(0), started_(false) {
+        diags_(diags), reconnect_interval_(0), reconnect_interval_max_(0), connect_attempt_(0), started_(false)
+    {
     }
 
-    virtual ~ClientCommon() {
+    virtual ~ClientCommon()
+    {
         stop();
     }
 
-    bool set_io_service(std::shared_ptr<asio::io_service> &io_service) {
+    bool set_io_service(std::shared_ptr<asio::io_service> &io_service)
+    {
         assert(! started_);
         if (started_) return false;
         io_service_.swap(io_service);
         return true;
     }
 
-    bool start(const Configuration &cfg, const std::string &host, const std::string &path, std::function<void()> callback = nullptr) {
+    bool start(const Configuration &cfg, const std::string &host, const std::string &path, std::function<void()> callback = nullptr)
+    {
         return start(cfg, host + "/" + path, callback);
     }
 
-    bool start(const Configuration &cfg, const std::string &endpoint, std::function<void()> callback = nullptr) {
+    bool start(const Configuration &cfg, const std::string &endpoint, std::function<void()> callback = nullptr)
+    {
         assert(! started_);
         if (started_) return false;
         reconnect_interval_ = cfg.reconnect_interval;
         reconnect_interval_max_ = cfg.reconnect_interval_max;
-        client_ = std::make_shared<ClientDecorator>(cfg, endpoint);
+        client_ = std::make_shared<ClientDecorator>(cfg, diags_, endpoint);
         if (client_) {
             bindings();
             client_->start(callback);
@@ -274,29 +339,36 @@ public:
         return false;
     }
 
-    void stop() {
+    void stop()
+    {
     }
 
 protected:
-    void on_open(std::shared_ptr<Connection> &connection) {
+    void on_open(std::shared_ptr<Connection> &connection)
+    {
         static_cast<Specialisation *>(this)->on_open(connection); //CRTP
     }
 
-    void on_close(std::shared_ptr<Connection> &connection, bool success) {
+    void on_close(std::shared_ptr<Connection> &connection, bool success)
+    {
         static_cast<Specialisation *>(this)->on_close(connection, success); //CRTP
     }
 
-    void on_message(std::shared_ptr<Connection> &connection, std::shared_ptr<InMessage> &inmessage) {
+    void on_message(std::shared_ptr<Connection> &connection, std::shared_ptr<InMessage> &inmessage)
+    {
         static_cast<Specialisation *>(this)->on_message(connection, inmessage); //CRTP
     }
 
 private:
-    void bindings() {
-        using namespace std::placeholders;      // _1, _2 and _3
+    void bindings()
+    {
+        using namespace std::placeholders; // _1, _2 and _3
 
-        if (io_service_) {                      // local io_service
+        if (io_service_) { // local io_service
             client_->io_service = io_service_;
         }
+
+        client_->on_attempt = std::bind(&ClientCommon::cb_onattempt, this, _1, _2, _3);
         client_->on_open    = std::bind(&ClientCommon::cb_onopen, this, _1);
         client_->on_message = std::bind(&ClientCommon::on_message, this, _1, _2);
         client_->on_close   = std::bind(&ClientCommon::cb_onclose, this, _1, _2, _3);
@@ -305,64 +377,77 @@ private:
         client_->on_pong    = std::bind(&ClientCommon::cb_onpong, this, _1);
     }
 
-    void cb_onopen(std::shared_ptr<Connection> &connection) {
+    const char *label()
+    {
+        return "ws";
+    }
+
+    void cb_onattempt(std::shared_ptr<Connection>, const error_code &ec, asio::ip::tcp::resolver::iterator next)
+    {
+        if (ec) {
+            diags_.stream()
+                << label() << ": Connection error: " << ec.message();
+        }
+
+        diags_.stream()
+            << label() << ": Trying <" << next->endpoint() << "> ...";
+    }
+
+    void cb_onopen(std::shared_ptr<Connection> &connection)
+    {
         connect_attempt_ = 0;
-//TODO  connection_ = connection->weak_from_this();
         on_open(connection);
     }
 
-    void cb_onclose(std::shared_ptr<Connection> &connection, int status, const std::string &reason) {
-//      DIAGIO_STREAM_INFO()
-//      DIAGIO_STREAM()
-//          << label() << ": Closed connection with status code " << status << " [" << reason << "]";
-//      DIAGIO_STREAM_END()
-        connection_.reset();
+    void cb_onclose(std::shared_ptr<Connection> &connection, int status, const std::string &reason)
+    {
+        diags_.stream()
+            << label() << ": Closed connection with status code " << status << " [" << reason << "]";
+
         on_close(connection, true);
         if (started_ && reconnect_interval_) {
             reconnect_start(connection);
         }
     }
 
-    void cb_onerror(std::shared_ptr<Connection> &connection, const SimpleWeb::error_code &ec) {
-//      DIAGIO_STREAM_INFO()
-        connection_.reset();
+    void cb_onerror(std::shared_ptr<Connection> &connection, const SimpleWeb::error_code &ec)
+    {
         on_close(connection, false);
-
         if (started_ && reconnect_interval_) {
-            if (ec.value() == 335544539) {      // connection was closed unexpectedly.
-//              DIAGIO_STREAM()
-//                  << label() << ": Error: " << ec << " [connection was closed unexpectedly], error message: " << ec.message() << " -- retrying, attempt:" << reconnect_attempts_;
+            if (ec.value() == 335544539) { // connection was closed unexpectedly.
+                diags_.stream()
+                    << label() << ": Error: " << ec << " [connection was closed unexpectedly], error message: " << ec.message() << " -- retrying, attempt:" << connect_attempt_;
+
             } else {
-//              DIAGIO_STREAM()
-//                  << label() << ": Error: " << ec << ", error message: " << ec.message() << " -- retrying";
+                diags_.stream()
+                    << label() << ": Error: " << ec << ", error message: " << ec.message() << " -- retrying";
             }
             reconnect_start(connection);
+
         } else {
-//          DIAGIO_STREAM()
-//              << label() << ": Error: " << ec << ", error message: " << ec.message();
+            diags_.stream()
+                << label() << ": Error: " << ec << ", error message: " << ec.message();
             if (reconnect_timer_) {
                 reconnect_timer_->cancel();
                 reconnect_timer_.reset();
             }
         }
-//      DIAGIO_STREAM_END()
     }
 
-    void cb_onping(std::shared_ptr<Connection> &connection) {
-//      DIAGIO_STREAM_INFO()
-//      DIAGIO_STREAM()
-//          << label() << ": ping";
-//      DIAGIO_STREAM_END()
+    void cb_onping(std::shared_ptr<Connection> &connection)
+    {
+        diags_.stream()
+            << label() << ": ping";
     }
 
-    void cb_onpong(std::shared_ptr<Connection> &connection) {
-//      DIAGIO_STREAM_INFO()
-//      DIAGIO_STREAM()
-//          << label() << ": pong";
-//      DIAGIO_STREAM_END()
+    void cb_onpong(std::shared_ptr<Connection> &connection)
+    {
+        diags_.stream()
+            << label() << ": pong";
     }
 
-    void reconnect_start(std::shared_ptr<Connection> &connection) {
+    void reconnect_start(std::shared_ptr<Connection> &connection)
+    {
         assert(reconnect_interval_);
         if (reconnect_interval_) {
             unsigned next =
@@ -375,7 +460,8 @@ private:
         }
     }
 
-    void reconnect_start(std::shared_ptr<Connection> &connection, unsigned inseconds) {
+    void reconnect_start(std::shared_ptr<Connection> &connection, unsigned inseconds)
+    {
         if (! reconnect_timer_) {
             reconnect_timer_ =
                 std::shared_ptr<asio::steady_timer>(new(std::nothrow) asio::steady_timer(*client_->io_service.get()));
@@ -387,7 +473,8 @@ private:
         }
     }
 
-    void cb_connect_timer(const error_code &ec) {
+    void cb_connect_timer(const error_code &ec)
+    {
         if (ec != boost::asio::error::operation_aborted) {
             if (started_) {
                 client_->start();
@@ -396,21 +483,21 @@ private:
         connect_timer_.reset();
     }
 
-    void cb_reconnect_timer(std::shared_ptr<Connection> &connection, const error_code &ec) {
-//      DIAGIO_STREAM_INFO()
+    void cb_reconnect_timer(std::shared_ptr<Connection> &connection, const error_code &ec)
+    {
         if (ec != asio::error::operation_aborted) {
             if (started_) {
-//              DIAGIO_STREAM()
-//                  << label() << ": reconnecting, attempt:" << reconnect_attempts_;;
-//              client_->reconnect(connection);
+                diags_.stream()
+                    << label() << ": reconnecting, attempt:" << connect_attempt_;
+                client_->reconnect(connection);
+                ++connect_attempt_;
             }
         }
-//      DIAGIO_STREAM_END()
     }
 
 private:
+    Diagnostics &diags_;
     std::shared_ptr<ClientDecorator> client_;   //!< Client instance.
-    std::weak_ptr<Connection> connection_;      //!< Active connection.
     std::shared_ptr<asio::steady_timer> connect_timer_;
     std::shared_ptr<asio::steady_timer> reconnect_timer_;
     std::shared_ptr<asio::io_context> io_service_;
@@ -421,5 +508,7 @@ private:
 };
 
 };  //namespace ws
+
+#endif //WS_CLIENT_H_INCLUDED
 
 //end

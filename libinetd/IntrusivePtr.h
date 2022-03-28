@@ -59,7 +59,7 @@ struct PtrMemberHook {
 		assert(0 == intrusive_ptr_references_);
 	}
 
-        static void intrusive_ptr_add_ref(element_type *px) {
+	static void intrusive_ptr_add_ref(element_type *px) {
 		assert(px);
 		++(px->intrusive_ptr_references_);
 	}
@@ -71,7 +71,7 @@ struct PtrMemberHook {
 				element_type::intrusive_deleter(p);
 			} else {
 				delete p;
-                        }*/
+			}*/
 			element_type::intrusive_deleter(px);
 		}
 	}

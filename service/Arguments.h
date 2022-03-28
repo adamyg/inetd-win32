@@ -1,3 +1,6 @@
+#pragma once
+#ifndef AUGMENTS_H_INCLUDED
+#define AUGMENTS_H_INCLUDED
 /*
  * argument handing
  *
@@ -27,9 +30,7 @@
 #include <cstdlib>
 #include <cstdio>
 
-
 class Arguments {
-
 public:
     Arguments(const std::vector<std::string> &args, bool clone = false) :
             argc_(0), argv_(NULL), cloned_(0) {
@@ -152,5 +153,8 @@ private:
     const char **argv_;
     char *cloned_;
 };
+
+
+#endif //AUGMENTS_H_INCLUDED
 
 //end

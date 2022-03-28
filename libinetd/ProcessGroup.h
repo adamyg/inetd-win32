@@ -69,14 +69,17 @@ private:
 	};
 
 public:
-	ProcessGroup() : unmanaged_(0) {
+	ProcessGroup() : unmanaged_(0)
+	{
 	}
 
-	~ProcessGroup() {
+	~ProcessGroup()
+	{
 		close();
 	}
 
-	bool open(void (*sigchld)() = nullptr, int signal_event = -1) {
+	bool open(void (*sigchld)() = nullptr, int signal_event = -1)
+	{
 		sigchld_ = sigchld;
 
 		if (! job_.IsValid()) {
@@ -90,7 +93,7 @@ public:
 				  JOB_OBJECT_LIMIT_BREAKAWAY_OK 		// Children aren't associated with the job.
 				| JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK		// Allows any process associated with the job to create child processes that are not associated with the job.
 				| JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION	// Enable debugger dialog.
-			      /*| JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE*/; 	// Causes all processes associated with the job to terminate when the last handle to the job is closed.
+			      /*| JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE*/;		// Causes all processes associated with the job to terminate when the last handle to the job is closed.
 
 			if (! ::SetInformationJobObject(job_, JobObjectExtendedLimitInformation, &info, sizeof info)) {
 				return false;
@@ -123,7 +126,8 @@ public:
 		return true;
 	}
 
-	bool close() {
+	bool close()
+	{
 		if (port_.IsValid()) {
 			::PostQueuedCompletionStatus(port_.Get(), 0, THREAD_CTRL_QUIT, nullptr);
 			if (thread_.IsValid() &&
@@ -136,7 +140,8 @@ public:
 		return true;
 	}
 
-	bool track(const ScopedProcessId &processid) {
+	bool track(const ScopedProcessId &processid)
+	{
 		if (port_.IsValid()) {
 			Process *process = new Process;
 
@@ -148,18 +153,21 @@ public:
 		return false;
 	}
 
-	HANDLE job_handle() {
+	HANDLE job_handle()
+	{
 		return job_.Get();
 	}
 
 public:
 //	int
-//	waitpid(pid_t pid, int *status, int options) {
+//	waitpid(pid_t pid, int *status, int options)
+//	{
 //		return wait_common(pid, status, options, NULL, NULL);
 //	}
 
 //	int
-//	wait(int *status) {
+//	wait(int *status)
+//	{
 //		if (status) {
 //			return wait(false, *status);
 //		}
@@ -168,16 +176,19 @@ public:
 //	}
 
 //	pid_t
-//	wait3(int * status, int options, struct rusage *rusage) {
+//	wait3(int * status, int options, struct rusage *rusage)
+//	{
 //		return wait_common(-1, status, options, NULL, rusage);
 //	}
 
 //	pid_t
-//	wait4(pid_t pid, int * status, int options, struct rusage *rusage) {
+//	wait4(pid_t pid, int * status, int options, struct rusage *rusage)
+//	{
 //		return wait_common(pid, status, options, NULL, rusage);
 //	}
 
-	int wait(bool nohang, int &status) {
+	int wait(bool nohang, int &status)
+	{
 		while (true) {
 			std::unique_ptr<Process> process;
 
@@ -217,7 +228,8 @@ public:
 	}
 
 private:
-	static DWORD WINAPI JobEventTask(PVOID param) {
+	static DWORD WINAPI JobEventTask(PVOID param)
+	{
 		std::unordered_map<DWORD, std::unique_ptr<Process>> processes;
 		std::set<DWORD> childids;
 
@@ -301,7 +313,8 @@ private:
 		return 0;
 	}
 
-	void sigchld() {
+	void sigchld()
+	{
 		// XXX: consider using a timer to trigger, allowing complete process termination.
 		if (sigchld_) { 		// optional
 			sigchld_();
@@ -312,14 +325,15 @@ private:
 		}
 	}
 
-	static bool wait_handle(HANDLE handle, bool nohang, int &status) {
+	static bool wait_handle(HANDLE handle, bool nohang, int &status)
+	{
 		DWORD dwStatus = 0, rc;
 
 		if (0 == handle) {
-			errno = EINVAL; 	// nul handle
+			errno = EINVAL;		// nul handle
 
 		} else if (handle == (HANDLE)-1 || handle == (HANDLE)-2) {
-			errno = ECHILD; 	// special handle, ignore
+			errno = ECHILD;		// special handle, ignore
 
 		} else if ((rc = ::WaitForSingleObject(handle, (nohang ? 0 : INFINITE))) == WAIT_OBJECT_0 &&
 					::GetExitCodeProcess(handle, (LPDWORD)&dwStatus)) {
@@ -335,10 +349,10 @@ private:
 			return true;
 
 		} else if (WAIT_TIMEOUT == rc) {
-			errno = EAGAIN; 	// nohang
+			errno = EAGAIN;		// nohang
 
 		} else {
-			errno = ECHILD; 	// other
+			errno = ECHILD;		// other
 		}
 		return false;
 	}

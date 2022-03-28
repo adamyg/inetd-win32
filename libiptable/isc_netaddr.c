@@ -70,7 +70,8 @@
 #define ISC_R_RANGE -1
 
 int
-isc_netaddr_equal(const isc_netaddr_t *a, const isc_netaddr_t *b) {
+isc_netaddr_equal(const isc_netaddr_t *a, const isc_netaddr_t *b)
+{
 	assert(a != NULL && b != NULL);
 
 	if (a->family != b->family) {
@@ -108,7 +109,8 @@ isc_netaddr_equal(const isc_netaddr_t *a, const isc_netaddr_t *b) {
 }
 
 int
-isc_netaddr_eqprefix(const isc_netaddr_t *a, const isc_netaddr_t *b, unsigned int prefixlen) {
+isc_netaddr_eqprefix(const isc_netaddr_t *a, const isc_netaddr_t *b, unsigned int prefixlen)
+{
 	const unsigned char *pa = NULL, *pb = NULL;
 	unsigned int ipabytes = 0;		/* Length of whole IP address in bytes */
 	unsigned int nbytes;	   		/* Number of significant whole bytes */
@@ -169,7 +171,8 @@ isc_netaddr_eqprefix(const isc_netaddr_t *a, const isc_netaddr_t *b, unsigned in
 }
 
 int
-isc_netaddr_totext(const isc_netaddr_t *netaddr, char *buffer, size_t buflen /*isc_buffer_t *target*/) {
+isc_netaddr_totext(const isc_netaddr_t *netaddr, char *buffer, size_t buflen /*isc_buffer_t *target*/)
+{
 	char abuf[sizeof("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:255.255.255.255")];
 	char zbuf[sizeof("%4294967295")];
 	unsigned int alen;
@@ -245,7 +248,8 @@ isc_netaddr_totext(const isc_netaddr_t *netaddr, char *buffer, size_t buflen /*i
 
 #if (XXX)
 void
-isc_netaddr_format(const isc_netaddr_t *na, char *array, unsigned int size) {
+isc_netaddr_format(const isc_netaddr_t *na, char *array, unsigned int size)
+{
 	int result;
 	isc_buffer_t buf;
 
@@ -275,7 +279,8 @@ isc_netaddr_format(const isc_netaddr_t *na, char *array, unsigned int size) {
 #endif  //XXX
 
 int
-isc_netaddr_prefixok(const isc_netaddr_t *na, unsigned int prefixlen) {
+isc_netaddr_prefixok(const isc_netaddr_t *na, unsigned int prefixlen)
+{
 	static const unsigned char zeros[16];
 	unsigned int nbits, nbytes, ipbytes = 0;
 	const unsigned char *p;
@@ -314,7 +319,8 @@ isc_netaddr_prefixok(const isc_netaddr_t *na, unsigned int prefixlen) {
 }
 
 int
-isc_netaddr_masktoprefixlen(const isc_netaddr_t *s, unsigned int *lenp) {
+isc_netaddr_masktoprefixlen(const isc_netaddr_t *s, unsigned int *lenp)
+{
 	unsigned int nbits = 0, nbytes = 0, ipbytes = 0, i;
 	const unsigned char *p;
 
@@ -357,7 +363,8 @@ isc_netaddr_masktoprefixlen(const isc_netaddr_t *s, unsigned int *lenp) {
 }
 
 void
-isc_netaddr_fromin(isc_netaddr_t *netaddr, const struct in_addr *ina) {
+isc_netaddr_fromin(isc_netaddr_t *netaddr, const struct in_addr *ina)
+{
 	memset(netaddr, 0, sizeof(*netaddr));
 	netaddr->family = AF_INET;
 	netaddr->netaddr_v4addr = *ina;
@@ -372,7 +379,8 @@ isc_netaddr_fromin6(isc_netaddr_t *netaddr, const struct in6_addr *ina6) {
 
 #if (TODO)
 int
-isc_netaddr_frompath(isc_netaddr_t *netaddr, const char *path) {
+isc_netaddr_frompath(isc_netaddr_t *netaddr, const char *path)
+{
 #ifndef _WIN32
 	if (strlen(path) > sizeof(netaddr->type.un) - 1) {
 		return (ISC_R_NOSPACE);
@@ -393,7 +401,8 @@ isc_netaddr_frompath(isc_netaddr_t *netaddr, const char *path) {
 
 #if (TODO)
 void
-isc_netaddr_setzone(isc_netaddr_t *netaddr, uint32_t zone) {
+isc_netaddr_setzone(isc_netaddr_t *netaddr, uint32_t zone)
+{
 	/* we currently only support AF_INET6. */
 	assert(netaddr->family == AF_INET6);
 
@@ -403,14 +412,16 @@ isc_netaddr_setzone(isc_netaddr_t *netaddr, uint32_t zone) {
 
 #if (TODO)
 uint32_t
-isc_netaddr_getzone(const isc_netaddr_t *netaddr) {
+isc_netaddr_getzone(const isc_netaddr_t *netaddr)
+{
 	return (netaddr->zone);
 }
 #endif  /*TODO*/
 
 #if (TODO)
 void
-isc_netaddr_fromsockaddr(isc_netaddr_t *t, const isc_sockaddr_t *s) {
+isc_netaddr_fromsockaddr(isc_netaddr_t *t, const isc_sockaddr_t *s)
+{
 	int family = s->type.sa.sa_family;
 	t->family = family;
 	switch (family) {
@@ -436,27 +447,31 @@ isc_netaddr_fromsockaddr(isc_netaddr_t *t, const isc_sockaddr_t *s) {
 #endif  //TODO
 
 void
-isc_netaddr_any(isc_netaddr_t *netaddr) {
+isc_netaddr_any(isc_netaddr_t *netaddr)
+{
 	memset(netaddr, 0, sizeof(*netaddr));
 	netaddr->family = AF_INET;
 	netaddr->netaddr_v4addr.s_addr = INADDR_ANY;
 }
 
 void
-isc_netaddr_any6(isc_netaddr_t *netaddr) {
+isc_netaddr_any6(isc_netaddr_t *netaddr)
+{
 	memset(netaddr, 0, sizeof(*netaddr));
 	netaddr->family = AF_INET6;
 	netaddr->netaddr_v6addr = in6addr_any;
 }
 
 void
-isc_netaddr_unspec(isc_netaddr_t *netaddr) {
+isc_netaddr_unspec(isc_netaddr_t *netaddr)
+{
 	memset(netaddr, 0, sizeof(*netaddr));
 	netaddr->family = AF_UNSPEC;
 }
 
 int
-isc_netaddr_ismulticast(const isc_netaddr_t *na) {
+isc_netaddr_ismulticast(const isc_netaddr_t *na)
+{
 	switch (na->family) {
 	case AF_INET:
 		return (ISC_IPADDR_ISMULTICAST(na->netaddr_v4addr.s_addr));
@@ -468,7 +483,8 @@ isc_netaddr_ismulticast(const isc_netaddr_t *na) {
 }
 
 int
-isc_netaddr_isexperimental(const isc_netaddr_t *na) {
+isc_netaddr_isexperimental(const isc_netaddr_t *na)
+{
 	switch (na->family) {
 	case AF_INET:
 		return (ISC_IPADDR_ISEXPERIMENTAL(na->netaddr_v4addr.s_addr));
@@ -478,7 +494,8 @@ isc_netaddr_isexperimental(const isc_netaddr_t *na) {
 }
 
 int
-isc_netaddr_islinklocal(const isc_netaddr_t *na) {
+isc_netaddr_islinklocal(const isc_netaddr_t *na)
+{
 	switch (na->family) {
 	case AF_INET:
 		return (false);
@@ -505,7 +522,8 @@ isc_netaddr_issitelocal(const isc_netaddr_t *na) {
 	(((uint32_t)(i)&ISC__IPADDR(0xff000000)) == ISC__IPADDR(0x00000000))
 
 int
-isc_netaddr_isnetzero(const isc_netaddr_t *na) {
+isc_netaddr_isnetzero(const isc_netaddr_t *na)
+{
 	switch (na->family) {
 	case AF_INET:
 		return (ISC_IPADDR_ISNETZERO(na->netaddr_v4addr.s_addr));
@@ -517,7 +535,8 @@ isc_netaddr_isnetzero(const isc_netaddr_t *na) {
 }
 
 void
-isc_netaddr_fromv4mapped(isc_netaddr_t *t, const isc_netaddr_t *s) {
+isc_netaddr_fromv4mapped(isc_netaddr_t *t, const isc_netaddr_t *s)
+{
 	isc_netaddr_t *src;
 
 //	DE_CONST(s, src); /* Must come before IN6_IS_ADDR_V4MAPPED. */
@@ -533,7 +552,8 @@ isc_netaddr_fromv4mapped(isc_netaddr_t *t, const isc_netaddr_t *s) {
 }
 
 int
-isc_netaddr_isloopback(const isc_netaddr_t *na) {
+isc_netaddr_isloopback(const isc_netaddr_t *na)
+{
 	switch (na->family) {
 	case AF_INET:
 		return (((ntohl(na->netaddr_v4addr.s_addr) & 0xff000000U) ==

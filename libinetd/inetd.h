@@ -289,3 +289,5 @@ void		inetd_setproctitle(const char *, int);
 struct servtab *tcpmux(int);
 #endif
 __END_DECLS
+
+//end

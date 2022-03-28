@@ -41,7 +41,7 @@ namespace inetd {
 #pragma warning(push)
 #pragma warning(disable : 4127)		// conditional expression is constant
 #pragma push_macro("new")
-#undef	new
+#undef  new
 #endif
 
 namespace object_pool {
@@ -78,8 +78,8 @@ private:
 		TAILQ_ENTRY(Node) node_;
 		ObjectPool *owner_;
 		union {
-		    void *slab_;
-		    unsigned bucketsize_;
+			void *slab_;
+			unsigned bucketsize_;
 		};
 	};
 
@@ -97,8 +97,8 @@ public:
 			meta_size_(align_up(sizeof(Node), ALIGNMENT)),
 			node_size_(align_up(sizeof(Node), ALIGNMENT) + align_up(sizeof(element_type), ALIGNMENT)),
 			capacity_(0),
-			avail_(0) {
-
+			avail_(0)
+	{
 		assert(bucket_first_);
 		assert(bucket_first_ <= bucket_max_);
 		assert(meta_size_ >= sizeof(Node));
@@ -112,9 +112,9 @@ public:
 		}
 	}
 
-	~ObjectPool() {
-		size_t total = 0, used = 0,
-		    bucketsize = bucket_first_;
+	~ObjectPool()
+	{
+		size_t total = 0, used = 0, bucketsize = bucket_first_;
 
 		Node *slabnode, *t_slabnode;
 		TAILQ_FOREACH_SAFE(slabnode, &slabs_, node_, t_slabnode) {
@@ -150,7 +150,8 @@ public:
 	}
 
 	template<typename... Args>
-	inline element_type *construct(Args&&... args) {
+	inline element_type *construct(Args&&... args)
+	{
 		Node *node = (malloc)();
 		if (nullptr == node)
 			throw std::bad_alloc();
@@ -166,7 +167,8 @@ public:
 	}
 
 	template<typename... Args>
-	inline element_type *construct_nothrow(Args&&... args) {
+	inline element_type *construct_nothrow(Args&&... args)
+	{
 		Node *node = (malloc)();
 		if (nullptr == node)
 			throw nullptr;
@@ -191,7 +193,8 @@ public:
 	}
 
 	inline bool
-	is_from(const element_type *element) const {
+	is_from(const element_type *element) const
+	{
 		const Node *node = element_to_node(element);
 		switch (node->type_) {
 		case ISFREE:
@@ -212,7 +215,8 @@ public:
 	}
 
 	inline void
-	check() const {
+	check() const
+	{
 		size_t total = 0, used = 0, bucketsize = bucket_first_;
 
 		const Node *slabnode;
@@ -242,49 +246,59 @@ public:
 		assert(used == (total - avail_));
 	}
 
-	inline size_t avail() const {
+	inline size_t avail() const
+	{
 		return avail_;
 	}
 
-	inline size_t capacity() const {
+	inline size_t capacity() const
+	{
 		return capacity_;
 	}
 
-	inline size_t size() const {
+	inline size_t size() const
+	{
 		return capacity_ - avail_;
 	}
 
-	inline size_t get_next_size() const {
+	inline size_t get_next_size() const
+	{
 		return bucket_next_;
 	}
 
-	inline void set_next_size(const size_t next) {
+	inline void set_next_size(const size_t next)
+	{
 		assert(next);
 		bucket_next_ = next;
 	}
 
 private:
 	inline element_type *
-	node_to_element(Node *node) {
+	node_to_element(Node *node)
+	{
 		return static_cast<element_type *>((void *)(((char *)node) + meta_size_));
 	}
 
 	inline const element_type *
-	node_to_element(Node *node) const {
+	node_to_element(Node *node) const
+	{
 		return static_cast<const element_type *>((const void *)(((const char *)node) + meta_size_));
 	}
 
 	inline Node *
-	element_to_node(element_type *element) {
+	element_to_node(element_type *element)
+	{
 		return static_cast<Node *>((void *)(((char *)element) - meta_size_));
 	}
 
 	inline const Node *
-	element_to_node(const element_type *element) const {
+	element_to_node(const element_type *element) const
+	{
 		return static_cast<const Node *>((void *)(((const char *)element) - meta_size_));
 	}
 
-	inline Node * malloc() noexcept {
+	inline Node * malloc() noexcept
+	{
 		Node *node;
 
 		if (nullptr == (node = TAILQ_FIRST(&free_list_))) {
@@ -336,7 +350,8 @@ private:
 	}
 
 	inline void
-	free(Node *node) {
+	free(Node *node)
+	{
 		assert(ISUSED == node->type_);
 		assert(this == node->owner_);
 		node->owner_ = nullptr;
@@ -368,3 +383,5 @@ private:
 #endif
 
 }   //namespace inetd
+
+//end
