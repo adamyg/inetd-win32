@@ -2,7 +2,7 @@
 /*
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -111,7 +111,7 @@ const struct biltin biltins[] = {
 	{ "echo",	SOCK_DGRAM,	0,	1,	echo_dg },
 
 	/* Internet /dev/null */
-	{ "discard",	SOCK_STREAM,	1,      -1,	discard_stream },
+	{ "discard",	SOCK_STREAM,	1,	-1,	discard_stream },
 	{ "discard",	SOCK_DGRAM,	0,	1,	discard_dg },
 
 	/* Return 32 bit time since 1900 */
@@ -264,7 +264,7 @@ daytime_stream(int s, struct servtab *sep __unused)
 	(void) sprintf(buffer, "%.24s\r\n", ctime(&now));
 #if !defined(MSG_EOF)
 	(void) send(s, buffer, strlen(buffer), 0); //TODO: blocking send
-        (void) shutdown(s, SD_SEND);
+	(void) shutdown(s, SD_SEND);
 #else
 	(void) send(s, buffer, strlen(buffer), MSG_EOF);
 #endif
@@ -338,9 +338,9 @@ echo_stream(int s, struct servtab *sep)
 
 	inetd_setproctitle(sep->se_service, s);
 	while ((i = sockread(s, buffer, sizeof(buffer))) > 0 &&
-                        sockwrite(s, buffer, i) > 0) {
+			sockwrite(s, buffer, i) > 0) {
 		;
-        }
+	}
 	exit(0);
 }
 
@@ -809,8 +809,8 @@ get_line(int fd, char *buf, int len)
 			break;
 		}
 
-//              DWORD timeout = 10 * 1000;      /* recv timeout */
-//              setsockopt(fs, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+//		DWORD timeout = 10 * 1000;      /* recv timeout */
+//		setsockopt(fs, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
 		n = sockread(fd, buf, len-count);
 		if (n == 0)
@@ -849,7 +849,7 @@ tcpmux(int s)
 	 * Help is a required command, and lists available services, one per line.
 	 */
 	if (0 == strcasecmp(service, "help")) {
-		for (sep = servtab; sep; sep = sep->se_next) {
+		for (sep = servtabs; sep; sep = sep->se_next) {
 			if (!ISMUX(sep))
 				continue;
 			(void)sockwrite(s,sep->se_service,strlen(sep->se_service));
@@ -861,7 +861,7 @@ tcpmux(int s)
 	/*
 	 *  Try matching a service in inetd.conf with the request
 	 */
-	for (sep = servtab; sep; sep = sep->se_next) {
+	for (sep = servtabs; sep; sep = sep->se_next) {
 		if (!ISMUX(sep))
 			continue;
 		if (0 == strcasecmp(service, sep->se_service)) {

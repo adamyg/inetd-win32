@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.2 2020/10/22 17:14:24 cvsuser Exp $")
+__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.4 2022/03/25 17:04:04 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
  * Simple File logger.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -837,6 +837,7 @@ Logger::stop()
 //      logger->push(msg, msglen);
 //      return 1;
 //  }
+
 
 //  #if (XXX)   //move into a non-member util function.
 //  void

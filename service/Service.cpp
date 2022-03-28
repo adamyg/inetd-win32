@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.2 2020/10/18 15:34:32 cvsuser Exp $")
+__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.9 2022/03/25 17:04:05 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * inetd service adapter
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -59,20 +59,24 @@ struct Service::PipeEndpoint {
     enum pipe_state { EP_CREATED, EP_CONNECT, EP_CONNECT_ERROR, EP_READY, EP_READING, EP_READ };
 
     PipeEndpoint(HANDLE _ioevent, HANDLE _handle, DWORD _size) :
-            ioevent(_ioevent), handle(_handle), size(_size), state(EP_CREATED), avail(_size), cursor(buffer) {
+            ioevent(_ioevent), handle(_handle), size(_size), state(EP_CREATED), avail(_size), cursor(buffer)
+    {
     }
 
-    void reset() {
+    void reset()
+    {
         cursor = buffer, avail = size;
     }
 
-    void pushed(DWORD bytes) {
+    void pushed(DWORD bytes)
+    {
         assert(bytes <= avail);
         avail -= bytes; cursor += bytes;
         cursor[0] = 0;
     }
 
-    void popped(DWORD bytes) {
+    void popped(DWORD bytes)
+    {
         const DWORD t_length = length();
         assert(bytes <= t_length);
         if (bytes == t_length) {                // empty?
@@ -83,12 +87,14 @@ struct Service::PipeEndpoint {
         }
     }
 
-    DWORD length() const {
+    DWORD length() const
+    {
         assert(avail <= size);
         return size - avail;
     }
 
-    void CompletionSetup() {
+    void CompletionSetup()
+    {
         DWORD lasterr;
         if (PipeEndpoint::EP_CREATED == state || PipeEndpoint::EP_CONNECT_ERROR == state) {
             overlapped.hEvent = ioevent;
@@ -119,7 +125,8 @@ struct Service::PipeEndpoint {
         }
     }
 
-    bool CompletionResults(DWORD &dwRead) {
+    bool CompletionResults(DWORD &dwRead) 
+    {
         return (0 != ::GetOverlappedResult(handle, &overlapped, &dwRead, FALSE));
     }
 
@@ -138,7 +145,7 @@ struct Service::PipeEndpoint {
 DWORD
 Service::NewPipeEndpoint(const char *pipe_name, PipeEndpoint *&result)
 {
-    HANDLE ioevent = ::CreateEvent(NULL, TRUE, TRUE, NULL);
+    HANDLE ioevent = ::CreateEventA(NULL, TRUE, TRUE, NULL);
 
     if (INVALID_HANDLE_VALUE != ioevent) {
         HANDLE handle = ::CreateNamedPipeA(pipe_name,
@@ -167,14 +174,16 @@ Service::Service(const char *svcname, bool console_mode) :
         CNTService(svcname, NTService::StdioDiagnosticsIO::Get()),
             options_(), config_(),
             logger_stop_event_(0), logger_thread_(0),
-            server_stopped_event_(0), server_thread_(0) {
+            server_stopped_event_(0), server_thread_(0)
+{
     SetVersion(WININETD_VERSION_1, WININETD_VERSION_2, WININETD_VERSION_3);
     SetDescription(WININETD_PACKAGE_NAME);
     SetConsoleMode(console_mode);
 }
 
 
-Service::~Service() {
+Service::~Service() 
+{
 }
 
 
@@ -322,7 +331,7 @@ Service::Initialise()
         arguments[0] = this;
         arguments[1] = endpoint;
 
-        logger_stop_event_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+        logger_stop_event_ = ::CreateEventA(NULL, TRUE, FALSE, NULL);
         logger_thread_ = ::CreateThread(NULL, 0, logger_thread, (void *)arguments, 0, NULL);
 
         if (NULL == logger_stop_event_ || NULL == logger_thread_ ||
@@ -350,7 +359,7 @@ Service::Initialise()
         }
     }
 
-    server_stopped_event_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+    server_stopped_event_ = ::CreateEventA(NULL, TRUE, FALSE, NULL);
     server_thread_ = ::CreateThread(NULL, 0, server_thread, (void *)this, 0, NULL);
     if (NULL == logger_stop_event_ || NULL == server_thread_) {
         diags().ferror("unable to create server thread: %M");
@@ -534,6 +543,7 @@ Service::logger_body(PipeEndpoint *endpoint)
                         }
                     }
                     break;
+
                 case PipeEndpoint::EP_READING:
                     if (dwRead) {
                         const char *scan = endpoint->cursor;
@@ -547,11 +557,11 @@ Service::logger_body(PipeEndpoint *endpoint)
                             if (sz) {
                                 unsigned t_sz = sz;
 
-                                if ('\r' == line[sz - 1]) --t_sz; // \r\n
+                                if ('\r' == line[t_sz-1]) --t_sz; // \r\n
                                 if (t_sz) {
                                     ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, line, t_sz);
                                     if (INVALID_HANDLE_VALUE != hStdout) {
-                                        if (! ::WriteConsole(hStdout, line, sz + 1, NULL, NULL)) {
+                                        if (! ::WriteConsoleA(hStdout, line, sz + 1, NULL, NULL)) {
                                             ::CloseHandle(hStdout);
                                             hStdout = INVALID_HANDLE_VALUE;
                                                 // TODO: move into logger, as console may block.
@@ -564,6 +574,7 @@ Service::logger_body(PipeEndpoint *endpoint)
                             if ('\r' == *nl) {  // \n\r
                                 ++nl, ++sz;     // consume optional return
                             }
+
                             dwPopped += sz;
                         }
 
@@ -573,7 +584,7 @@ Service::logger_body(PipeEndpoint *endpoint)
                                                 // otherwise on buffer full; flush
                             ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, endpoint->buffer, endpoint->size);
                             if (INVALID_HANDLE_VALUE != hStdout) {
-                                ::WriteConsole(hStdout, endpoint->buffer, endpoint->size, NULL, NULL);
+                                ::WriteConsoleA(hStdout, endpoint->buffer, endpoint->size, NULL, NULL);
                             }
                             endpoint->reset();
                         }
@@ -581,11 +592,13 @@ Service::logger_body(PipeEndpoint *endpoint)
                         endpoint->state = PipeEndpoint::EP_READY;
                     }
                     break;
+
                 default:
                     diags().ferror("unexpected endpoint state : %u", (unsigned)endpoint->state);
                     assert(false);
                     break;
                 }
+
             } else {
                 DWORD dwError = GetLastError();
                 diags().ferror("unexpected io completion : %u", (unsigned)dwError);
@@ -610,7 +623,7 @@ Service::logger_body(PipeEndpoint *endpoint)
         } else {
             // WAIT_IO_COMPLETION
             // WAIT_FAILED
-            DWORD dwError = GetLastError();
+            const DWORD dwError = GetLastError();
             diags().ferror("unexpected wait completion : %u", (unsigned)dwError);
             assert(false);
             break;                              // exit
@@ -657,7 +670,7 @@ Service::ResolveRelative(const char *path)
     }
 
     if (basename) {
-        int len = (int)::GetModuleFileName(NULL, t_szAppPath, sizeof(t_szAppPath));
+        int len = (int)::GetModuleFileNameA(NULL, t_szAppPath, sizeof(t_szAppPath));
 
         const char *d1 = strrchr(t_szAppPath, '/'), *d2 = strrchr(t_szAppPath, '\\'),
             *d = (d1 > d2 ? d1 : d2);           // last delimiter
@@ -715,6 +728,7 @@ Service::ConfigSet(const char *csKey, const char *szValue)
             return false;
         }
     }
+
     return CNTService::ConfigSet(csKey, szValue);
 }
 
@@ -760,6 +774,7 @@ Service::ConfigGet(const char *csKey, std::string &buffer, unsigned flags)
         if (CFG_WARN & flags) {
             diags().fwarning("parameter <%s> does not exist", csKey);
         }
+
         return false;
     }
 
@@ -768,6 +783,7 @@ Service::ConfigGet(const char *csKey, std::string &buffer, unsigned flags)
         buffer = szValue;
         return false;
     }
+
     return true;
 }
 
@@ -801,6 +817,7 @@ Service::ConfigGet(const char *csKey, char *szBuffer, size_t dwSize, unsigned fl
                 dwSize = len;
                 return true;
             }
+
             diags().fwarning("parameter <%s> too large", csKey);
             return false;
         }
@@ -808,8 +825,10 @@ Service::ConfigGet(const char *csKey, char *szBuffer, size_t dwSize, unsigned fl
         if (CFG_WARN & flags) {
             diags().fwarning("parameter <%s> does not exist", csKey);
         }
+
         return false;
     }
+
     return CNTService::ConfigGet(csKey, szBuffer, dwSize, flags);
 }
 
@@ -839,6 +858,7 @@ Service::ConfigGet(const char *csKey, DWORD &dwValue, unsigned flags)
                 dwValue = (DWORD)ret;
                 return true;
             }
+
             diags().fwarning("parameter <%s> should be a numeric", csKey);
             return false;
         }
@@ -846,8 +866,10 @@ Service::ConfigGet(const char *csKey, DWORD &dwValue, unsigned flags)
         if (CFG_WARN & flags) {
             diags().fwarning("parameter <%s> does not exist", csKey);
         }
+
         return false;
     }
+
     return CNTService::ConfigGet(csKey, dwValue, flags);
 }
 

@@ -5,7 +5,7 @@
 /*
  * Windows supplemental definitions / work arounds.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -50,6 +50,7 @@
 #define BOOST_OUTCOME_NODISCARD [[nodiscard]]   /* alt SAL _Must_inspect_result_ */
 #endif
 #endif  //BOOST_DELETED_FUNCTION
+
 
 #if defined(__WATCOMC__) && (__WATCOMC__ <= 1300)
 #if defined(__cplusplus)                        /* std::nothrow() emulation */

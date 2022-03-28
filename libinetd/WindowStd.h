@@ -4,7 +4,7 @@
  * Common windows definitions
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -27,14 +27,15 @@
  */
 
 #if !defined(WINDOWS_MEAN_AND_LEAN)
-#define  _WINSOCK_DEPRECATED_NO_WARNINGS        // gethostbyname
+#define  _WINSOCK_DEPRECATED_NO_WARNINGS	// gethostbyname
 #define  WINDOWS_MEAN_AND_LEAN
 
 #include <Winsock2.h>
-#include <ws2tcpip.h>                           // getaddrinfo
+#include <ws2tcpip.h>				// getaddrinfo
+#include <mswsock.h>				// IOCP
 #include <Windows.h>
 
-#pragma comment(lib, "Ws2_32.lib")              // WinSock2
+#pragma comment(lib, "Ws2_32.lib")		// WinSock2
 #endif
 
 //end

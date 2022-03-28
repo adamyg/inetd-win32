@@ -3,7 +3,7 @@
  * Basic TCP server
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -41,30 +41,33 @@
 class Server {
     Server(const Server &) = delete;
     Server& operator=(const Server &) = delete;
-    
+
     typedef std::vector<SOCKET> Sockets;
 
 public:
-    Server() : shutdown_(false) {  
+    Server() : shutdown_(false)
+    {
         initialise();
     }
 
-    ~Server() {
+    ~Server()
+    {
         close();
     }
-    
+
     bool
-    bind(const char *nodename, const char *port) {
+    bind(const char *nodename, const char *port)
+    {
         struct addrinfo hints, *res;
-        
+
         // resolve interfaces
-        
+
         memset(&hints, 0, sizeof(hints));
         hints.ai_family = AF_UNSPEC;
         hints.ai_protocol = IPPROTO_TCP;
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_flags = AI_PASSIVE;            // since we're going to bind on this socket.
-        
+
         if (getaddrinfo(nodename, port, &hints, &res) != NO_ERROR) {
             //  nodename,
             //      A pointer to a NULL-terminated ANSI string that contains a host (node) name or a numeric host address string.
@@ -81,9 +84,9 @@ public:
             fprintf(stderr, "getaddrinfo failed: %u\n", (unsigned)::WSAGetLastError());
             goto error;
         }
-        
+
         // bind to each returned interface
-       
+
         for (struct addrinfo *addr = res; addr; addr = addr->ai_next) {
             const char *type = NULL;
             SOCKET socket = INVALID_SOCKET;
@@ -96,7 +99,7 @@ public:
                 break;
             case AF_INET6:
                 type = "IPv6";
-                break;          
+                break;
             }
 
             // create socket and bind to socket
@@ -104,7 +107,7 @@ public:
             if (type) {
                 printf("Trying Address : (%s) ", type);
                     print_address(addr->ai_addr, (DWORD) addr->ai_addrlen);
-          
+
                 if ((socket = ::WSASocket(addr->ai_family,
                         addr->ai_socktype, addr->ai_protocol, NULL, 0, 0)) == INVALID_SOCKET) {
                     fprintf(stderr,"socket creation failure: %u\n", (unsigned)::WSAGetLastError());
@@ -117,7 +120,7 @@ public:
                     ::closesocket(socket);
                     continue;
                 }
-            
+
                 sockets_.push_back(socket);
             }
         }
@@ -135,7 +138,8 @@ public:
     }
 
     template <typename Accept>
-    bool listen(Accept &accept, unsigned depth = 5) {
+    bool listen(Accept &accept, unsigned depth = 5)
+    {
         // enable each interface
         fd_set listeners = {0};
 
@@ -185,12 +189,14 @@ public:
     }
 
     void
-    signal_shutdown() {
+    signal_shutdown()
+    {
         shutdown_ = true;
     }
 
     void
-    close() {
+    close()
+    {
         if (sockets_.size()) {
             for (Sockets::iterator it(sockets_.begin()), end(sockets_.end()); it != end; ++it) {
                 ::closesocket(*it);
@@ -201,7 +207,8 @@ public:
 
 public:
     static void
-    initialise() {
+    initialise()
+    {
         static WSADATA wsaData = {0};
         if (0 == wsaData.wVersion) {
             if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
@@ -209,10 +216,11 @@ public:
             }
         }
     }
-    
+
 private:
-    static void 
-    print_address(LPSOCKADDR pSockAddr, DWORD dwSockAddrLen) {
+    static void
+    print_address(LPSOCKADDR pSockAddr, DWORD dwSockAddrLen)
+    {
         // INET6_ADDRSTRLEN is the maximum size of a valid IPv6 address including port,colons,NULL,etc.
         char buf[INET6_ADDRSTRLEN] = {0};
         DWORD dwBufSize =  sizeof(buf);
@@ -222,8 +230,8 @@ private:
         } else  {
             printf("%s\n", buf);
         }
-    }    
-    
+    }
+
 private:
     Sockets sockets_;
     bool shutdown_;

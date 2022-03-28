@@ -1,0 +1,70 @@
+
+    NAME
+
+        ocspcheck - check a certificate for validity against its OCSP responder.
+
+    SYNOPSIS
+
+        ocspcheck [-Nv] [-C CAfile] [-i staplefile] [-o staplefile] file
+
+    DESCRIPTION
+
+        The ocspcheck utility validates a PEM format certificate against the OCSP responder encoded
+        in the certificate specified by the file argument. Normally it should be used for checking
+        server certificates and maintaining saved OCSP responses to be used for OCSP stapling.
+
+        The options are as follows:
+
+        -C CAfile
+                Specify a PEM format root certificate bundle to use for the validation of requests.
+                By default no certificates are used beyond those in the certificate chain provided
+                by the file argument.
+
+        -i staplefile
+                Specify an input filename from which a DER-encoded OCSP response will be read
+                instead of fetching it from the OCSP server. A filename of - will read the response
+                from standard input.
+
+        -N      Do not use a nonce value in the OCSP request, or validate that the nonce was
+                returned in the OCSP response. By default a nonce is always used and validated
+                when retrieving a response from an OCSP server. The use of this flag is a security
+                risk as it will allow OCSP responses to be replayed. It should not be used unless
+                the OCSP server does not support the use of OCSP nonces.
+
+        -o staplefile
+                Specify an output filename where the DER encoded response from the OCSP server
+                will be written, if the OCSP response validates. A filename of '-' will write
+                the response to standard output. By default the response is not saved.
+
+        -v      Increase verbosity. This flag may be specified multiple times to get more
+                verbose output. The default behaviour is to be silent unless something goes wrong.
+
+    EXIT STATUS
+
+        The ocspcheck utility exits 0 if the OCSP response validates for the certificate in file
+        and all output is successfully written out. ocspcheck exits >0 if an error occurs or
+        the OCSP response fails to validate.
+
+    SEE ALSO
+
+        nc(1), tls_config_set_ocsp_staple_file(3), tls_config_set_ocsp_staple_mem(3), httpd(8)
+
+    HISTORY
+
+        The ocspcheck utility first appeared in OpenBSD 6.1.
+
+    AUTHORS
+
+        ocspcheck was written by Bob Beck.
+
+    CAVEATS
+
+        While ocspcheck could possibly be used in scripts to query responders for server
+        certificates seen on client connections, this is almost always a bad idea.
+
+    BUGS
+
+        ocspcheck will create the output file if it does not exist.
+        On failure a newly created output file will not be removed.
+
+                                   --------------------------------

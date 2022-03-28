@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.1 2020/10/17 18:35:26 cvsuser Exp $")
+__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.5 2022/03/24 15:59:59 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * syslog emulation
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -62,6 +62,7 @@ static int              syslog_network(void *, int op, int pri, const char *mess
 
 static SYSLOGPROXYCB    syslog_proxy = syslog_network;
 static void *           syslog_data;
+
 
 void
 openlog(const char* ident, int option, int facility)
@@ -136,13 +137,49 @@ syslog(int pri, const char *fmt, ...)
         va_list ap;
 
         va_start(ap, fmt);
-        vsyslog(pri, fmt, ap);
+        vxsyslog(pri, fmt, ap, NULL);
+        va_end(ap);
+}
+
+
+void
+WSASyslogx(int pri, const char *fmt, ...)
+{
+        char buf[256];
+        DWORD dwError = WSAGetLastError();
+        DWORD len = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS |
+                        FORMAT_MESSAGE_MAX_WIDTH_MASK, NULL, dwError,
+                            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buf+2, sizeof(buf)-3 /*nul*/, NULL);
+        va_list ap;
+        if (0 == len) {
+                memcpy(buf, ": Unknown error", sizeof("Unknown error"));
+        } else {
+                char *cursor = buf + 2;
+                buf[0] = ':', buf[1] = ' ';
+                while (--len) {                 // remove trailing whitespace.
+                        const char ch = cursor[len];
+                        if (ch == ' ' || ch == '.' || ch == '\n' || ch == '\r') {
+                                continue;       // consume.
+                        }
+                        break;      // done
+                }
+                cursor[len+1] = 0;  // terminate
+        }
+        va_start(ap, fmt);
+        vxsyslog(pri, fmt, ap, buf);
         va_end(ap);
 }
 
 
 void
 vsyslog(int pri, const char *fmt, va_list ap)
+{
+        vxsyslog(pri, fmt, ap, NULL);
+}
+
+
+void
+vxsyslog(int pri, const char *fmt, va_list ap, const char *suffix)
 {
 #define MESSAGE_LEN (2*1024)
 #define FMT_LEN 1024
@@ -177,7 +214,7 @@ vsyslog(int pri, const char *fmt, va_list ap)
                         char *f, ch;
 
                         for (f = fmt_copy; 0 != (ch = *fmt++) && left;) {
-                                if ('%' == ch && left > 4) {//strerror
+                                if ('%' == ch && left > 4) { //strerror
                                         if ('m' == *fmt) {
                                                 int len = snprintf(f, left, "%s", strerror(saved_errno));
                                                 if (len < 0 || len >= left) len = left;
@@ -211,7 +248,7 @@ vsyslog(int pri, const char *fmt, va_list ap)
 
         GetLocalTime(&stm);                     // wall clock
 
-#define NLCR 2
+#define NLCR    3   //\n\r\0
 
         if (LOG_TID & syslog_option) {
                 const DWORD tid = GetCurrentThreadId();
@@ -239,7 +276,7 @@ vsyslog(int pri, const char *fmt, va_list ap)
                                     syslog_hostname, syslog_ident, syslog_pid);
                 }
         }
-        space = sizeof(message) - (len + NLCR);
+        space = (sizeof(message) - NLCR) - len;
 
         if ('%' == fmt[0] && 's' == fmt[1] && 0 == fmt[2]) {
                 //
@@ -247,7 +284,7 @@ vsyslog(int pri, const char *fmt, va_list ap)
                 const char *buffer = va_arg(ap, const char *);
                 if (buffer && *buffer) {        // formatting optimization
                         if ((len2 = strlen(buffer)) > space) len2 = space;
-                        memcpy(message + len, buffer, len2);
+                        (void) memcpy(message + len, buffer, len2);
                         len += len2;
                 }
         } else {
@@ -258,7 +295,13 @@ vsyslog(int pri, const char *fmt, va_list ap)
                 }
         }
 
-        assert(len <= sizeof(message));
+        assert(len <= (sizeof(message) - NLCR));
+        if (suffix && *suffix) {
+                space = (sizeof(message) - NLCR) - len;
+                if ((len2 = strlen(suffix)) > space) len2 = space;
+                (void) memcpy(message + len, suffix, len2);
+                len += len2;
+        }
 
         // Direct result
 

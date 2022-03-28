@@ -79,4 +79,5 @@ main(int argc, char *argv[])
 	printf("%s\n", basename(argv[1]));
 	exit(0);
 }
+
 #endif

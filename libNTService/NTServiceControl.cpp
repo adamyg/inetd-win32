@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(NTServiceControl_cpp, "$Id: NTServiceControl.cpp,v 1.2 2020/10/21 09:46:54 cvsuser Exp $")
+__CIDENT_RCSID(NTServiceControl_cpp, "$Id: NTServiceControl.cpp,v 1.5 2022/03/25 17:02:36 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * CNTService - Classic window services framework (tweaked).
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -34,7 +34,7 @@ __CIDENT_RCSID(NTServiceControl_cpp, "$Id: NTServiceControl.cpp,v 1.2 2020/10/21
 #include <strsafe.h>
 #include <aclapi.h>
 
-#pragma	comment(lib, "advapi32.lib")
+#pragma comment(lib, "advapi32.lib")
 
 #include "NTServiceControl.h"                   // public interface
 #include "NTService.h"

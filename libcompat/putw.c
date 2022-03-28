@@ -49,4 +49,3 @@ __stdlibrary_has_putw(void)
 }
 
 #endif
-

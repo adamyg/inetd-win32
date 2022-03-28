@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_pipe_c,"$Id: w32_pipe.c,v 1.1 2020/10/17 18:35:21 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_pipe_c,"$Id: w32_pipe.c,v 1.2 2022/03/24 12:42:44 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
  * win32 pipe() system calls,
  *
- * Copyright (c) 2018 - 2020, Adam Young.
+ * Copyright (c) 2018 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -54,12 +54,12 @@ w32_pipe(int fildes[2])
         fildes[0] = _open_osfhandle((int)hReadPipe, O_NOINHERIT);
         if (fildes[0] < 0) {
             CloseHandle(hReadPipe), CloseHandle(hWritePipe);
-	    return -1;
+            return -1;
         }
         fildes[1] = _open_osfhandle((int)hWritePipe, O_NOINHERIT);
         if (fildes[1] < 0) {
             _close(fildes[0]), CloseHandle(hWritePipe);
-	    return -1;
+            return -1;
         }
         return 0;
     }

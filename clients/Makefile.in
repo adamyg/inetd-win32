@@ -1,9 +1,9 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.2 2020/11/16 11:15:08 cvsuser Exp $
+# $Id: Makefile.in,v 1.4 2022/03/25 06:50:38 cvsuser Exp $
 # clients Makefile
 #
 #
-# Copyright (c) 2020, Adam Young.
+# Copyright (c) 2020 - 2022, Adam Young.
 # All rights reserved.
 #
 # The applications are free software: you can redistribute it
@@ -112,9 +112,11 @@ RMFLAGS=	-f
 # Targets
 
 TARGETS=	\
-	$(D_BIN)/echo$(E)		\
-	$(D_BIN)/daytime$(E)		\
-	$(D_BIN)/time$(E)		\
+	$(D_BIN)/echo_client$(E)		\
+	$(D_BIN)/daytime_client$(E)		\
+	$(D_BIN)/time_client$(E)		\
+
+TARGETS+=\
 	$(D_BIN)/dup_test$(E)
 
 XCLEAN=
@@ -132,6 +134,11 @@ debug:
 		$(MAKE) BUILD_TYPE=debug $(filter-out debug, $(MAKECMDGOALS))
 
 directories:	$(D_OBJ)/.created $(TARGETS)
+
+$(D_BIN)/%_client$(E):	MAPFILE=$(basename $@).map
+$(D_BIN)/%_client$(E):	LINKLIBS=-linetd -lsthread -lcompat
+$(D_BIN)/%_client$(E):	$(D_OBJ)/%$(O)
+		$(CC) $(LDFLAGS) -o $@ $< $(LDLIBS) @LDMAPFILE@
 
 $(D_BIN)/%$(E):		MAPFILE=$(basename $@).map
 $(D_BIN)/%$(E):		LINKLIBS=-linetd -lsthread -lcompat
@@ -151,7 +158,7 @@ $(D_OBJ)/%$(O):		%$(C)
 $(D_OBJ)/%$(O):		%.cpp
 		$(CXX) $(CXXFLAGS) -o $@ -c $<
 
-$(D_OBJ)/%.res: 	%.rc
+$(D_OBJ)/%.res:		%.rc
 		$(RC) -nologo -Fo$@ -I../include -I../libNTService $<
 
 #end

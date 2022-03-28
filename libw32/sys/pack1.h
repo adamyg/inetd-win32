@@ -1,10 +1,10 @@
 /* -*- mode: c; indent-width: 4; -*-
- * $Id: pack1.h,v 1.1 2020/10/17 18:35:23 cvsuser Exp $
+ * $Id: pack1.h,v 1.2 2022/03/24 12:42:46 cvsuser Exp $
  * ==noguard==
  *
  * win32 declaration helpers
  *
- * Copyright (c) 1998 - 2020, Adam Young.
+ * Copyright (c) 1998 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.

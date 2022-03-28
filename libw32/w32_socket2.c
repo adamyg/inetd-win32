@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_socket2_c,"$Id: w32_socket2.c,v 1.3 2020/10/27 11:12:15 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_socket2_c,"$Id: w32_socket2.c,v 1.5 2022/03/24 12:42:44 cvsuser Exp $")
 
 /*
  * win32 socket () system calls
  * Light weight replacement functions, which maintain the global errno.
  *
- * Copyright (c) 2007, 2012 - 2020 Adam Young.
+ * Copyright (c) 2007, 2012 - 2022 Adam Young.
  *
  * This file is part of inetd-win32.
  *
@@ -55,6 +55,10 @@ __CIDENT_RCSID(gr_w32_socket2_c,"$Id: w32_socket2.c,v 1.3 2020/10/27 11:12:15 cv
 #include <stdarg.h>
 #include <memory.h>
 #include <assert.h>
+
+#if defined(__WATCOMC__)
+#pragma disable_message(124)                    /* Comparison result always 0 */
+#endif
 
 
 /*
@@ -190,7 +194,7 @@ w32_listen_native(int fd, int num)
 #undef listen
     if ((osf = nativehandle(fd)) == (SOCKET)INVALID_SOCKET) {
         ret = -1;
-    } else if (listen((SOCKET)osf, num) != 0) {
+    } else if (listen((SOCKET)osf, (-1 == num ? SOMAXCONN : num)) != 0) {
         w32_sockerror();
         ret = -1;
     }

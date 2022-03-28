@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiags.cpp,v 1.1 2020/10/17 18:35:26 cvsuser Exp $")
+__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiags.cpp,v 1.5 2022/03/25 17:04:05 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * Service diagnositics adapter
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -186,4 +186,4 @@ ServiceDiags::LoggerAdapter::push(Logger &logger, enum loglevel type, const char
     logger.pushv(iovec, 2);
 }  
 
- /*end*/
+/*end*/

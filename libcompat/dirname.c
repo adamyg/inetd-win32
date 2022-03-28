@@ -143,4 +143,5 @@ main(int argc, char *argv[])
 	printf("%s\n", dirname(argv[1]));
 	exit(0);
 }
+
 #endif

@@ -3,7 +3,7 @@
  * echo client - RFC 862
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it

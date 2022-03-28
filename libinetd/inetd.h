@@ -2,7 +2,7 @@
 /*
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -66,6 +66,14 @@
 
 #include <stdio.h>
 
+#include <memory>
+#include <vector>
+
+#include "SimpleLock.h"
+#include "IntrusiveList.h"              // Intrusive list
+#include "IntrusivePtr.h"               // Intrusive ptr
+#include "IOCPService.h"                // IO completion port support
+
 #if defined(HAVE_AFUNIX_H)
 #include <afunix.h>
 #define HAVE_AF_UNIX	1		/* Insider Build 17063 */
@@ -82,52 +90,102 @@
 #define ISMUX(sep)	(((sep)->se_type == MUX_TYPE) || ((sep)->se_type == MUXPLUS_TYPE))
 #define ISMUXPLUS(sep)	((sep)->se_type == MUXPLUS_TYPE)
 
-__BEGIN_DECLS
+#if defined(_WIN32)
+#define SOCKLEN_SOCKADDR(__sa) (AF_INET6 == __sa.sa_family ? sizeof(struct sockaddr_in6) :  sizeof(struct sockaddr_in))
+#define SOCKLEN_SOCKADDR_PTR(__sa) (AF_INET6 == __sa->sa_family ? sizeof(struct sockaddr_in6) :  sizeof(struct sockaddr_in))
+#define SOCKLEN_SOCKADDR_STORAGE(__ss) (AF_INET6 == __ss.ss_family ? sizeof(struct sockaddr_in6) :  sizeof(struct sockaddr_in))
+#define SOCKLEN_SOCKADDR_STORAGE_PTR(__ss) (AF_INET6 == __ss->ss_family ? sizeof(struct sockaddr_in6) :  sizeof(struct sockaddr_in))
+#else
+#define SOCKLEN_SOCKADDR(sa) sa.sa_len
+#define SOCKLEN_SOCKADDR_PTR(sa) sa->sa_len
+#define SOCKLEN_SOCKADDR_STORAGE(ss) ss.ss_len
+#define SOCKLEN_SOCKADDR_STORAGE_PTR(ss) ss->ss_len
+#endif
 
+#define satosin(sa)	((struct sockaddr_in *)(void *)sa)
+#define csatosin(sa)	((const struct sockaddr_in *)(const void *)sa)
+#define satosin6(sa)	((struct sockaddr_in6 *)(void *)sa)
+#define csatosin6(sa)	((const struct sockaddr_in6 *)(const void *)sa)
+
+// process information
 struct procinfo {
-	LIST_ENTRY(procinfo) pr_link;
-	pid_t		pr_pid;		/* child pid */
-	struct conninfo	*pr_conn;
+	procinfo(const procinfo &) = delete;
+	procinfo operator=(const procinfo &) = delete;
+
+	procinfo() : pr_pid(-1), pr_conn(nullptr), pr_sep(nullptr) {
+	}
+
+	inetd::Intrusive::TailMemberHook<procinfo> pr_procinfo_link_;
+	inetd::Intrusive::ListMemberHook<procinfo> pr_child_link_;
+	pid_t	pr_pid; 		/* child pid & linked, otherwise -1 */
+	struct conninfo	*pr_conn;	/* associated host connection */
+	struct servtab *pr_sep; 	/* associated service */
 };
 
+typedef inetd::intrusive_list<procinfo, inetd::Intrusive::TailMemberHook<procinfo>, &procinfo::pr_procinfo_link_> ProcInfoList;
+typedef inetd::intrusive_list<procinfo, inetd::Intrusive::ListMemberHook<procinfo>, &procinfo::pr_child_link_> ChildList;
+
+// host connection collection
+struct connprocs {
+	connprocs(const connprocs &) = delete;
+	connprocs operator=(const connprocs &) = delete;
+
+	connprocs(int maxperip);
+	bool resize(int maxperip);
+	struct procinfo *newproc(struct conninfo *conn, int &maxchild);
+	bool unlink(struct procinfo *proc);
+	void clear(struct conninfo *conn);
+	int numchild() const {
+		return (int)cp_procs.size();
+	}
+
+private:
+	struct Guard;
+	inetd::SpinLock cp_lock;	/* spin lock */
+	std::vector<struct procinfo *> cp_procs; /* child proc entries */
+	int	cp_maxchild;		/* max number of children */
+};
+
+// host connection
 struct conninfo {
-	LIST_ENTRY(conninfo) co_link;
+	conninfo(const conninfo &) = delete;
+	conninfo operator=(const conninfo &) = delete;
+
+	conninfo(int maxperip) : co_procs(maxperip) { 
+	}
+
+	inetd::Intrusive::ListMemberHook<conninfo> co_link_;
 	struct sockaddr_storage	co_addr;/* source address */
-	int	co_numchild;		/* current number of children */
-	struct procinfo	**co_proc;	/* array of child proc entry */
+	connprocs co_procs;		/* array of child proc entry, from same host/addr */
 };
 
-#define PERIPSIZE	256
+typedef inetd::intrusive_list<conninfo, inetd::Intrusive::ListMemberHook<conninfo>, &conninfo::co_link_> ConnInfoList;
 
-struct	stabchild {
-	LIST_ENTRY(stabchild)	sc_link;
-	pid_t			sc_pid;
-};
+#define PERIPSIZE	256		/* procinfo hash table size */
 
-struct	servtab {
-	char	*se_service;		/* name of service */
+// service configuration
+struct servconfig {
+	const char *se_service;		/* name of service */
 	int	se_socktype;		/* type of socket to use */
 	int	se_family;		/* address family */
-	char	*se_proto;		/* protocol used */
+	const char *se_proto;		/* protocol used */
 	int	se_sndbuf;		/* sndbuf size (netbsd) */
 	int	se_rcvbuf;		/* rcvbuf size (netbsd) */
 	int	se_maxchild;		/* max number of children */
 	int	se_maxcpm;		/* max connects per IP per minute */
-	int	se_numchild;		/* current number of children */
-	char	*se_user;		/* user name to run as */
-	char	*se_group;		/* group name to run as */
+	const char *se_user;		/* user name to run as */
+	const char *se_group;		/* group name to run as */
 #ifdef  LOGIN_CAP
-	char	*se_class;		/* login class name to run with */
+	const char *se_class;		/* login class name to run with */
 #endif
 	const struct biltin *se_bi;	/* if built-in, description */
-	char	*se_server;		/* server program */
-	char	*se_server_name;	/* server program without path */
+	const char *se_server;		/* server program */
+	const char *se_server_name;	/* server program without path */
 #define	MAXARGV 20
-	char	*se_argv[MAXARGV+1];	/* program arguments */
+	const char *se_argv[MAXARGV+1];	/* program arguments */
 #ifdef IPSEC
-	char	*se_policy;		/* IPsec policy string */
+	const char *se_policy;		/* IPsec policy string */
 #endif
-	int	se_fd;			/* open descriptor */
 	union {				/* bound address */
 		struct	sockaddr se_un_ctrladdr;
 		struct	sockaddr_in se_un_ctrladdr4;
@@ -145,40 +203,68 @@ struct	servtab {
 	gid_t	se_sockgid;		/* Group for unix domain socket */
 	mode_t	se_sockmode;		/* Mode for unix domain socket */
 	u_char	se_type;		/* type: normal, mux, or mux+ */
-	u_char	se_checked;		/* looked at during merge */
 	u_char	se_accept;		/* i.e., wait/nowait mode */
+	u_char	se_nomapped;
 #if defined(RPC)
 	u_char	se_rpc;			/* ==1 if RPC service */
 	int	se_rpc_prog;		/* RPC program number */
 	u_int	se_rpc_lowvers;		/* RPC low version */
 	u_int	se_rpc_highvers;	/* RPC high version */
 #endif
-	int	se_count;		/* number started since se_time */
-	struct	timespec se_time;	/* start of se_count */
-	struct	servtab *se_next;
-	struct se_flags {
-		u_int se_nomapped : 1;
-		u_int se_reset : 1;
-	} se_flags;
 	int	se_maxperip;		/* max number of children per src */
-	LIST_HEAD(, conninfo) se_conn[PERIPSIZE];
-	LIST_HEAD(, stabchild) se_children;
 };
 
-#define	se_nomapped		se_flags.se_nomapped
-#define	se_reset		se_flags.se_reset
+// service instance
+struct servtab : public servconfig,
+	    public inetd::intrusive::enable_shared_from_this<servtab> {
 
-#define	SERVTAB_AT_LIMIT(sep)		\
-	((sep)->se_maxchild > 0 && (sep)->se_numchild == (sep)->se_maxchild)
+	servtab(const servtab &) = delete;
+	servtab operator=(const servtab &) = delete;
+
+	servtab() : servconfig(),
+			se_fd(-1), se_count(0), se_time() {
+		se_state.enabled = false;
+		se_state.running = false;
+	}
+
+	servtab(const servconfig &cfg) : servconfig(cfg),
+			se_fd(-1), se_count(0), se_time() {
+		se_state.enabled = true;
+		se_state.running = false;
+	}
+
+	static void intrusive_deleter(struct servtab *sep);
+
+	struct {
+		inetd::CriticalSection lock;
+		bool enabled;		/* is the service enabled/accepting connections */
+		bool running;		/* is the service running */
+	} se_state;
+	struct se_flags {
+		u_int se_checked : 1;	/* looked at during configuration merge */
+		u_int se_reset : 1;	/* channel reset required */
+	} se_flags;
+	int	se_fd;			/* open descriptor */
+	inetd::IOCPService::Listener se_listener; /* iocp listener */
+	int	se_count;		/* number started since se_time */
+	struct	timespec se_time;	/* start of se_count */
+
+	ConnInfoList se_conn[PERIPSIZE];/* per host connection management */
+	ChildList se_children;		/* active child processes */
+};
+
+#define	se_reset	se_flags.se_reset
+#define	se_checked	se_flags.se_checked
+
 #define	SERVTAB_EXCEEDS_LIMIT(sep)	\
-	((sep)->se_maxchild > 0 && (sep)->se_numchild >= (sep)->se_maxchild)
+	((sep)->se_maxchild > 0 && (sep)->se_children.count() >= (sep)->se_maxchild)
+#define	SERVTAB_EXCEEDS_LIMITX(sep, count) \
+	((sep)->se_maxchild > 0 && (count) >= (sep)->se_maxchild)
 
-int		check_loop(const struct sockaddr *, const struct servtab *sep);
-void		inetd_setproctitle(const char *, int);
-struct servtab *tcpmux(int);
+typedef std::vector<inetd::instrusive_ptr<servtab>> ServiceCollection;
+typedef std::shared_ptr<ServiceCollection> Services;
 
 extern int	debug;
-extern struct servtab *servtab;
 
 typedef void (bi_fn_t)(int, struct servtab *);
 
@@ -192,4 +278,16 @@ struct biltin {
 
 extern const struct biltin biltins[];
 
+Services	services();
+
+int		cpmip(const struct servtab *sep, int ctrl);
+
+__BEGIN_DECLS
+int		check_loop(const struct sockaddr *, const struct servtab *sep);
+void		inetd_setproctitle(const char *, int);
+#if defined(TCPMUX)
+struct servtab *tcpmux(int);
+#endif
 __END_DECLS
+
+//end

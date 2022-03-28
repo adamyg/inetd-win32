@@ -1,14 +1,14 @@
 #ifndef LIBW32_WIN32_ERRNO_H_INCLUDED
 #define LIBW32_WIN32_ERRNO_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_win32_errno_h,"$Id: win32_errno.h,v 1.1 2020/10/17 18:35:23 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_win32_errno_h,"$Id: win32_errno.h,v 1.2 2022/03/24 12:42:45 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
  * <errno.h>
  *
- * Copyright (c) 2007, 2012 - 2020 Adam Young.
+ * Copyright (c) 2007, 2012 - 2022 Adam Young.
  *
  * This file is part of inetd-win32.
  *
@@ -389,5 +389,6 @@ __CPRAGMA_ONCE
 #define ELOOP           10062                   /* 10062 "Too many levels of symbolic links" */
 #endif
 
-/*end*/
 #endif /*LIBW32_WIN32_ERRNO_H_INCLUDED*/
+
+/*end*/

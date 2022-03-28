@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_fsync_c,"$Id: w32_fsync.c,v 1.1 2020/10/17 18:35:21 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_fsync_c,"$Id: w32_fsync.c,v 1.2 2022/03/24 12:42:43 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
  * win32 fsync() system calls
  *
- * Copyright (c) 1998 - 2020, Adam Young.
+ * Copyright (c) 1998 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -113,7 +113,7 @@ w32_fsync(int fd)
             const DWORD err = GetLastError();
             switch (err) {
             case ERROR_ACCESS_DENIED:
-                /*  For a read-only handle, fsync should succeed, 
+                /*  For a read-only handle, fsync should succeed,
                  *  even though we have no way to sync the access-time changes.
                  */
                 return 0;

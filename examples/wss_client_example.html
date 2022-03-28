@@ -7,12 +7,12 @@
 <body>
 <script>
 function sleep (time) {
-        return new Promise((resolve) => setTimeout(resolve, time));
+	return new Promise((resolve) => setTimeout(resolve, time));
 }
 
 var ws;
 window.onload=function(){
-	ws = new WebSocket("wss://localhost:80/echo");
+	ws = new WebSocket("wss://test.wininetd.dev:80/echo");
 	index = 1;
 	ws.onopen=function(evt){
 		ws.send("Hello");

@@ -1,9 +1,9 @@
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * Extended configuration - xinetd style
+ * Configuration
  * windows inetd service.
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -25,87 +25,64 @@
  * ==end==
  */
 
-/*
- *
- *  defaults
- *  {
- *      <attribute> = <value> <value> ...
- *      ...
- *  }
- *
- *  service <service_name>
- *  {
- *      <attribute> <assign_op> <value> <value> ...
- *      ...
- *  }
- *
- */
+#ifndef INET4
+#define INET4
+#endif
 
-namespace inetd {
+#ifndef INET6
+#define INET6
+#endif
 
-///////////////////////////////////////////////////////////////////////////////
-//
+#ifndef TOOMANY
+#define TOOMANY 	256		/* don't start more than TOOMANY */
+#endif
 
-class ConfigDefaults {
-        ConfigDefaults(const ConfigDefaults &) = delete;
-        ConfigDefaults& operator=(const ConfigDefaults &) = delete;
+#ifndef MAXCHILD
+#define MAXCHILD	-1		/* maximum number of this service < 0 = no limit */
+#endif
 
-public:
-        ConfigDefaults() :
-                toomany(0), maxchild(0), maxcpm(0), maxperip(0) {
-        }
+#ifndef MAXCPM
+#define MAXCPM		-1		/* rate limit invocations from a single remote address, < 0 = no limit */
+#endif
 
-        template <typename Iterator>
-        void load(Iterator it, Iterator end,
-                        Compare compare = Comparision()) {
-                while (it != end) {
-                        if (Comparsion(it.first, "toomany")) {
-                        } else if (Comparsion(it.first, "maxchild")) {
-                        } else if (Comparsion(it.first, "maxcpm")) {
-                        } else if (Comparsion(it.first, "maxperip")) {
-                        }
-                }
-        }
+#ifndef MAXPERIP
+#define MAXPERIP	-1		/* maximum number of this service from a single remote address, < 0 = no limit */
+#endif
 
-private:
-        struct Comparision {
-                bool operator()(const std::string &lhs, const char *rhs) {
-                        return (0 == strcmp(lhs.c_str(), rhs));
-                };
-                bool operator()(const char *lhs, const char *rhs) {
-                        return (0 == strcmp(lhs, rhs));
-                };
-        }
+#define MAX_MAXCHLD	32767		/* max allowable max children */
 
-public:
-        int toomany; 
-        int maxchild;
-        int maxcpm;  
-        int maxperip;
+struct configparams {
+	configparams() {
+		euid      = 0;
+		egid      = 0;
+		options   = 0;		/* SO_DEBUG */
+		toomany   = TOOMANY;
+		maxperip  = MAXPERIP;
+		maxcpm    = MAXCPM;
+		maxchild  = MAXCHILD;
+		maxthread = 0;
+		v4bind_ok = 0;
+		v6bind_ok = 0;
+		bind_sa4  = nullptr;
+		bind_sa6  = nullptr;
+	}
+	uid_t	euid;
+	gid_t	egid;
+	int	options;		/* global socket options */
+	int	toomany;
+	int	maxperip;
+	int	maxcpm;
+	int	maxchild;
+	int	maxthread;
+	int	v4bind_ok;
+	int	v6bind_ok;
+	struct	sockaddr_in *bind_sa4;
+	struct	sockaddr_in6 *bind_sa6;
 };
 
-
-///////////////////////////////////////////////////////////////////////////////
-//
-
-class ConfigServer {
-        ConfigServer(const ConfigServer &) = delete;
-        ConfigServer& operator=(const ConfigServer &) = delete;
-
-public:
-        template <typename Iterator>
-        void load(const ConfigDefaults &defaults, Iterator it, Iterator end) {
-                while (it != end) {
-                        ++it;
-                }
-        }
-
-public:
-};
-
-
-}; //namespace inetd
+int	setconfig(const char *path);
+struct servconfig *getconfigent(const struct configparams *params, int *ret);
+void	endconfig(void);
+void	freeconfig(struct servconfig *);
 
 /*end*/
-
-

@@ -5,7 +5,7 @@
 /*
  * Service adapter
  *
- * Copyright (c) 2020, Adam Young.
+ * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -109,4 +109,3 @@ private:
 #endif  //SERVICE_H_INCLUDED
 
 //end
-

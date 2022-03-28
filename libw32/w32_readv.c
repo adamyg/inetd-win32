@@ -1,11 +1,11 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_readv_c,"$Id: w32_readv.c,v 1.1 2020/10/17 18:35:22 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_readv_c,"$Id: w32_readv.c,v 1.2 2022/03/24 12:42:44 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
  * win32 readv() implementation
  *
- * Copyright (c) 2018 - 2020, Adam Young.
+ * Copyright (c) 2018 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -48,7 +48,7 @@ __CIDENT_RCSID(gr_w32_readv_c,"$Id: w32_readv.c,v 1.1 2020/10/17 18:35:22 cvsuse
 
 #pragma comment(lib, "Ws2_32.lib")
 
-LIBW32_API int /*ssize_t*/ 
+LIBW32_API int /*ssize_t*/
 readv(int fildes, const struct iovec *iov, int iovcnt)
 {
     SOCKET s = (SOCKET)-1;

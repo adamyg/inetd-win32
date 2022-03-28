@@ -22,4 +22,3 @@ __stdlibrary_has_index(void)
 }
 
 #endif
-

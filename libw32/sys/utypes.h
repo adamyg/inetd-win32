@@ -1,14 +1,14 @@
 #ifndef LIBW32_SYS_UTYPES_H_INCLUDED
 #define LIBW32_SYS_UTYPES_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_sys_utypes_h,"$Id: utypes.h,v 1.1 2020/10/17 18:35:24 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_sys_utypes_h,"$Id: utypes.h,v 1.2 2022/03/24 12:42:46 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
  * win32 unix types
  *
- * Copyright (c) 1998 - 2020, Adam Young.
+ * Copyright (c) 1998 - 2022, Adam Young.
  * All rights reserved.
  *
  * This file is part of inetd-win32.
@@ -33,23 +33,6 @@ __CPRAGMA_ONCE
  */
 
 #if defined(_MSC_VER)
-#if (_MSC_VER != 1200)                          /* MSVC 6 */
-#if (_MSC_VER != 1400)                          /* MSVC 8/2005 */
-#if (_MSC_VER != 1500)                          /* MSVC 9/2008 */
-#if (_MSC_VER != 1600)                          /* MSVC 10/2010 */
-#if (_MSC_VER != 1900)                          /* MSVC 19/2015 */
-#if (_MSC_VER <  1910 || _MSC_VER > 1916)       /* MSVC 19.10 .. 16/2017 */
-#if (_MSC_VER > 1926)                           /* MSVC 19.20 /2019 */
-#error utypes.h: untested MSVC Version (2005 -- 2019.06) only ...
- //see: https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
-#endif //2019
-#endif //2017
-#endif //2015
-#endif //2010
-#endif //2008
-#endif //2005
-#endif //_MSC_VER
-
 #pragma warning(disable:4115)
 
 #elif defined(__WATCOMC__)
