@@ -52,29 +52,24 @@
  */
 
 #include <sys/cdefs.h>
-    //__FBSDID("$FreeBSD$");
 
-    //#include <sys/filio.h>
-    //#include <sys/ioccom.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-    //#include <sys/sysctl.h>
-    //#include <sys/ucred.h>
 #include <sys/uio.h>
-    //#include <sys/utsname.h>
 
 #include <ctype.h>
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <pwd.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <pwd.h>
+#include <err.h>
 #include <sysexits.h>
-#include "../service/syslog.h"
+#include <syslog.h>
 #include <unistd.h>
 #include "libcompat.h"
 
@@ -874,4 +869,5 @@ tcpmux(int s)
 	strwrite(s, "-Service not available\r\n");
 	return (NULL);
 }
+
 #endif  //TCPMUX

@@ -264,6 +264,7 @@ BINS=\
 LIBS+=\
 	$(LW)w32$(A)			\
 	$(LW)compat$(A)			\
+	$(LW)syslog$(A)			\
 	$(LW)sthread$(A)		\
 	$(LW)NTService$(A)		\
 	$(LW)iptable$(A)		\
@@ -402,6 +403,7 @@ clean:
 		$(MAKE) -C libiptable clean
 		$(MAKE) -C libNTService clean
 		$(MAKE) -C libsthread clean
+		$(MAKE) -C libsyslog clean
 		$(MAKE) -C libcompat clean
 		$(MAKE) -C libw32 clean
 
@@ -420,6 +422,7 @@ distclean:		clean
 			libiptable/Makefile \
 			libNTService/Makefile \
 			libsthread/Makefile \
+			libsyslog/Makefile \
 			libcompat/Makefile \
 			libw32/Makefile \
 			Makefile

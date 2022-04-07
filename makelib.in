@@ -60,6 +60,7 @@ $PACKAGE_FILE   = 'package.h';
         'libw32',
         'libcompat',
         'libsthread',
+        'libsyslog',
         'libNTService',
         'libiptable',
         'libinetd',

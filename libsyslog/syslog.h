@@ -141,20 +141,22 @@ typedef struct _code {
 } CODE;
 
 static const CODE prioritynames[] = {
-    { "alert",   LOG_ALERT },
-    { "crit",    LOG_CRIT },
-    { "debug",   LOG_DEBUG },
-    { "emerg",   LOG_EMERG },
-    { "err",     LOG_ERR },
-    { "error",   LOG_ERR },             /* DEPRECATED */
-    { "info",    LOG_INFO },
-    { "none",    INTERNAL_NOPRI },      /* INTERNAL */
-    { "notice",  LOG_NOTICE },
-    { "panic",   LOG_EMERG },           /* DEPRECATED */
-    { "warn",    LOG_WARNING },         /* DEPRECATED */
-    { "warning", LOG_WARNING },
+    { "emerg",          LOG_EMERG },            /* 0 - system is unusable */
+    { "alert",          LOG_ALERT },            /* 1 - action must be taken immediately */
+    { "crit",           LOG_CRIT },             /* 2 - critical conditions */
+    { "err",            LOG_ERR },              /* 3 - error conditions */
+    { "warn",           LOG_WARNING },          /* 4 - warning conditions */
+    { "notice",         LOG_NOTICE },           /* 5 - normal but significant condition */
+    { "info",           LOG_INFO },             /* 6 - informational */
+    { "debug",          LOG_DEBUG },            /* 7 - debug-level messages */
+    /* -- others -- */
+    { "error",          LOG_ERR },              /* DEPRECATED */
+    { "none",           INTERNAL_NOPRI },       /* INTERNAL */
+    { "panic",          LOG_EMERG },            /* DEPRECATED */
+    { "warn",           LOG_WARNING },          /* DEPRECATED */
+    { "warning",        LOG_WARNING },
     { NULL, -1 }
-  };
+    };
 #endif  //SYSLOG_NAMES
 
 /* facility codes */
@@ -188,18 +190,18 @@ static const CODE prioritynames[] = {
 
 #ifdef SYSLOG_NAMES
 static const CODE facilitynames[] =  {
-    { "alert",   LOG_ALERT },
-    { "crit",    LOG_CRIT },
-    { "debug",   LOG_DEBUG },
-    { "emerg",   LOG_EMERG },
-    { "err",     LOG_ERR },
-    { "error",   LOG_ERR },             /* DEPRECATED */
-    { "info",    LOG_INFO },
-    { "none",    INTERNAL_NOPRI },      /* INTERNAL */
-    { "notice",  LOG_NOTICE },
-    { "panic",   LOG_EMERG },           /* DEPRECATED */
-    { "warn",    LOG_WARNING },         /* DEPRECATED */
-    { "warning", LOG_WARNING },
+    { "alert",          LOG_ALERT },
+    { "crit",           LOG_CRIT },
+    { "debug",          LOG_DEBUG },
+    { "emerg",          LOG_EMERG },
+    { "err",            LOG_ERR },
+    { "error",          LOG_ERR },              /* DEPRECATED */
+    { "info",           LOG_INFO },
+    { "none",           INTERNAL_NOPRI },       /* INTERNAL */
+    { "notice",         LOG_NOTICE },
+    { "panic",          LOG_EMERG },            /* DEPRECATED */
+    { "warn",           LOG_WARNING },          /* DEPRECATED */
+    { "warning",        LOG_WARNING },
     { NULL, -1 }
   };
 #endif
@@ -226,6 +228,7 @@ static const CODE facilitynames[] =  {
 #define LOG_TID         0x100   /* log thread identifier */
 #define LOG_MSTIME      0x200   /* milliseconds */
 #define LOG_NOHOST      0x400   /* exclude host details */
+#define LOG_NOHEADER    0x800   /* exclude all header info */
 
 #ifdef __cplusplus
 extern "C" {
@@ -237,11 +240,13 @@ extern void openlog (const char *ident, int option, int facility);
 extern void closelog (void);
 extern void setlogproxy (SYSLOGPROXYCB fnProxy, void *data);
 extern int  setlogmask (int mask);
+extern int  getlogmask (void);
 extern int  setlogoption (int option);
+extern int  getlogoption (void);
 extern void syslog (int pri, const char *fmt, ...);
 extern void WSASyslogx (int pri, const char *fmt, ...);
-extern void vsyslog (int pri, const char *fmt, va_list ap); //_BSD_SOURCE 
-extern void vxsyslog (int pri, const char *fmt, va_list ap, const char *err); //_BSD_SOURCE 
+extern void vsyslog (int pri, const char *fmt, va_list ap); //_BSD_SOURCE
+extern void vxsyslog (int pri, const char *fmt, va_list ap, const char *err); //_BSD_SOURCE
 
 #ifdef __cplusplus
 }
