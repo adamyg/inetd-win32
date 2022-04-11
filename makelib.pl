@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: makelib.pl,v 1.2 2022/03/24 13:11:40 cvsuser Exp $
+# $Id: makelib.pl,v 1.3 2022/04/11 10:19:08 cvsuser Exp $
 # Makefile generation under WIN32 (MSVC/WATCOMC/MINGW) and DJGPP.
 # -*- perl; tabs: 8; indent-width: 4; -*-
 # Automake emulation for non-unix environments.
@@ -896,7 +896,8 @@ my @x_headers2      = (     #headers; check only
         'xthreads.h',
         'windows.h',
         'wincrypt.h',
-        'bcrypt.h'
+        'bcrypt.h',
+        'afunix.h'
         );
 
 my @x_decls         = (     #stdint/intypes.h

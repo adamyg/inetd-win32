@@ -1,5 +1,5 @@
 # -*- mode: mak; -*-
-# $Id: Makefile.in,v 1.7 2022/03/28 03:16:28 cvsuser Exp $
+# $Id: Makefile.in,v 1.8 2022/04/11 10:19:08 cvsuser Exp $
 # inetd-win32 makefile.
 #
 #
@@ -264,6 +264,7 @@ BINS=\
 LIBS+=\
 	$(LW)w32$(A)			\
 	$(LW)compat$(A)			\
+	$(LW)util$(A)			\
 	$(LW)syslog$(A)			\
 	$(LW)sthread$(A)		\
 	$(LW)NTService$(A)		\
@@ -404,6 +405,7 @@ clean:
 		$(MAKE) -C libNTService clean
 		$(MAKE) -C libsthread clean
 		$(MAKE) -C libsyslog clean
+		$(MAKE) -C libutil clean
 		$(MAKE) -C libcompat clean
 		$(MAKE) -C libw32 clean
 
@@ -423,6 +425,7 @@ distclean:		clean
 			libNTService/Makefile \
 			libsthread/Makefile \
 			libsyslog/Makefile \
+			libutil/Makefile \
 			libcompat/Makefile \
 			libw32/Makefile \
 			Makefile
