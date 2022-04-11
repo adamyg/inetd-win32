@@ -352,4 +352,3 @@ syslog_network(void *data, int op, int pri, const char *msg, size_t len)
 }
 
 //end
-
