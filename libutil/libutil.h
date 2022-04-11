@@ -38,8 +38,8 @@
  * $FreeBSD$
  */
 
-#ifndef	_LIBUTIL_H_
-#define	_LIBUTIL_H_
+#ifndef _LIBUTIL_H_
+#define _LIBUTIL_H_
 
 #include <sys/cdefs.h>
 #include <sys/utypes.h>
@@ -125,19 +125,19 @@ properties properties_read(int _fd);
 /*int	uu_lock(const char *_ttyname);*/
 /*int	uu_unlock(const char *_ttyname);*/
 /*int	uu_lock_txfr(const char *_ttyname, pid_t _pid);*/
-char *  strspct(char *buf, size_t bufsiz, intmax_t numerator, intmax_t denominator, size_t digits);
-char *  strpct(char *buf, size_t bufsiz, uintmax_t numerator, uintmax_t denominator, size_t digits);
-size_t  estrlcpy(char *dst, const char *src, size_t len);
-size_t  estrlcat(char *dst, const char *src, size_t len);
-char *  estrdup(const char *s);
-char *  estrndup(const char *s, size_t len);
-void *  emalloc(size_t n);
-void *  ecalloc(size_t n, size_t s);
-void *  erealloc(void *p, size_t n);
-/*void    ereallocarr(void *p, size_t n, size_t s);*/
-FILE *  efopen(const char *p, const char *m);
-int     easprintf(char **  ret, const char *  format, ...);
-int     evasprintf(char **  ret, const char *  format, va_list ap);
+char *	strspct(char *buf, size_t bufsiz, intmax_t numerator, intmax_t denominator, size_t digits);
+char *	strpct(char *buf, size_t bufsiz, uintmax_t numerator, uintmax_t denominator, size_t digits);
+size_t	estrlcpy(char *dst, const char *src, size_t len);
+size_t	estrlcat(char *dst, const char *src, size_t len);
+char *	estrdup(const char *s);
+char *	estrndup(const char *s, size_t len);
+void *	emalloc(size_t n);
+void *	ecalloc(size_t n, size_t s);
+void *	erealloc(void *p, size_t n);
+/*void	ereallocarr(void *p, size_t n, size_t s);*/
+FILE *	efopen(const char *p, const char *m);
+int	easprintf(char **  ret, const char *  format, ...);
+int	evasprintf(char **  ret, const char *  format, va_list ap);
 /*intmax_t estrtoi(const char * nptr, int base, intmax_t lo, intmax_t hi);*/
 /*uintmax_t estrtou(const char * nptr, int base, uintmax_t lo, uintmax_t hi);*/
 

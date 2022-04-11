@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.6 2022/03/29 13:55:51 cvsuser Exp $")
+__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.1 2022/04/11 12:29:43 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -116,7 +116,7 @@ setlogoption(int option)
 				sizeof(syslog_hostname) - 3 /*lead+trailg+nul*/)) {
 		syslog_hostname[0] = ' ';	// leading space
 		if (syslog_ident[0]) {		// trailing space
-		    strcat(syslog_hostname, " ");
+			strcat(syslog_hostname, " ");
 		}
 	}
 
