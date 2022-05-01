@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.4 2022/03/25 17:04:04 cvsuser Exp $")
+__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.6 2022/04/29 04:47:10 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -75,15 +75,18 @@ namespace {
 
     public:
         FileStream(const char *path = 0) :
-                fp_(0), lasterror_(0), created_(std::time(NULL)), size_(0), blocks_(0) {
+                fp_(0), lasterror_(0), created_(std::time(NULL)), size_(0), blocks_(0)
+        {
             if (path) open(path);
         }
 
-        ~FileStream() {
+        ~FileStream() 
+        {
             close();
         }
 
-        void open(const char *path, size_t blockhint = 0) {
+        void open(const char *path, size_t blockhint = 0)
+        {
             close();
             if (NULL != (fp_ = std::fopen(path, "at"))) {
                 struct _stat sb = { 0 };
@@ -99,11 +102,13 @@ namespace {
             }
         }
 
-        bool is_open() const {
+        bool is_open() const
+        {
             return (fp_ != 0);
         }
 
-        void close() {
+        void close()
+        {
             if (is_open()) {
                 std::fclose(fp_), fp_ = 0;
                 if (0 == size_) {               // remove empty images.
@@ -114,7 +119,8 @@ LOGGER_TRACE(std::cout << "LOG: purged empty volume <" << filename_ << ">\n";)
             }
         }
 
-        void push(const char *buffer, const size_t len) {
+        void push(const char *buffer, const size_t len)
+        {
             size_t cnt = 0, remaining = len;
 
             assert(fp_);
@@ -131,28 +137,34 @@ LOGGER_TRACE(std::cout << "LOG: purged empty volume <" << filename_ << ">\n";)
             }
         }
 
-        void flush() {
+        void flush()
+        {
             if (fp_) std::fflush(fp_);
         }
 
-        const std::string& filename() const {
+        const std::string& filename() const
+        {
             return filename_;
         }
 
-        time_t created() const {
+        time_t created() const
+        {
             return created_;
         }
 
-        unsigned size() const {
+        unsigned size() const
+        {
             return size_;
         }
 
-        unsigned blocks() const {
+        unsigned blocks() const
+        {
             return blocks_;
         }
 
     public:
-        static bool resolve_path(const std::string &basename, std::string &result, bool create = false) {
+        static bool resolve_path(const std::string &basename, std::string &result, bool create = false)
+        {
             char t_fullpathname[_MAX_PATH];
             DWORD len = ::GetFullPathNameA(basename.c_str(), sizeof(t_fullpathname), t_fullpathname, NULL);
                 // Note: Shall resolve paths where components do not exist,
@@ -185,7 +197,8 @@ LOGGER_TRACE(std::cout << "LOG: purged empty volume <" << filename_ << ">\n";)
             return false;
         }
 
-        static bool split_path(const std::string &basename, std::string &dir, std::string &suffix, bool rmext = true) {
+        static bool split_path(const std::string &basename, std::string &dir, std::string &suffix, bool rmext = true)
+        {
             const size_t s = basename.find_last_of("/\\");
             if (s != std::string::npos) {       // last separator
                 dir.assign(basename.c_str(), s);
@@ -203,7 +216,8 @@ LOGGER_TRACE(std::cout << "LOG: purged empty volume <" << filename_ << ">\n";)
             return true;
         }
 
-        static std::string generate_log_name(const std::string &basename, const time_t now) {
+        static std::string generate_log_name(const std::string &basename, const time_t now)
+        {
             std::string name(basename);
             struct std::tm *tm = std::gmtime(&now); // GMT/MTSafe
             char timestamp[32];
@@ -223,11 +237,13 @@ LOGGER_TRACE(std::cout << "LOG: purged empty volume <" << filename_ << ">\n";)
             return name;
         }
 
-        static time_t parse_timestamp(const std::string &name) {
+        static time_t parse_timestamp(const std::string &name)
+        {
             return parse_timestamp(name.c_str(), name.length());
         }
 
-        static time_t parse_timestamp(const char *name, size_t namelen) {
+        static time_t parse_timestamp(const char *name, size_t namelen)
+        {
             struct std::tm tm = {0};
 
             if (namelen < suffixlen ||
@@ -245,7 +261,8 @@ LOGGER_TRACE(std::cout << "LOG: purged empty volume <" << filename_ << ">\n";)
             return timegm(&tm);
         }
 
-        static int purge_logs(const std::string &basename, const time_t now, unsigned period) {
+        static int purge_logs(const std::string &basename, const time_t now, unsigned period)
+        {
             const time_t expired = now - period;
             std::string dir, prefix;
             int ret = -1;
@@ -292,7 +309,8 @@ LOGGER_TRACE(std::cout << "LOG: purged volume <" << filename << ">\n";)
         }
 
     private:
-        int write(const char *buffer, size_t buflen) {
+        int write(const char *buffer, size_t buflen)
+        {
 #if defined(__WATCOMC__)
             return std::fwrite(buffer, 1, buflen, fp_);
 #else
@@ -314,7 +332,8 @@ LOGGER_TRACE(std::cout << "LOG: purged volume <" << filename << ">\n";)
 //  Buffer cursor
 
 void
-Logger::BufferCursor::append(const void *buffer, size_t buflen) {
+Logger::BufferCursor::append(const void *buffer, size_t buflen)
+{
     assert(is_valid());
     assert(buffer && buflen);
     assert((size_ + buflen) <= reserved_);
@@ -324,7 +343,8 @@ Logger::BufferCursor::append(const void *buffer, size_t buflen) {
 
 
 void
-Logger::BufferCursor::append_nl() {
+Logger::BufferCursor::append_nl()
+{
     assert(is_valid());
     assert((size_ + 1) <= reserved_);
     data_[size_++] = '\n';
@@ -332,7 +352,8 @@ Logger::BufferCursor::append_nl() {
 
 
 void
-Logger::BufferCursor::assign(const void *buffer, size_t buflen) {
+Logger::BufferCursor::assign(const void *buffer, size_t buflen)
+{
     assert(is_valid());
     assert(buffer && buflen);
     assert(buflen <= reserved_);
@@ -427,18 +448,21 @@ public:
     };
 
 public:
-    LoggerImpl() : thread_handle_(0), roll_time_(0), purge_time_(0) {
+    LoggerImpl() : thread_handle_(0), roll_time_(0), purge_time_(0)
+    {
         wake_event_ = ::CreateEventA(NULL, FALSE /*auto*/, FALSE, NULL);
         stop_event_ = ::CreateEventA(NULL, TRUE /*manual*/, FALSE, NULL);
     }
 
-    ~LoggerImpl() {
+    ~LoggerImpl()
+    {
         stop();
         ::CloseHandle(stop_event_);
         ::CloseHandle(wake_event_);
     }
 
-    bool start(const Profile &profile, bool toconsole) {
+    bool start(const Profile &profile, bool toconsole)
+    {
         if (thread_handle_) {
             return false;
         }
@@ -449,7 +473,7 @@ public:
         profile_ = profile;
         profile_.toconsole_ |= toconsole;
         FileStream::resolve_path(profile.base_path_, profile_.base_path_, true);
-    
+
         if (profile_.purge_period_) {           // verify
             if (profile_.purge_period_ < (profile_.time_period_ * 2)) {
                 profile_.purge_period_ = profile_.time_period_ * 2;
@@ -464,7 +488,8 @@ LOGGER_TRACE(std::cout << "LOG: item limit:   " << profile_.line_limit_   << "\n
 LOGGER_TRACE(if profile_.purge_period_ std::cout << "LOG: purge period: " << profile_.purge_period_ << " seconds\n";)
 
         stream_.open(FileStream::generate_log_name(profile_.base_path_, now).c_str());
-        if (stream_.is_open()) {
+        if (stream_.is_open()) 
+        {
 
             // Start consumer thread
 
@@ -478,7 +503,8 @@ LOGGER_TRACE(if profile_.purge_period_ std::cout << "LOG: purge period: " << pro
         return false;
     }
 
-    void stop() {
+    void stop()
+    {
         if (thread_handle_) {
             ::SetEvent(stop_event_);
             ::WaitForSingleObject(thread_handle_, INFINITE);
@@ -486,7 +512,8 @@ LOGGER_TRACE(if profile_.purge_period_ std::cout << "LOG: purge period: " << pro
         }
     }
 
-    Logger::BufferCursor *LoggerImpl::allocate(size_t buflen) {
+    Logger::BufferCursor *LoggerImpl::allocate(size_t buflen)
+    {
         BufferCursor *cursor;
         if (NULL != (cursor =
                 (BufferCursor *)malloc(sizeof(Logger::BufferCursor) + buflen))) {
@@ -500,14 +527,16 @@ LOGGER_TRACE(if profile_.purge_period_ std::cout << "LOG: purge period: " << pro
         return cursor;
     }
 
-    void release(Logger::BufferCursor *cursor) {
+    void release(Logger::BufferCursor *cursor)
+    {
         if (cursor) {
             assert((void *)(cursor + 1) == cursor->data_);
             ::free((void *)cursor);
         }
     }
 
-    bool push(Logger::BufferCursor *cursor) {
+    bool push(Logger::BufferCursor *cursor)
+    {
         if (cursor && cursor->is_valid()) {
             if (cursor->size()) {
                 if (queue_.push_back(cursor)) { // is_first?
@@ -522,7 +551,8 @@ LOGGER_TRACE(if profile_.purge_period_ std::cout << "LOG: purge period: " << pro
     }
 
 public:
-    static time_t roll_time(const time_t now, unsigned period) {
+    static time_t roll_time(const time_t now, unsigned period)
+    {
         time_t cursor = now - (now % 86400),
             tomorrow = cursor + 86400;
 
@@ -548,14 +578,16 @@ public:
 
 public:
     static DWORD WINAPI
-    __consumer_thread(LPVOID lpParam) {
+    __consumer_thread(LPVOID lpParam)
+    {
         Logger::LoggerImpl *self = (class Logger::LoggerImpl *)lpParam;
         self->__consumer();
         return 0;
     }
 
     void
-    __consumer() {
+    __consumer()
+    {
         HANDLE events[2] = { stop_event_, wake_event_ };
         time_t last_purge = 0;
         bool term = false;
@@ -577,7 +609,8 @@ LOGGER_TRACE(std::cout << "LOG: termination signaled" << std::endl;)
 
 private:
     time_t
-    consumer_drain() {
+    consumer_drain()
+    {
         BufferQueue t_queue;
         time_t last_purge = 0, now = 0;
         unsigned block = 0;
@@ -622,7 +655,8 @@ LOGGER_TRACE(std::cout << "LOG: draining, complete" << std::endl;)
     }
 
     bool
-    consumer_check(const time_t now) {
+    consumer_check(const time_t now)
+    {
         if (now >= roll_time_)
             return true;
         if (profile_.size_limit_ && profile_.size_limit_ <= stream_.size())
@@ -633,7 +667,8 @@ LOGGER_TRACE(std::cout << "LOG: draining, complete" << std::endl;)
     }
 
     void
-    consumer_roll(const time_t now) {
+    consumer_roll(const time_t now)
+    {
         const time_t timestamp = (now > roll_time_ ? roll_time_ : now);
             // Align with current roll_time if exceeed.
 
@@ -800,7 +835,8 @@ Logger::Logger(unsigned flags) :
 }
 
 
-Logger::~Logger() {
+Logger::~Logger() 
+{
 }
 
 
@@ -827,25 +863,6 @@ Logger::stop()
         impl_.reset();
     }
 }
-
-
-//static
-//  static int
-//  syslog_hook(void *self, int op, int pri, const char *msg, size_t msglen)
-//  {
-//      Logger *logger = (Logger *)self;
-//      logger->push(msg, msglen);
-//      return 1;
-//  }
-
-
-//  #if (XXX)   //move into a non-member util function.
-//  void
-//  Logger::attach_to_syslog()
-//  {
-//      setlogproxy(&syslog_hook, (void *) this);
-//  }
-//  #endif
 
 
 bool

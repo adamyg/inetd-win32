@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.3 2022/03/24 15:18:30 cvsuser Exp $
+# $Id: Makefile.in,v 1.4 2022/04/29 04:47:10 cvsuser Exp $
 # inetd_services Makefile
 #
 #
@@ -148,7 +148,7 @@ bsd_license.h:		../service/bsd_license.txt ../service/mklicense.pl
 		@$(PERL) ../service/mklicense.pl $< $@ bsd_license
 
 $(D_BIN)/$(TARGET):	MAPFILE=$(basename $@).map
-$(D_BIN)/$(TARGET):	LINKLIBS=-linetd -lsthread -lsyslog -lcompat
+$(D_BIN)/$(TARGET):	LINKLIBS=-linetd -liptable -lsthread -lsyslog -lcompat
 $(D_BIN)/$(TARGET):	$(D_OBJ)/.created $(OBJS) $(RESOURCES)
 		$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS) @LDMAPFILE@
 

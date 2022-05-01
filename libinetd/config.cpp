@@ -25,30 +25,10 @@
  * ==end==
  */
 
-/*
- *  TODO: extended configuration -
- *      xinetd style, yet JSON or registry sourced.
- *
- *  defaults
- *  {
- *      <attribute> = <value> <value> ...
- *      ...
- *  }
- *
- *  service <service_name>
- *  {
- *      <attribute> <assign_op> <value> <value> ...
- *      ...
- *  }
- *
- */
-
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #endif
-
-#include <exception>
 
 #include <sys/param.h>
 #include <sys/ioctl.h>
@@ -66,9 +46,9 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <err.h>
 #include <grp.h>
-#include <limits.h>
 #include <pwd.h>
 
 #include <stdio.h>
@@ -77,7 +57,7 @@
 #include <assert.h>
 
 #include <sysexits.h>
-#include "../service/syslog.h"
+#include <syslog.h>
 #include <unistd.h>
 
 #include "inetd.h"
@@ -88,22 +68,14 @@
 #define MAX(X,Y)	((X) > (Y) ? (X) : (Y))
 #endif
 
-struct snode {  /* name string cache */
-	LIST_ENTRY(snode) node_;
-	char name_[1];  //implied nul
-};
-
 struct servconfig *nextconfigent(const struct configparams *params);
 static int	matchservent(const char *, const char *, const char *);
 static char	*skip(char **);
 static char	*sskip(char **);
-static const char *newname(const char *);
-static const char *newstr(const char *);
 static char	*nextline(FILE *);
 static bool	parse_protocol_sizes(struct servconfig *sep);
 
-static LIST_HEAD(snodes, snode) strings;
-static const char *CONFIG = "";
+static const char *config_path = "";
 static FILE	*fconfig = (FILE *)-1;
 static struct	servconfig configent;
 static char	line[LINE_MAX];
@@ -112,12 +84,11 @@ int
 setconfig(const char *path)
 {
 	if ((FILE *)-1 == fconfig) {
-		LIST_INIT(&strings);
 	} else if (fconfig) {
 		fseek(fconfig, 0L, SEEK_SET);
 		return (1);
 	}
-	fconfig = fopen(CONFIG = path, "r");
+	fconfig = fopen(config_path = path, "r");
 	return (fconfig != NULL);
 }
 
@@ -136,11 +107,14 @@ getconfigent(const struct configparams *params, int *ret)
 	try {
 		if (ret) *ret = 0;
 		return nextconfigent(params);
+
 	} catch (int exit_code) {
 		if (ret) *ret = exit_code;
+
 	} catch (std::exception &msg) {
 		syslog(LOG_ERR, "config error : exception, %s", msg.what());
 		if (ret) *ret = EX_SOFTWARE;
+
 	} catch (...) {
 		syslog(LOG_ERR, "config error : exception");
 		if (ret) *ret = EX_SOFTWARE;
@@ -148,16 +122,16 @@ getconfigent(const struct configparams *params, int *ret)
 	return NULL;
 }
 
+
 static struct servconfig *
 nextconfigent(const struct configparams *params)
 {
 	struct servconfig *sep = &configent;
-	int argc;
 	char *cp, *arg, *s;
 	static char TCPMUX_TOKEN[] = "tcpmux/";
 #define MUX_LEN 	(sizeof(TCPMUX_TOKEN)-1)
 #ifdef IPSEC
-	char *policy;
+	char *policy = nullptr;
 #endif
 #ifdef INET6
 	int v4bind;
@@ -167,9 +141,6 @@ nextconfigent(const struct configparams *params)
 	size_t unsz;
 #endif
 
-#ifdef IPSEC
-	policy = NULL;
-#endif
 more:
 #ifdef INET6
 	v4bind = 0;
@@ -182,19 +153,18 @@ more:
 	while ((cp = nextline(fconfig)) != NULL) {
 #ifdef IPSEC
 		/* lines starting with #@ is not a comment, but the policy */
-		if (cp[0] == '#' && cp[1] == '@') {
+		if (sep[0] == '#' && sep[1] == '@') {
 			char *p;
-			for (p = cp + 2; p && *p && isspace(*p); p++)
+			for (p = sep + 2; p && *p && isspace(*p); p++)
 				;
 			if (*p == '\0') {
 				free(policy);
-				policy = NULL;
+				policy = nullptr;
 			} else if (ipsec_get_policylen(p) >= 0) {
 				free(policy);
-				policy = newstr(p);
+				policy = newarg(p);
 			} else {
-				syslog(LOG_ERR,
-					"%s: invalid ipsec policy \"%s\"",
+				syslog(LOG_ERR, "%s: invalid ipsec policy \"%s\"",
 					CONFIG, p);
 				terminate(EX_CONFIG);
 			}
@@ -208,14 +178,14 @@ more:
 #ifdef IPSEC
 		free(policy);
 #endif
-		return (NULL);
+		return NULL;
 	}
 
 	/*
 	 * clear the static buffer, since some fields (se_ctrladdr,
 	 * for example) don't get initialized here.
 	 */
-	memset(sep, 0, sizeof *sep);
+	freeconfig(sep);
 
 	//
 	//  service-name
@@ -228,6 +198,7 @@ more:
 		char *user, *group, *perm;
 		struct passwd *pw;
 		struct group *gr;
+
 		user = arg+1;
 		if ((group = strchr(user, ':')) == NULL) {
 			syslog(LOG_ERR, "no group after user '%s'", user);
@@ -267,9 +238,9 @@ more:
 			c++;
 		} else
 			sep->se_type = MUX_TYPE;
-		sep->se_service = newname(c);
+		sep->se_service = servconfig::newname(c);
 	} else {
-		sep->se_service = newname(arg);
+		sep->se_service = servconfig::newname(arg);
 		sep->se_type = NORM_TYPE;
 	}
 
@@ -293,16 +264,16 @@ more:
 	//
 	//  protocol[,sndbuf=#][,rcvbuf=##]
 	//
-	arg = sskip(&cp);
-	sep->se_proto = newstr(arg);
-	if (strncmp(arg, "tcp", 3) == 0) {
-		if (NULL != (arg = strchr(arg, '/')) && //tcp[46]/faith
-			    strncmp(arg, "/faith", 6) == 0) {
+	sep->se_proto = sskip(&cp);
+	if (strncmp(sep->se_proto, "tcp", 3) == 0) {
+		const char *delim;		// xxx/faith
+		if (nullptr != (delim = strchr(sep->se_proto, '/')) &&
+				    0 == strncmp(delim, "/faith", 6)) {
 			syslog(LOG_ERR, "faith has been deprecated");
 			goto more;
 		}
-	} else {					//faith/xxx
-		if (sep->se_type == NORM_TYPE && strncmp(arg, "faith/", 6) == 0) {
+	} else {				// faith/xxx
+		if (sep->se_type == NORM_TYPE && strncmp(sep->se_proto, "faith/", 6) == 0) {
 			syslog(LOG_ERR, "faith has been deprecated");
 			goto more;
 		}
@@ -354,16 +325,15 @@ more:
 		goto more;
 #endif
 	} else {
-		int protolen = strlen(sep->se_proto);
-		char *proto = (char *) sep->se_proto;
+		unsigned protolen = sep->se_proto.length();
 		if (0 == protolen) {
 			syslog(LOG_ERR, "%s: invalid protocol specified", sep->se_service);
 			goto more;
 		}
-		while (protolen-- && isdigit(proto[protolen])) {
-			if (proto[protolen] == '6') { /*tcp6 or udp6*/
+		while (protolen-- && isdigit(sep->se_proto[protolen])) {
+			if (sep->se_proto[protolen] == '6') { /*tcp6 or udp6*/
 #ifdef INET6
-				proto[protolen] = '\0';
+				sep->se_proto[protolen] = 0;
 				v6bind = 1;
 				continue;
 #else
@@ -373,8 +343,8 @@ more:
 #endif
 			}
 
-			if (proto[protolen] == '4') { /*tcp4 or udp4*/
-				proto[protolen] = '\0';
+			if (sep->se_proto[protolen] == '4') { /*tcp4 or udp4*/
+				sep->se_proto[protolen] = 0;
 #ifdef INET6
 				v4bind = 1;
 #endif
@@ -382,7 +352,7 @@ more:
 			}
 
 			/* illegal version num */
-			syslog(LOG_ERR, "bad IP version for %s", sep->se_proto);
+			syslog(LOG_ERR, "bad IP version for %s", sep->se_proto.c_str());
 			freeconfig(sep);
 			goto more;
 		}
@@ -414,14 +384,36 @@ more:
 	}
 
 	/* init ctladdr */
+#if defined(RPC)
+	if (!sep->se_rpc) {
+#endif
+#if defined(HAVE_AF_UNIX)
+		if (AF_UNIX != sep->se_family) {
+#endif
+			struct servent *sp;
+			sp = getservbyname(sep->se_service, sep->se_proto);
+			if (nullptr == sp) {
+				syslog(LOG_ERR, "%s/%s: unknown service",
+					sep->se_service, sep->se_proto);
+				goto more;
+			}
+			sep->se_port = sp->s_port;
+#if defined(HAVE_AF_UNIX)
+		}
+#endif
+#if defined(RPC)
+	}
+#endif
 	switch(sep->se_family) {
 	case AF_INET:
 		memcpy(&sep->se_ctrladdr4, params->bind_sa4, sizeof(sep->se_ctrladdr4));
+		sep->se_ctrladdr4.sin_port = sep->se_port;
 		sep->se_ctrladdr_size = sizeof(sep->se_ctrladdr4);
 		break;
 #ifdef INET6
 	case AF_INET6:
 		memcpy(&sep->se_ctrladdr6, params->bind_sa6, sizeof(sep->se_ctrladdr6));
+		sep->se_ctrladdr6.sin6_port = sep->se_port;
 		sep->se_ctrladdr_size = sizeof(sep->se_ctrladdr6);
 		break;
 #endif
@@ -431,9 +423,8 @@ more:
 		memset(&sep->se_ctrladdr, 0, sizeof(sep->se_ctrladdr));
 		sep->se_ctrladdr_un.sun_family = sep->se_family;
 		if ((unsz = strlcpy(sep->se_ctrladdr_un.sun_path,
-		    sep->se_service, SUN_PATH_MAXSIZE) >= SUN_PATH_MAXSIZE)) {
-			syslog(LOG_ERR,
-			    "domain socket pathname too long for service %s",
+				sep->se_service, SUN_PATH_MAXSIZE) >= SUN_PATH_MAXSIZE)) {
+			syslog(LOG_ERR, "domain socket pathname too long for service %s",
 			    sep->se_service);
 			goto more;
 		}
@@ -441,7 +432,7 @@ more:
 #undef SUN_PATH_MAXSIZE
 		sep->se_ctrladdr_size = SUN_LEN(&sep->se_ctrladdr_un);
 		break;
-#endif //AF_UNIX
+#endif //HAVE_AF_UNIX
 	}
 
 	//
@@ -453,14 +444,13 @@ more:
 	else if (!strncmp(arg, "nowait", 6))
 		sep->se_accept = 1;
 	else {
-		syslog(LOG_ERR,
-			"%s: bad wait/nowait for service %s",
-			CONFIG, sep->se_service);
+		syslog(LOG_ERR,	"%s: bad wait/nowait for service %s",
+			config_path, sep->se_service);
 		goto more;
 	}
 
 	sep->se_maxchild = -1;
-	sep->se_maxcpm   = -1;
+	sep->se_cpmmax   = -1;
 	sep->se_maxperip = -1;
 	if ((s = strchr(arg, '/')) != NULL) {
 		char *eptr;
@@ -471,17 +461,18 @@ more:
 		} else {
 			val = strtoul(s + 1, &eptr, 10);
 			if (eptr == s + 1 || val > MAX_MAXCHLD) {
-				syslog(LOG_ERR, "%s: bad max-child for service %s", CONFIG, sep->se_service);
+				syslog(LOG_ERR, "%s: bad max-child for service %s",
+					config_path, sep->se_service);
 				goto more;
 			}
 			if (debug && !sep->se_accept && val != 1)
-				syslog(LOG_WARNING, "maxchild=%lu for wait service %s"
-					" not recommended", val, sep->se_service);
+				syslog(LOG_WARNING, "maxchild=%lu for wait service %s not recommended",
+					val, sep->se_service);
 			sep->se_maxchild = val;
 		}
 		if (*eptr == '/') {
 			if (*++eptr != '/') {	/* allow empty definition; default */
-				sep->se_maxcpm = strtol(eptr, &eptr, 10);
+				sep->se_cpmmax = strtol(eptr, &eptr, 10);
 			}
 		}
 		if (*eptr == '/') {
@@ -502,15 +493,13 @@ more:
 		 */
 		sep->se_accept = 1;
 		if (strcmp(sep->se_proto, "tcp")) {
-			syslog(LOG_ERR,
-				"%s: bad protocol for tcpmux service %s",
-				CONFIG, sep->se_service);
+			syslog(LOG_ERR, "%s: bad protocol for tcpmux service %s",
+				config_path, sep->se_service);
 			goto more;
 		}
 		if (sep->se_socktype != SOCK_STREAM) {
-			syslog(LOG_ERR,
-				"%s: bad socket type for tcpmux service %s",
-				CONFIG, sep->se_service);
+			syslog(LOG_ERR, "%s: bad socket type for tcpmux service %s",
+				config_path, sep->se_service);
 			goto more;
 		}
 	}
@@ -518,26 +507,26 @@ more:
 	//
 	//  user[:group][/login-class]
 	//
-	sep->se_user = newstr(sskip(&cp));
+	sep->se_user = sskip(&cp);
 #ifdef LOGIN_CAP
 	if ((s = (char *)strrchr(sep->se_user, '/')) != NULL) {
 		*s = '\0';
-		sep->se_class = newstr(s + 1);
+		sep->se_class = s + 1;
 	} else
-		sep->se_class = newstr(RESOURCE_RC);
+		sep->se_class = RESOURCE_RC;
 #endif
 	if ((s = (char *)strrchr(sep->se_user, ':')) != NULL) {
 		*s = '\0';
-		sep->se_group = newstr(s + 1);
+		sep->se_group = s + 1;
 	} else
-		sep->se_group = NULL;
+		sep->se_group.clear();
 
 	//
 	//  server-program
 	//
-	sep->se_server = newstr(sskip(&cp));
+	sep->se_server = sskip(&cp);
 	if ((sep->se_server_name = strrchr(sep->se_server, '/')))
-		sep->se_server_name++;
+		++sep->se_server_name;
 
 	if (strcmp(sep->se_server, "internal") == 0) {
 		const struct biltin *bi;
@@ -558,8 +547,8 @@ more:
 	if (sep->se_maxperip < 0)
 		sep->se_maxperip = params->maxperip;
 
-	if (sep->se_maxcpm < 0)
-		sep->se_maxcpm = params->maxcpm;
+	if (sep->se_cpmmax < 0)
+		sep->se_cpmmax = params->maxcpm;
 
 	if (sep->se_maxchild < 0) {	/* apply default max-children */
 		if (sep->se_bi && sep->se_bi->bi_maxchild >= 0)
@@ -573,19 +562,38 @@ more:
 	//
 	//  server-program-arguments
 	//
-	argc = 0;
-	for (arg = skip(&cp); cp; arg = skip(&cp))
+	int arglen = 0, argc = 0;
+	for (arg = skip(&cp); arg; arg = skip(&cp)) {
 		if (argc < MAXARGV) {
-			sep->se_argv[argc++] = newstr(arg);
+			arglen += strlen(arg);
+			sep->se_argv[argc++] = servconfig::newarg(arg);
 		} else {
-			syslog(LOG_ERR, "%s: too many arguments for service %s", CONFIG, sep->se_service);
+			syslog(LOG_ERR, "%s: too many arguments for service %s",
+				config_path, sep->se_service);
 			goto more;
 		}
-	while (argc <= MAXARGV)
-		sep->se_argv[argc++] = NULL;
+	}
+
+	cp = sep->se_arguments.alloc(arglen + (argc * 3));
+	for (unsigned av = 0; sep->se_argv[av]; ++av) {
+		const char *arg = sep->se_argv[av];
+		const size_t slen = strlen(arg);
+
+		if (cp > sep->se_arguments)
+			*cp++ = ' ';
+
+		if (strspn(arg, " \t\n\r")) {
+			*cp++ = '"';
+			memcpy(cp, arg, slen), cp += slen;
+			*cp++ = '"';
+		} else {
+			memcpy(cp, arg, slen), cp += slen;
+		}
+	}
+	*cp = 0;
 
 #ifdef IPSEC
-	sep->se_policy = policy ? newstr(policy) : NULL;
+	sep->se_policy = policy;
 	free(policy);
 #endif
 	return (sep);
@@ -627,7 +635,7 @@ sskip(char **cpp)
 
 	cp = skip(cpp);
 	if (cp == NULL) {
-		syslog(LOG_ERR, "%s: syntax error", CONFIG);
+		syslog(LOG_ERR, "%s: syntax error", config_path);
 		throw EX_DATAERR;
 	}
 	return (cp);
@@ -680,40 +688,6 @@ nextline(FILE *fd)
 	if (cp)
 		*cp = '\0';
 	return (line);
-}
-
-static const char *
-newstr(const char *cp)
-{
-	char *cr;
-
-	if ((cr = _strdup(cp != NULL ? cp : "")))
-		return (cr);
-	syslog(LOG_ERR, "strdup: %m");
-	throw EX_OSERR;
-	/*NOREACHED*/
-	return NULL;
-}
-
-static const char *
-newname(const char *name)
-{
-	snode *node;
-	LIST_FOREACH(node, &strings, node_) {
-		if (0 == strcmp(node->name_, name)) {
-			return node->name_;
-		}
-	}
-
-	const size_t slen = strlen(name);
-	if (NULL == (node = (snode *)malloc(sizeof(snode) + slen))) {
-		syslog(LOG_ERR, "malloc: %m");
-		throw EX_OSERR;
-		/*NOREACHED*/
-	}
-	(void) memcpy(node->name_, name, slen + 1 /*nul*/);
-	LIST_INSERT_HEAD(&strings, node, node_);
-	return node->name_;
 }
 
 static bool
@@ -812,22 +786,6 @@ do { \
 #undef MALFORMED
 
 	return true;
-}
-
-void
-freeconfig(struct servconfig *cp)
-{
-        assert(NULL == cp->se_service || (cp->se_service == newname(cp->se_service)));
-	free((char *)cp->se_proto);
-	free((char *)cp->se_user);
-	free((char *)cp->se_group);
-#ifdef LOGIN_CAP
-	free((char *)cp->se_class);
-#endif
-	free((char *)cp->se_server);
-#ifdef IPSEC
-	free((char *)cp->se_policy);
-#endif
 }
 
 /*end*/

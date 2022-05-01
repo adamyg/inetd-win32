@@ -42,12 +42,12 @@ class SocketShare {
 
 private:
 	struct ServerProfile {
-		ServerProfile() {
+		ServerProfile() 
+		{
 			GenerateUniqueName(basename, sizeof(basename));
 		}
 
-		~ServerProfile() {
-		}
+		~ServerProfile() { }
 
 		char basename[MAX_PATH];
 		ScopedProcessId child;
@@ -57,12 +57,12 @@ private:
 	};
 
 	struct ClientProfile {
-		ClientProfile(const char *name) {
+		ClientProfile(const char *name)
+		{
 			strncpy_s(basename, name, sizeof(basename));
 		}
 
-		~ClientProfile() {
-		}
+		~ClientProfile() { }
 
 		char basename[MAX_PATH];
 		ScopedHandle hParentEvent;
@@ -75,7 +75,8 @@ private:
 #define CHILD_EVENT_SPEC	"Local\\%s-child"
 #define PIPE_NAME_SPEC		"\\\\.\\pipe\\%s"
 
-		Names(const char *basename) {
+		Names(const char *basename)
+		{
 			sprintf_s(parentEvent, sizeof(parentEvent), PARENT_EVENT_SPEC, basename);
 			sprintf_s(childEvent, sizeof(childEvent), CHILD_EVENT_SPEC, basename);
 			sprintf_s(pipe, sizeof(pipe), PIPE_NAME_SPEC, basename);
@@ -90,58 +91,70 @@ public:
 	class Server {
 		Server(const Server &) = delete;
 		Server& operator=(const Server &) = delete;
+
 	public:
-		Server(HANDLE job_handle, const char *progname, const char **argv = 0) :
-			profile_(), job_handle_(job_handle), progname_(progname), argv_(argv) {
+		Server(const char *progname, const char *cd, HANDLE job_handle, 
+                            const char **argv = nullptr, const char **envv = nullptr) :
+			profile_(), job_handle_(job_handle), progname_(progname), cd_(cd), argv_(argv), envv_(envv)
+		{
 		}
 
-		Server(const char *progname, const char **argv = 0) :
-			profile_(), job_handle_(nullptr), progname_(progname), argv_(argv) {
+		Server(const char *progname, const char *cd, 
+                            const char **argv = nullptr, const char **envv = nullptr) :
+			profile_(), job_handle_(nullptr), progname_(progname), cd_(cd), argv_(argv), envv_(envv)
+		{
 		}
 
-		bool publish(SOCKET socket) {
+		bool publish(SOCKET socket)
+		{
 			if (! profile_.hPipe.IsValid()) {
-				return PushSocket(profile_, socket, job_handle_, progname_, argv_);
+				return PushSocket(profile_, socket, job_handle_, progname_, cd_, argv_, envv_);
 			}
 			return WriteSocket(profile_, socket);
 		}
 
-		const ScopedProcessId &child() const {
+		const ScopedProcessId &child() const
+		{
 			return profile_.child;
 		}
 
-		HANDLE process_handle() const {
+		HANDLE process_handle() const
+		{
 			profile_.child.process_handle();
 		}
 
-		int pid() const {
+		int pid() const
+		{
 			return profile_.child.pid();
 		}
+
 	private:
 		ServerProfile profile_;
 		HANDLE job_handle_;
 		const char *progname_;
+		const char *cd_;
 		const char **argv_;
+		const char **envv_;
 	};
 
 	class Client {
 		Client(const Client &) = delete;
 		Client& operator=(const Client &) = delete;
+
 	public:
-		Client(const char *basename) :
-			profile_(basename) {
+		Client(const char *basename) : profile_(basename) { }
+
+		bool wait(DWORD timeoutms = INFINITE)
+		{
+			return WaitSocket(profile_, timeoutms);
 		}
 
-		bool wait(DWORD timeout = INFINITE) {
-			return WaitSocket(profile_, timeout);
-		}
-
-		SOCKET get(DWORD dwFlags = WSA_FLAG_OVERLAPPED) {
+		SOCKET get(DWORD dwFlags = WSA_FLAG_OVERLAPPED, DWORD timeoutms = 2000)
+		{
 			if (! profile_.hFile.IsValid()) {
 				return GetSocket(profile_, dwFlags);
 			}
-
-		return ReadSocket(profile_, dwFlags);
+			return ReadSocket(profile_, dwFlags, timeoutms);
 		}
 
 	private:
@@ -150,19 +163,19 @@ public:
 
 public:
 	static bool
-	PushSocket(SOCKET socket,
-		const char *progname, const char **argv = 0)
+	PushSocket(SOCKET socket, const char *progname,
+            const char *cd = nullptr, const char **argv = nullptr, const char **envv = nullptr)
 	{
 		ServerProfile profile;
-		return PushSocket(profile, socket, nullptr, progname, argv);
+		return PushSocket(profile, socket, nullptr, progname, cd, argv, envv);
 	}
 
 	static bool
-	PushSocket(SOCKET socket, HANDLE job_handle,
-		const char *progname, const char **argv = 0)
+	PushSocket(SOCKET socket, HANDLE job_handle, const char *progname, 
+            const char *cd = nullptr, const char **argv = nullptr, const char **envv = nullptr)
 	{
 		ServerProfile profile;
-		return PushSocket(profile, socket, job_handle, progname, argv);
+		return PushSocket(profile, socket, job_handle, progname, cd, argv, envv);
 	}
 
 	static SOCKET
@@ -175,13 +188,15 @@ public:
 private:
 	static bool
 	PushSocket(ServerProfile &profile, SOCKET socket,
-		HANDLE job_handle, const char *progname, const char **argv)
+		HANDLE job_handle, const char *progname,  const char *cd, const char **argv, const char **envv)
 	{
 		const Names names(profile.basename);
 		char t_progname[_MAX_PATH] = {0};
 		STARTUPINFO siStartInfo = {0};
-		char cmdline[4 * 1024]; 		// 4k limit
+		char cmdline[4 * 1024] = {0};		// 4k limit
 
+		assert(progname && *progname);
+		assert(nullptr == cd || *cd);
 		assert(! profile.hPipe.IsValid());
 
 		// Create an event to signal the child that the protocol info is set.
@@ -263,8 +278,8 @@ private:
 					NULL,		// Thread handle not inheritable
 					FALSE,		// Handle inheritance to FALSE
 					creationFlags,	// CreationFlags
-					NULL,		// Use parent's environment block
-					NULL,		// Use parent's starting directory
+					envv,		// env otherwise use parent's environment block
+					cd,		// dir otherwise use parent's starting directory
 					&siStartInfo,
 					profile.child)) {
 			fprintf(stderr, "CreateProcess(%s) failed: %u\n", progname, (unsigned) ::GetLastError());
@@ -334,8 +349,8 @@ private:
 	}
 
 	static bool
-	WriteSocket(ServerProfile &profile, SOCKET socket) {
-
+	WriteSocket(ServerProfile &profile, SOCKET socket)
+	{
 		WSAPROTOCOL_INFOW pi = {0};
 		DWORD dwBytes = 0;
 
@@ -446,9 +461,9 @@ private:
 	}
 
 	static bool
-	WaitSocket(ClientProfile &profile, DWORD timeout = INFINITE) {
-
-		// Opne event resource
+	WaitSocket(ClientProfile &profile, DWORD timeoutms = INFINITE)
+	{
+		// Open event resource
 
 		if (! profile.hParentEvent.IsValid()) {
 			const Names names(profile.basename);
@@ -462,18 +477,18 @@ private:
 
 		// Wait for the parent to signal that the protocol info ready to be accessed
 
-		if (WAIT_OBJECT_0 != ::WaitForSingleObject(profile.hParentEvent, timeout)) {
+		if (WAIT_OBJECT_0 != ::WaitForSingleObject(profile.hParentEvent, timeoutms)) {
 			return false;
 		}
 		return true;
 	}
 
 	static SOCKET
-	ReadSocket(ClientProfile &profile, DWORD dwFlags) {
-
+	ReadSocket(ClientProfile &profile, DWORD dwFlags, DWORD timeoutms = 2000)
+	{
 		// Wait for the parent to signal that the protocol info ready to be accessed
 
-		if (WAIT_FAILED == ::WaitForSingleObject(profile.hParentEvent, 2 * 1000)) {
+		if (WAIT_FAILED == ::WaitForSingleObject(profile.hParentEvent, timeoutms)) {
 			fprintf(stderr, "WaitEvent(parent) failed: %d\n", (unsigned) ::GetLastError());
 			return INVALID_SOCKET;
 		}

@@ -126,8 +126,6 @@
 #if !defined(NOMINMAX)
 #define  NOMINMAX
 #endif
-#include <exception>
-
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -148,17 +146,20 @@
 #include "SocketShare.h"
 #include "ProcessGroup.h"
 #include "ObjectPool.h"
+#include "CPULoadInfo.h"
 
+#include <limits.h>
 #include <ctype.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <err.h>
-#include <fcntl.h>
-#include <grp.h>
-#include "libutil.h"
-#include <limits.h>
 #include <netdb.h>
+#if !defined(_WIN32)
 #include <pwd.h>
+#include <grp.h>
+#endif
 #include <signal.h>
+#include "libutil.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -166,7 +167,7 @@
 #include <assert.h>
 
 #include <sysexits.h>
-#include "../service/syslog.h"
+#include <syslog.h>
 #ifdef LIBWRAP
 #include <tcpd.h>
 #endif
@@ -179,11 +180,12 @@
 
 #include "inetd.h"
 #include "config.h"
+#include "config2.h"
 #include "pathnames.h"
 
 #ifdef IPSEC
 #include <netipsec/ipsec.h>
-#ifndef IPSEC_POLICY_IPSEC	/* no ipsec support on old ipsec */
+#ifndef IPSEC_POLICY_IPSEC		/* no ipsec support on old ipsec */
 #undef IPSEC
 #endif
 #endif
@@ -215,8 +217,8 @@
 
 #endif
 
-#define	CNT_INTVL	60		/* servers in CNT_INTVL sec. */
-#define	RETRYTIME	(60*10)		/* retry after bind or server fail */
+#define CNT_INTVL	60		/* servers in CNT_INTVL sec. */
+#define RETRYTIME	(60*10) 	/* retry after bind or server fail */
 
 #if !defined(MAX)
 #define MIN(X,Y)	((X) < (Y) ? (X) : (Y))
@@ -224,17 +226,17 @@
 #endif
 
 #if !defined(sockclose)
-#define sockclose(__fd)	close(__fd)
+#define sockclose(__fd) close(__fd)
 #endif
 
 #if defined(_DEBUG)
-#define SANITY_CHECK                    /* runtime sanity checks */
+#define SANITY_CHECK			/* runtime sanity checks */
 #endif
 
 static void	terminate(int value);
 static int	body(int argc, char **argv);
 static void	getservicesprog(char *servicesprog, size_t buflen);
-static int	do_accept(struct servtab *sep, int ctrl);
+static int	do_accept(PeerInfo &remote);
 static void	setalarm(unsigned seconds);
 static int	do_fork(const struct servtab *sep, int ctrl);
 static void	child(struct servtab *sep, int ctrl);
@@ -259,7 +261,7 @@ static void	ipsecsetup(struct servtab *);
 static void	unregisterrpc(register struct servtab *sep);
 #endif
 
-static struct conninfo *search_connections(struct servtab *sep, int ctrl);
+static struct conninfo *search_connections(PeerInfo &remote);
 static bool	new_connection(const struct servtab *sep, struct conninfo *conn, struct procinfo *&proc);
 static void	connections_resize(struct servtab *sep, int maxperip);
 static void	connections_free(struct servtab *sep);
@@ -273,9 +275,9 @@ static struct procinfo *search_proc(pid_t pid, struct procinfo *add = nullptr);
 static int	hashval(const char *p, int len);
 static void	free_proc(struct procinfo *proc);
 
-static void	print_service(const char *, const struct servtab *);
+static void	print_service(const char *, const struct servconfig *);
 
-#ifdef LIBWRAP  /* tcpd.h */
+#ifdef LIBWRAP	/* tcpd.h */
 int		allow_severity;
 int		deny_severity;
 #endif
@@ -298,7 +300,7 @@ static mode_t	mask;
 
 static struct configparams params;
 
-static const char *CONFIG = _PATH_INETDCONF;
+static const char *SERVICES = _PATH_INETDCONF;
 static const char *pid_file = _PATH_INETDPID;
 static struct pidfh *pfh = nullptr;
 
@@ -397,12 +399,12 @@ body(int argc, char **argv)
 	int error;
 
 	getservicesprog(servicesprog, sizeof(servicesprog));
-	openlog("inetd", LOG_PID | LOG_NOWAIT /*| LOG_PERROR*/, LOG_DAEMON);
+	openlog("inetd", LOG_PID | LOG_NOWAIT | (getlogoption() & LOG_NOHEADER), LOG_DAEMON);
 	while ((ch = getopt(argc, argv, "dlwWR:a:c:C:p:s:t:")) != -1)
 		switch(ch) {
 		case 'd':
 			debug = 1;
-			params.options |= SO_DEBUG;
+			params.sockopts |= SO_DEBUG;
 			break;
 		case 'l':
 			dolog = 1;
@@ -526,9 +528,9 @@ body(int argc, char **argv)
 	argv += optind;
 
 	if (argc > 0)
-		CONFIG = argv[0];
-	if (access(CONFIG, R_OK) < 0)
-		syslog(LOG_ERR, "Accessing %s: %m, continuing anyway.", CONFIG);
+		SERVICES = argv[0];
+	if (access(SERVICES, R_OK) < 0)
+		syslog(LOG_ERR, "Accessing %s: %m, continuing anyway.", SERVICES);
 
 	if (0 == debug) {
 		pid_t otherpid;
@@ -687,16 +689,19 @@ body(int argc, char **argv)
 						syslog(LOG_ERR, "ioctl2 (FIONBIO, 0): %m");
 					if (socknonblockingio(ctrl, 0) < 0)
 						syslog(LOG_ERR, "ioctl3 (FIONBIO, 0): %m");
-					if (cpmip(sep, ctrl) < 0) {
+
+					PeerInfo remote(ctrl, sep);
+					if (accessip(remote) < 0 || cpmip(remote) < 0) {
 						sockclose(ctrl);
 						continue;
 					}
 
-					do_accept(sep, ctrl);
+					do_accept(remote);
 					sockclose(ctrl);
 
 				} else {
-					do_accept(sep, sep->se_fd);
+					PeerInfo remote(sep->se_fd, sep);
+					do_accept(remote);
 				}
 			}
 		}
@@ -721,22 +726,30 @@ static void async_accept(inetd::instrusive_ptr<struct servtab> &service,
 	}
 
 	if (success) {				// connection made and running.
-		if (cpmip(sep, cxt->fd()) >= 0) {
-			do_accept(sep, cxt->fd());
+		PeerInfo remote(cxt->fd(), sep);
+		if (accessip(remote) >= 0 && cpmip(remote) >= 0) {
+			do_accept(remote);
 		}
 	}
 }
 
 static int
-do_accept(struct servtab *sep, int ctrl)
+do_accept(PeerInfo &remote)
 {
+	struct servtab *sep = remote.getserv();
 	const int dofork = (!sep->se_bi || sep->se_bi->bi_fork || ISWRAP(sep));
 	struct conninfo *conn = nullptr;
 	struct procinfo *proc = nullptr;
 	pid_t pid = 0;
 
+	if (accesstm(remote) < 0) {
+		syslog(LOG_ERR, "%s from %s out-side allowed time(s)",
+			sep->se_service, remote.getname());
+		return 0;
+	}
+
 	if (sep->se_accept && sep->se_socktype == SOCK_STREAM) {
-		if (dofork && (conn = search_connections(sep, ctrl)) != nullptr) {
+		if (dofork && (conn = search_connections(remote)) != nullptr) {
 			if (conn == (conninfo *)-1)
 				return 0;
 			if (! new_connection(sep, conn, proc)) {
@@ -748,23 +761,7 @@ do_accept(struct servtab *sep, int ctrl)
 	}
 
 	if (dolog && !ISWRAP(sep)) {
-		struct sockaddr_storage peer = {0};
-		char pname[NI_MAXHOST] = "unknown";
-		char buf[50];
-		socklen_t sl;
-		sl = sizeof(peer);
-
-		if (getpeername(ctrl, (struct sockaddr *)&peer, &sl)) {
-			sl = sizeof(peer);
-			if (recvfrom(ctrl, buf, sizeof(buf), MSG_PEEK, (struct sockaddr *)&peer, &sl) >= 0) {
-				getnameinfo((struct sockaddr *)&peer, SOCKLEN_SOCKADDR_STORAGE(peer),
-					pname, sizeof(pname), nullptr, 0, NI_NUMERICHOST);
-			}
-		} else {
-			getnameinfo((struct sockaddr *)&peer, SOCKLEN_SOCKADDR_STORAGE(peer),
-				pname, sizeof(pname), nullptr, 0, NI_NUMERICHOST);
-		}
-		syslog(LOG_INFO, "%s from %s", sep->se_service, pname);
+		syslog(LOG_INFO, "%s from %s", sep->se_service, remote.getname());
 	}
 
 	/*
@@ -773,21 +770,16 @@ do_accept(struct servtab *sep, int ctrl)
 	 * block or use hosts_options(5) twist).
 	 */
 	if (dofork) {
-#if !defined(CLOCK_MONOTONIC_FAST)
-#define CLOCK_MONOTONIC_FAST	CLOCK_MONOTONIC
-#endif
-		if (sep->se_count++ == 0)
-			(void)clock_gettime(CLOCK_MONOTONIC_FAST, &sep->se_time);
-		else if (params.toomany > 0 && sep->se_count >= params.toomany) {
-			struct timespec now;
+		if (sep->se_count++ == 0) {
+			sep->se_time = remote.timestamp();
+		} else if (params.toomany > 0 && sep->se_count >= params.toomany) {
+			const struct timespec &now = remote.timestamp();
 
-			(void)clock_gettime(CLOCK_MONOTONIC_FAST, &now);
 			if (now.tv_sec - sep->se_time.tv_sec > CNT_INTVL) {
 				sep->se_time = now;
 				sep->se_count = 1;
 			} else {
-				syslog(LOG_ERR,
-		"%s/%s server failing (looping), service terminated",
+				syslog(LOG_ERR, "%s/%s server failing (looping), service terminated",
 					sep->se_service, sep->se_proto);
 				free_proc(proc);
 				free_conn(conn);
@@ -797,7 +789,7 @@ do_accept(struct servtab *sep, int ctrl)
 			}
 		}
 
-		pid = do_fork(sep, ctrl);
+		pid = do_fork(sep, remote.fd());
 
 		if (-1 == pid) {		// fork error.
 			syslog(LOG_ERR, "fork: %m");
@@ -822,7 +814,7 @@ do_accept(struct servtab *sep, int ctrl)
 	if (0 == pid) { 			// local execution.
 		assert(sep->se_bi);
 		if (sep->se_bi) {
-			(*sep->se_bi->bi_fn)(ctrl, sep);
+			(*sep->se_bi->bi_fn)(remote.fd(), sep);
 		}
 	}
 	return 1;
@@ -895,7 +887,9 @@ do_fork(const struct servtab *sep, int ctrl)
 {
 	const char *service = (sep->se_server_name ? sep->se_server_name : sep->se_service);
 	const char *progname = nullptr;
+	const char *cd = nullptr;
 	const char **argv = nullptr;
+	const char **envv = nullptr;
 	const char *t_argv[3];
 
 	if (sep->se_bi) {			// inbuilt.
@@ -908,14 +902,15 @@ do_fork(const struct servtab *sep, int ctrl)
 	} else {				// external
 		progname = sep->se_server;
 		argv = (const char **)sep->se_argv;
+		envv = sep->se_environ.get();
+		cd = sep->se_working_directory.data();
 	}
 
-	inetd::SocketShare::Server server(process_group.job_handle(), progname, argv);
+	inetd::SocketShare::Server server(progname, cd, process_group.job_handle(), argv, envv);
 	if (server.publish(ctrl)) {
 		process_group.track(server.child());
 		return server.pid();		// resulting process identifier
 	}
-
 	errno = EINVAL;
 	return -1;
 }
@@ -965,8 +960,8 @@ child(struct servtab *sep, int ctrl)
 		if (dolog) {
 			syslog(allow_severity,
 				"connection from %.500s, service %s (%s%s)",
-			eval_client(&req), service, sep->se_proto,
-			(whichaf(&req) == AF_INET6) ? "6" : "");
+				eval_client(&req), service, sep->se_proto,
+					(whichaf(&req) == AF_INET6) ? "6" : "");
 		}
 	}
 #endif
@@ -976,13 +971,12 @@ child(struct servtab *sep, int ctrl)
 
 	} else {
 		if (debug)
-			warnx("%d execl %s", getpid(), sep->se_server);
+			warnx("%d execl %s", getpid(), sep->se_server.c_str());
 
 		/* Clear close-on-exec. */
 #if defined(F_SETFD)
 		if (fcntl(ctrl, F_SETFD, 0) < 0) {
-			syslog(LOG_ERR,
-			    "%s/%s: fcntl (F_SETFD, 0): %m",
+			syslog(LOG_ERR, "%s/%s: fcntl (F_SETFD, 0): %m",
 				sep->se_service, sep->se_proto);
 			_exit(EX_OSERR);
 		}
@@ -996,8 +990,7 @@ child(struct servtab *sep, int ctrl)
 		dup2(0, 2);
 
 		if ((pwd = getpwnam(sep->se_user)) == nullptr) {
-			syslog(LOG_ERR,
-			    "%s/%s: %s: no such user",
+			syslog(LOG_ERR, "%s/%s: %s: no such user",
 				sep->se_service, sep->se_proto, sep->se_user);
 			if (sep->se_socktype != SOCK_STREAM)
 				recv(0, buf, sizeof (buf), 0);
@@ -1006,8 +999,7 @@ child(struct servtab *sep, int ctrl)
 
 		grp = nullptr;
 		if (sep->se_group != nullptr && (grp = getgrnam(sep->se_group)) == nullptr) {
-			syslog(LOG_ERR,
-			    "%s/%s: %s: no such group",
+			syslog(LOG_ERR, "%s/%s: %s: no such group",
 				sep->se_service, sep->se_proto, sep->se_group);
 			if (sep->se_socktype != SOCK_STREAM)
 				recv(0, buf, sizeof (buf), 0);
@@ -1019,9 +1011,8 @@ child(struct servtab *sep, int ctrl)
 #ifdef LOGIN_CAP
 		if ((lc = login_getclass(sep->se_class)) == nullptr) {
 			/* error syslogged by getclass */
-			syslog(LOG_ERR,
-			    "%s/%s: %s: login class error",
-				sep->se_service, sep->se_proto, sep->se_class);
+			syslog(LOG_ERR, "%s/%s: %s: login class error",
+			    sep->se_service, sep->se_proto, sep->se_class);
 			if (sep->se_socktype != SOCK_STREAM)
 				recv(0, buf, sizeof (buf), 0);
 			_exit(EX_NOUSER);
@@ -1029,14 +1020,14 @@ child(struct servtab *sep, int ctrl)
 #endif
 
 		if (setsid() < 0) {
-			syslog(LOG_ERR, "%s: can't setsid(): %m", sep->se_service);
+			syslog(LOG_ERR, "%s: can't setsid(): %m",
+			    sep->se_service);
 			/* _exit(EX_OSERR); not fatal yet */
 		}
 
 #ifdef LOGIN_CAP
 		if (setusercontext(lc, pwd, pwd->pw_uid, LOGIN_SETALL & ~LOGIN_SETMAC) != 0) {
-			syslog(LOG_ERR,
-			     "%s: can't setusercontext(..%s..): %m",
+			syslog(LOG_ERR, "%s: can't setusercontext(..%s..): %m",
 				sep->se_service, sep->se_user);
 			_exit(EX_OSERR);
 		}
@@ -1044,27 +1035,30 @@ child(struct servtab *sep, int ctrl)
 #else
 		if (pwd->pw_uid) {
 			if (setlogin(sep->se_user) < 0) {
-				syslog(LOG_ERR, "%s: can't setlogin(%s): %m", sep->se_service, sep->se_user);
+				syslog(LOG_ERR, "%s: can't setlogin(%s): %m",
+				    sep->se_service, sep->se_user);
 				/* _exit(EX_OSERR); not yet */
 			}
 			if (setgid(pwd->pw_gid) < 0) {
-				syslog(LOG_ERR, "%s: can't set gid %d: %m", sep->se_service, pwd->pw_gid);
+				syslog(LOG_ERR, "%s: can't set gid %d: %m",
+				    sep->se_service, pwd->pw_gid);
 				_exit(EX_OSERR);
 			}
 			(void) initgroups(pwd->pw_name, pwd->pw_gid);
 			if (setuid(pwd->pw_uid) < 0) {
-				syslog(LOG_ERR, "%s: can't set uid %d: %m", sep->se_service, pwd->pw_uid);
+				syslog(LOG_ERR, "%s: can't set uid %d: %m",
+				    sep->se_service, pwd->pw_uid);
 				_exit(EX_OSERR);
 			}
 		}
 #endif
 		execv(sep->se_server, sep->se_argv);
-		syslog(LOG_ERR, "cannot execute %s: %m", sep->se_server);
+		syslog(LOG_ERR, "cannot execute %s: %m", sep->se_server.c_str());
 		if (sep->se_socktype != SOCK_STREAM)
 			recv(0, buf, sizeof (buf), 0);
 	}
 }
-#endif  /*_WIN32*/
+#endif	/*_WIN32*/
 
 /*
  * Add a signal flag to the signal flag queue for later handling
@@ -1227,8 +1221,8 @@ reapchild(pid_t pid)
 	return ret;
 }
 
-static	inetd::CriticalSection service_lock_;
-static	Services services_ = std::make_shared<ServiceCollection>();
+static inetd::CriticalSection service_lock_;
+static Services services_ = std::make_shared<ServiceCollection>();
 
 Services
 services()
@@ -1258,15 +1252,26 @@ config_match(Services &services, struct servconfig *cfg)
 static void
 config(void)
 {
+	const char *dot;
+	struct servconfig *(*configent)(const struct configparams *params, int *ret);
 	struct servconfig *cfg;
 	int cfgerr = 0;
 #ifdef LOGIN_CAP
 	login_cap_t *lc = nullptr;
 #endif
 
-	if (!setconfig(CONFIG)) {
-		syslog(LOG_ERR, "%s: %m", CONFIG);
-		return;
+	if (nullptr != (dot = strrchr(SERVICES, '.')) && 0 == strcmp(dot, ".xconf")) {
+		if (! setconfig2(SERVICES)) {
+			syslog(LOG_ERR, "%s", setconfig2status(nullptr));
+			return;
+		}
+		configent = getconfigent2;
+	} else {
+		if (! setconfig(SERVICES)) {
+			syslog(LOG_ERR, "%s: %m", SERVICES);
+			return;
+		}
+		configent = getconfigent;
 	}
 
 	for (auto sit : *services_)
@@ -1276,17 +1281,15 @@ config(void)
 
 	t_services->reserve(services_->size() > 64 ? services_->size() + 8 : 64);
 
-	while ((cfg = getconfigent(&params, &cfgerr))) {
+	while ((cfg = configent(&params, &cfgerr))) {
 #if !defined(_WIN32)
 		if (getpwnam(cfg->se_user) == nullptr) {
-			syslog(LOG_ERR,
-				"%s/%s: no such user '%s', service ignored",
+			syslog(LOG_ERR, "%s/%s: no such user '%s', service ignored",
 				cfg->se_service, cfg->se_proto, cfg->se_user);
 			continue;
 		}
 		if (cfg->se_group && getgrnam(cfg->se_group) == nullptr) {
-			syslog(LOG_ERR,
-				"%s/%s: no such group '%s', service ignored",
+			syslog(LOG_ERR, "%s/%s: no such group '%s', service ignored",
 				cfg->se_service, cfg->se_proto, cfg->se_group);
 			continue;
 		}
@@ -1294,17 +1297,16 @@ config(void)
 #ifdef LOGIN_CAP
 		if ((lc = login_getclass(cfg->se_class)) == nullptr) {
 			/* error syslogged by getclass */
-			syslog(LOG_ERR,
-				"%s/%s: %s: login class error, service ignored",
+			syslog(LOG_ERR, "%s/%s: %s: login class error, service ignored",
 				cfg->se_service, cfg->se_proto, cfg->se_class);
 			continue;
 		}
 		login_close(lc);
 #endif
 
+
 		if (config_match(t_services, cfg)) {
-			syslog(LOG_ERR,
-				"%s/%s: service duplicated, secondary ignored",
+			syslog(LOG_ERR, "%s/%s: service duplicated, secondary ignored",
 				cfg->se_service, cfg->se_proto);
 			continue;
 		}
@@ -1332,10 +1334,11 @@ config(void)
 			if (debug)
 				syslog(LOG_DEBUG, "recreating %s", cfg->se_service);
 
-			sep->se_maxcpm = cfg->se_maxcpm;
 			sep->se_maxchild = cfg->se_maxchild;
-			sep->se_maxperip = cfg->se_maxperip;
+			sep->se_cpmmax = cfg->se_cpmmax;
+			sep->se_cpmwait = cfg->se_cpmwait;
 			connections_resize(sep, cfg->se_maxperip);
+
 			sep->se_bi = cfg->se_bi;
 
 			/* might need to turn on or off service now */
@@ -1349,17 +1352,25 @@ config(void)
 			}
 			sep->se_accept = cfg->se_accept;
 
-			SWAP(const char *, sep->se_user, cfg->se_user);
-			SWAP(const char *, sep->se_group, cfg->se_group);
+			sep->se_user = std::move(cfg->se_user);
+			sep->se_group = std::move(cfg->se_group);
+			sep->se_banner = std::move(cfg->se_banner);
+			sep->se_banner_success = std::move(cfg->se_banner_success);
+			sep->se_banner_fail = std::move(cfg->se_banner_fail);
 #ifdef LOGIN_CAP
-			SWAP(const char *, sep->se_class, cfg->se_class);
+			sep->se_class = std::move(cfg->se_class);
 #endif
-			SWAP(const char *, sep->se_server, cfg->se_server);
+			sep->se_server = std::move(cfg->se_server);
 			SWAP(const char *, sep->se_server_name, cfg->se_server_name);
+			sep->se_working_directory = std::move(cfg->se_working_directory);
+			sep->se_arguments = std::move(cfg->se_arguments);
 			for (i = 0; i < MAXARGV; i++)
 				SWAP(const char *, sep->se_argv[i], cfg->se_argv[i]);
+			sep->se_environ = std::move(cfg->se_environ);
+			sep->se_access_times = std::move(cfg->se_access_times);
+			sep->se_addresses = std::move(cfg->se_addresses);
 #ifdef IPSEC
-			SWAP(char *, sep->se_policy, cfg->se_policy);
+			sep->se_policy = std::move(cfg->se_policy);
 			ipsecsetup(sep);
 #endif
 			freeconfig(cfg);
@@ -1402,32 +1413,17 @@ config(void)
 #if defined(RPC)
 		if (!sep->se_rpc) {
 #endif
-			struct servent *sp = nullptr;
-#if defined(AF_UNIX)
-			if (sep->se_family != AF_UNIX) {
-#endif
-				sp = getservbyname(sep->se_service, sep->se_proto);
-				if (sp == 0) {
-					syslog(LOG_ERR, "%s/%s: unknown service",
-						sep->se_service, sep->se_proto);
-					sep->se_checked = 0;
-					continue;
-				}
-#if defined(AF_UNIX)
-			}
-#endif
 			switch (sep->se_family) {
 			case AF_INET:
-				if (sp->s_port != sep->se_ctrladdr4.sin_port) {
-					sep->se_ctrladdr4.sin_port = sp->s_port;
+				if (sep->se_port != sep->se_ctrladdr4.sin_port) {
+					sep->se_ctrladdr4.sin_port = sep->se_port;
 					sep->se_reset = 1;
 				}
 				break;
 #ifdef INET6
 			case AF_INET6:
-				if (sp->s_port !=
-				    sep->se_ctrladdr6.sin6_port) {
-					sep->se_ctrladdr6.sin6_port = sp->s_port;
+				if (sep->se_port != sep->se_ctrladdr6.sin6_port) {
+					sep->se_ctrladdr6.sin6_port = sep->se_port;
 					sep->se_reset = 1;
 				}
 				break;
@@ -1468,8 +1464,10 @@ config(void)
 			}
 		}
 	}
+
 	if (cfgerr) terminate(cfgerr);
 	endconfig();
+	endconfig2();
 
 	/*
 	 * Swap resources and purge anything not looked at above.
@@ -1576,7 +1574,7 @@ setup(struct servtab *sep)
 
 #define turnon(fd, opt) \
 		setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
-	if (strcmp(sep->se_proto, "tcp") == 0 && (params.options & SO_DEBUG) && turnon(sep->se_fd, SO_DEBUG) < 0)
+	if (strcmp(sep->se_proto, "tcp") == 0 && (params.sockopts & SO_DEBUG) && turnon(sep->se_fd, SO_DEBUG) < 0)
 		syslog(LOG_ERR, "setsockopt (SO_DEBUG): %m");
 	if (turnon(sep->se_fd, SO_REUSEADDR) < 0)
 		syslog(LOG_ERR, "setsockopt (SO_REUSEADDR): %m");
@@ -1615,7 +1613,7 @@ setup(struct servtab *sep)
 		(void) unlink(sep->se_ctrladdr_un.sun_path);
 		umask(0777); /* Make socket with conservative permissions */
 	}
-#endif //AF_UNIX
+#endif //HAVE_AF_UNIX
 
 	if (bind(sep->se_fd, (struct sockaddr *)&sep->se_ctrladdr, sep->se_ctrladdr_size) < 0) {
 		syslog(LOG_ERR, "%s/%s: bind: %m", sep->se_service, sep->se_proto);
@@ -1625,7 +1623,7 @@ setup(struct servtab *sep)
 #if defined(HAVE_AF_UNIX)
 		if (sep->se_family == AF_UNIX)
 			umask(mask);
-#endif //AF_UNIX
+#endif //HAVE_AF_UNIX
 		return;
 	}
 
@@ -1638,7 +1636,7 @@ setup(struct servtab *sep)
 			syslog(LOG_ERR, "chmod socket: %m");
 		umask(mask);
 	}
-#endif //AF_UNIX
+#endif //HAVE_AF_UNIX
 
 #if defined(RPC)
 	if (sep->se_rpc) {
@@ -1653,7 +1651,7 @@ setup(struct servtab *sep)
 		if (getsockname(sep->se_fd,
 				(struct sockaddr*)&sep->se_ctrladdr, &len) < 0){
 			syslog(LOG_ERR, "%s/%s: getsockname: %m",
-				sep->se_service, sep->se_proto);
+				sep->se_service, sep->se_proto.c_str());
 			(void) close(sep->se_fd);
 			sep->se_fd = -1;
 			return;
@@ -1676,8 +1674,7 @@ setup(struct servtab *sep)
 		}
 #else
 		else {
-			syslog(LOG_ERR,
-			    "%s/%s: inetd compiled without inet6 support\n",
+			syslog(LOG_ERR, "%s/%s: inetd compiled without inet6 support\n",
 			    sep->se_service, sep->se_proto);
 			(void) close(sep->se_fd);
 			sep->se_fd = -1;
@@ -1809,12 +1806,7 @@ void servtab::intrusive_deleter(struct servtab *sep)
 		unregisterrpc(sep);
 #endif
 	connections_free(sep);
-
 	freeconfig(static_cast<struct servconfig *>(sep));
-	for (unsigned i = 0; i < MAXARGV; i++)
-		if (sep->se_argv[i])
-			free((char *)sep->se_argv[i]);
-
 	delete sep;
 }
 
@@ -1954,6 +1946,8 @@ inetd_setproctitle(const char *a, int s)
 	setproctitle("%s", buf);
 }
 
+
+//TODO: see port_good_dg(), NETBSD inetd
 int
 check_loop(const struct sockaddr *sa, const struct servtab *sep)
 {
@@ -1987,70 +1981,36 @@ check_loop(const struct sockaddr *sa, const struct servtab *sep)
 	return 0;
 }
 
-/*
- * print_service:
- *	Dump relevant information to stderr
- */
+
 static void
-print_service(const char *action, const struct servtab *sep)
+print_service(const char *action, const struct servconfig *sep)
 {
-	if (!debug) return;
-
-	const char *se_family = "";
-
-	switch (sep->se_family) {
-	case AF_INET:  se_family = "-ip4"; break;
-	case AF_INET6: se_family = "-ip6"; break;
-	}
-
-	syslog(LOG_DEBUG,
-	    "%s: %s proto=%s%s accept=%d max=%d user=%s group=%s"
-#ifdef LOGIN_CAP
-	    "class=%s"
-#endif
-	    " builtin=%p server=%s"
-#ifdef IPSEC
-	    " policy=\"%s\""
-#endif
-	    "\n",
-	    action, sep->se_service, sep->se_proto, se_family,
-	    sep->se_accept, sep->se_maxchild, sep->se_user, (sep->se_group?sep->se_group:""),
-#ifdef LOGIN_CAP
-	    sep->se_class,
-#endif
-	    (void *) sep->se_bi, sep->se_server
-#ifdef IPSEC
-	    , (sep->se_policy ? sep->se_policy : "")
-#endif
-	    );
+	if (debug)
+		syslogconfig(action, sep);
 }
 
+
 static struct conninfo *
-search_connections(struct servtab *sep, int ctrl)
+search_connections(PeerInfo &remote)
 {
-	struct sockaddr_storage ss;
-	socklen_t sslen = sizeof(ss);
+	struct servtab *sep = remote.getserv();
 	struct conninfo *conn = nullptr;
-        char pname[NI_MAXHOST] = {0};
 	int hv;
 
 	if (sep->se_maxperip <= 0)
 		return nullptr;
 
-	/*
-	 * If getpeername() fails, just let it through (if logging is
-	 * enabled the condition is caught elsewhere)
-	 */
-	if (getpeername(ctrl, (struct sockaddr *)&ss, &sslen) != 0)
+	const struct sockaddr_storage *ss = remote.getaddr();
+	if (nullptr == ss)
 		return nullptr;
 
-	switch (ss.ss_family) {
+	switch (ss->ss_family) {
 	case AF_INET:
-		hv = hashval((char *)&((struct sockaddr_in *)&ss)->sin_addr, sizeof(struct in_addr));
+		hv = hashval((char *)&((struct sockaddr_in *)ss)->sin_addr, sizeof(struct in_addr));
 		break;
 #ifdef INET6
 	case AF_INET6:
-		hv = hashval((char *)&((struct sockaddr_in6 *)&ss)->sin6_addr, sizeof(struct in6_addr));
+		hv = hashval((char *)&((struct sockaddr_in6 *)ss)->sin6_addr, sizeof(struct in6_addr));
 		break;
 #endif
 	default:
@@ -2061,12 +2021,12 @@ search_connections(struct servtab *sep, int ctrl)
 		return nullptr;
 	}
 
-	if (getnameinfo((struct sockaddr *)&ss, SOCKLEN_SOCKADDR_STORAGE(ss), pname, sizeof(pname), nullptr, 0, NI_NUMERICHOST) != 0) {
-		syslog(LOG_ERR, "%s getnameinfo error : %M", sep->se_service);
+	const char *pname = remote.getname();
+	if (nullptr == pname) {
 		return nullptr;
 	}
 
-	sep->se_conn[hv].foreach_term_r([hv, &ss, sslen, &sep, &pname, &conn](struct conninfo *ci) {
+	sep->se_conn[hv].foreach_term_r([hv, ss, &sep, pname, &conn](struct conninfo *ci) {
 		if (ci) {
 			char pname2[NI_MAXHOST];
 
@@ -2089,7 +2049,7 @@ search_connections(struct servtab *sep, int ctrl)
 			return false; //done
 		}
 
-		static_assert(sizeof(ci->co_addr) == sizeof(ss), "address structures");
+		static_assert(sizeof(ci->co_addr) == sizeof(*ss), "address structures");
 		memcpy(&ci->co_addr, &ss, sizeof(ci->co_addr));
 		sep->se_conn[hv].push_front_r(*ci);
 		conn = ci;
@@ -2111,7 +2071,7 @@ new_connection(const struct servtab *sep, struct conninfo *conn, struct procinfo
 	int maxchild = 0;
 
 	proc = nullptr;
-	if ((proc = connprocs_new(conn, maxchild)) == nullptr) {
+	if (nullptr == (proc = connprocs_new(conn, maxchild))) {
 		if (maxchild > 0) { // limit imposed
 			if (getnameinfo((struct sockaddr *)&conn->co_addr,
 				    SOCKLEN_SOCKADDR_STORAGE(conn->co_addr),
@@ -2167,6 +2127,7 @@ free_conn(struct conninfo *conn)
 	}
 }
 
+
 /////////////////////////////////////////////////////////////////////////////////////////
 //	connprocs
 
@@ -2191,6 +2152,7 @@ connprocs_clear(struct conninfo *conn)
 		// note: underlying procinfo's are not destroyed
 		//  these are assumed to be owned by the childlist.
 }
+
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //	procinfo

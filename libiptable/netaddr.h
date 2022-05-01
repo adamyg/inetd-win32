@@ -31,7 +31,15 @@ struct netaddr {
 #define netaddr_v6mask mask.v6
 };
 
-int getnetaddr(const char *addr, struct netaddr *res, int numeric);
+#define NETADDR__ADDRSTRLEN 46                  /* IP4=16, IP6=46 */
+
+#define NETADDR_NUMERICHOST 0x0001		/* node must be a numerical network address. */
+#define NETADDR_IMPLIEDMASK 0x0002		/* imply netmask, if omitted. */
+
+int getnetaddr(const char *addr, struct netaddr *res, int family, unsigned flags);
+int getnetaddrx(const char *addr, struct netaddr *res, int family, unsigned flags, char *buf, unsigned buflen);
+int netaddrcmp(const struct netaddr *a1, const struct netaddr *a2);
+
 int getmasklength(const struct netaddr *res);
 
 __END_DECLS

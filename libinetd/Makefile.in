@@ -107,24 +107,33 @@ RMDFLAGS=	-rf
 
 LIBROOT=	inetd
 
-LIBCSOURCES=\
-	libutil_pidfile.c
+LIBCSOURCES=
 
 LIBCPPSOURCES=\
-	inetd.cpp \
+	accessip.cpp \
+	accesstm.cpp \
+	banner.cpp \
+	builtins.cpp \
 	cmpip.cpp \
-	connprocs.cpp \
 	config.cpp \
-	builtins.cpp
+	config2.cpp \
+	connprocs.cpp \
+	environ.cpp \
+	inetd.cpp \
+	netaddrs.cpp \
+	peerinfo.cpp \
+	servconf.cpp \
+	xinetd.cpp
 
 LIBHSOURCES=\
 	inetd.h \
+	xinetd.h \
 	pathnames.h
 
 LIBOBJS=\
 	$(addprefix $(D_OBJ)/,$(subst .c,$(O),$(LIBCSOURCES))) \
 	$(addprefix $(D_OBJ)/,$(subst .cpp,$(O),$(LIBCPPSOURCES)))
-	
+
 LIBRARY=	$(D_LIB)/$(LP)$(LIBROOT)$(A)
 
 

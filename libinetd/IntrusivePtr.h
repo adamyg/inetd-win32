@@ -1,3 +1,4 @@
+#pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * inetd::instrusive_ptr

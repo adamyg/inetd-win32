@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiags.cpp,v 1.5 2022/03/25 17:04:05 cvsuser Exp $")
+__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiags.cpp,v 1.7 2022/04/29 04:47:10 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -39,32 +39,48 @@ __CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiags.cpp,v 1.5 2022/03/25 17:04:05
 #include <Windows.h>
 
 static const char *loglevels[] = {
-    "", "ERROR: ", "WARNING: ", "INFO: ", "DEBUG: " };
+    "",
+    "ERROR  | ",
+    "WARNING| ",
+    "INFO   | ",
+    "DEBUG  | "
+    };
 
 static const char *month[] = {
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    "Jan", 
+    "Feb", 
+    "Mar", 
+    "Apr", 
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+    };
 
-
-bool ServiceDiags::LoggerAdapter::logtid_ = false;
-bool ServiceDiags::LoggerAdapter::logms_ = false;
+bool ServiceDiags::Adapter::logtid_ = false;
+bool ServiceDiags::Adapter::logms_ = false;
 
 
 void
-ServiceDiags::LoggerAdapter::setlogtid(bool value)
+ServiceDiags::Adapter::setlogtid(bool value)
 {
     logtid_ = value;
 }
 
 
 void
-ServiceDiags::LoggerAdapter::setlogms(bool value)
+ServiceDiags::Adapter::setlogms(bool value)
 {
     logms_ = value;
 }
 
 
 void
-ServiceDiags::LoggerAdapter::print(Logger &logger, enum loglevel type, const char *fmt, va_list *ap)
+ServiceDiags::Adapter::print(Logger &logger, enum loglevel type, const char *fmt, va_list *ap)
 {
 #define	MESSAGE_LEN     (2 * 1024)
 #define	FMT_LEN	        1024
@@ -139,7 +155,7 @@ ServiceDiags::LoggerAdapter::print(Logger &logger, enum loglevel type, const cha
 
 
 void
-ServiceDiags::LoggerAdapter::push(Logger &logger, enum loglevel type, const char *buffer, size_t buflen)
+ServiceDiags::Adapter::push(Logger &logger, enum loglevel type, const char *buffer, size_t buflen)
 {
     const char *label = loglevels[type];
     char header[64];

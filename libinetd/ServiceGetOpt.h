@@ -257,17 +257,17 @@ private:
 		for (i = 0; long_options_[i].name; ++i) {
 			/* find matching long option */
 			if (strncmp(arg, long_options_[i].name, arglen))
-			    continue;
+				continue;
 
 			if (strlen(long_options_[i].name) == (unsigned)arglen) {
-			    match = i;
-			    ambiguous = 0;
-			    break;
+				match = i;
+				ambiguous = 0;
+				break;
 			}
 
 			/* partial match */
 			if (match == -1)
-			    match = i;
+				match = i;
 			else ambiguous = 1;
 		}
 
@@ -320,7 +320,8 @@ private:
 
 private:
 	void
-	short_fatal(enum error_code code, const char *msg) {
+	short_fatal(enum error_code code, const char *msg) 
+	{
 		if (!opterr_) return;
 
 		char buffer[1024];
@@ -334,7 +335,8 @@ private:
 	}
 
 	void
-	long_fatal(enum error_code code, const char *msg, const char *arg, int arglen = -1) {
+	long_fatal(enum error_code code, const char *msg, const char *arg, int arglen = -1)
+	{
 		if (!opterr_) return;
 
 		char buffer[1024];

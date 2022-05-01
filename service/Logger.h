@@ -106,13 +106,16 @@ protected:
             { return reserved_; }
         unsigned size() const
             { return size_; }
+
     public:
         TAILQ_ENTRY(BufferCursor) __entry;      // intrusive queue member; private
+
     private:
         BOOST_DELETED_FUNCTION(BufferCursor(const BufferCursor &))
         BOOST_DELETED_FUNCTION(BufferCursor& operator=(const BufferCursor &))
         ~BufferCursor() {
         }
+
         friend class LoggerImpl;
         unsigned magic_, reserved_, size_;
         char *data_;

@@ -32,6 +32,9 @@
 
 #include <Winsock2.h>
 #include <ws2tcpip.h>				// getaddrinfo
+#if defined(HAVE_AF_UNIX)
+#include <afunix.h>
+#endif
 #include <mswsock.h>				// IOCP
 #include <Windows.h>
 

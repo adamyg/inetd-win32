@@ -1,11 +1,8 @@
-#pragma once
-#ifndef LOGGERSYSLOG_H_INCLUDED
-#define LOGGERSYSLOG_H_INCLUDED
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * Logger syslog adapter
+ * windows inetd service - ACL.
  *
- * Copyright (c) 2020 - 2022, Adam Young.
+ * Copyright (c) 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -27,32 +24,32 @@
  * ==end==
  */
 
-#include "syslog.h"
+#include "inetd.h"
 
-class Logger;
+#include "../libiptable/isc_radix.h"
+#include "../libiptable/isc_netaddr.h"
 
-struct LoggerSyslog {
-    static int
-    syslog_hook(void *self, int op, int pri, const char *msg, size_t msglen) 
-    {
-        Logger &logger = *((Logger *)self);
-        logger.push(msg, msglen);
-        return 1;
-    }
+class AccessIP {
+public:
+	AccessIP(const netaddrs &netaddrs, int match_default = 0 /*<0=none,>0=ALL*/);
+	~AccessIP();
 
-    static void
-    attach(Logger &logger) 
-    {
-        setlogproxy(&LoggerSyslog::syslog_hook, (void *) &logger);
-    }
+	bool allowed(const netaddr &addr) const;
+	bool allowed(const struct sockaddr_storage *addr) const;
 
-    static void
-    detach() 
-    {
-        setlogproxy(NULL, NULL);
-    }
+private:
+	void acl_create(const netaddrs &netaddrs, int match_default);
+	bool acl_active() const;
+	bool acl_add(const netaddr *addr, bool pos);
+	bool acl_add(isc_prefix_t *pfx, bool pos);
+	bool acl_match(const netaddr *addr, int &match) const;
+	bool acl_match(const struct sockaddr_storage *addr, int &match) const;
+        bool acl_match(const isc_prefix_t *pfx, int &match) const;
+	void acl_reset();
+
+private:
+	isc_mem_t at_mct;
+	isc_radix_tree_t *at_acl;
 };
 
-#endif  //LOGGERSYSLOG_H_INCLUDED
-
-//end
+//end 

@@ -29,13 +29,14 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #endif
 
-#include <exception>
-
 #include "inetd.h"
 
 
-struct connprocs::Guard : public inetd::SpinLock::Guard {
-	Guard(connprocs &cps) : inetd::SpinLock::Guard(cps.cp_lock) { }
+struct connprocs::Guard : public inetd::SpinLock::Guard
+{
+	Guard(connprocs &cps) : inetd::SpinLock::Guard(cps.cp_lock)
+	{
+	}
 };
 
 
@@ -130,3 +131,5 @@ connprocs::clear(struct conninfo *conn)
 	}
 	cp_procs.clear();
 }
+
+//end

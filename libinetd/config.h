@@ -1,3 +1,4 @@
+#pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * Configuration
@@ -55,7 +56,7 @@ struct configparams {
 	configparams() {
 		euid      = 0;
 		egid      = 0;
-		options   = 0;		/* SO_DEBUG */
+		sockopts  = 0;		/* SO_DEBUG */
 		toomany   = TOOMANY;
 		maxperip  = MAXPERIP;
 		maxcpm    = MAXCPM;
@@ -68,7 +69,7 @@ struct configparams {
 	}
 	uid_t	euid;
 	gid_t	egid;
-	int	options;		/* global socket options */
+	int	sockopts;		/* global socket options */
 	int	toomany;
 	int	maxperip;
 	int	maxcpm;
@@ -76,13 +77,14 @@ struct configparams {
 	int	maxthread;
 	int	v4bind_ok;
 	int	v6bind_ok;
-	struct	sockaddr_in *bind_sa4;
-	struct	sockaddr_in6 *bind_sa6;
+	struct sockaddr_in *bind_sa4;
+	struct sockaddr_in6 *bind_sa6;
 };
 
 int	setconfig(const char *path);
 struct servconfig *getconfigent(const struct configparams *params, int *ret);
 void	endconfig(void);
+void	syslogconfig(const char *label, const struct servconfig *sep);
 void	freeconfig(struct servconfig *);
 
 /*end*/

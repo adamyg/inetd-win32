@@ -1,11 +1,10 @@
 #pragma once
-#ifndef LOGGERSYSLOG_H_INCLUDED
-#define LOGGERSYSLOG_H_INCLUDED
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * Logger syslog adapter
+ * Configuration
+ * windows inetd service -- xinetd style.
  *
- * Copyright (c) 2020 - 2022, Adam Young.
+ * Copyright (c) 2022, Adam Young.
  * All rights reserved.
  *
  * The applications are free software: you can redistribute it
@@ -27,32 +26,17 @@
  * ==end==
  */
 
-#include "syslog.h"
+#include <istream>
 
-class Logger;
+#include "config.h"
 
-struct LoggerSyslog {
-    static int
-    syslog_hook(void *self, int op, int pri, const char *msg, size_t msglen) 
-    {
-        Logger &logger = *((Logger *)self);
-        logger.push(msg, msglen);
-        return 1;
-    }
+struct servdefaults;
 
-    static void
-    attach(Logger &logger) 
-    {
-        setlogproxy(&LoggerSyslog::syslog_hook, (void *) &logger);
-    }
-
-    static void
-    detach() 
-    {
-        setlogproxy(NULL, NULL);
-    }
-};
-
-#endif  //LOGGERSYSLOG_H_INCLUDED
+int setconfig2(const char *path);
+int setconfig2(std::istream &stream, const char *path);
+const char *setconfig2status(int *error_code);
+const char *getconfigdef2(const char *key, char &op, unsigned idx = 0);
+struct servconfig *getconfigent2(const struct configparams *params, int *ret);
+void endconfig2(void);
 
 //end

@@ -52,17 +52,20 @@ static void             usage(const char *prog, const char *msg = NULL, ...);
 class Acceptor {
 public:
     Acceptor(bool multimode, inetd::ProcessGroup &process_group, const char *progname, const char **argv = NULL) :
-            process_group_(process_group), progname_(progname), argv_(argv), tracked_(0) {
+            process_group_(process_group), progname_(progname), argv_(argv), tracked_(0)
+    {
         if (multimode) {
-            multi_ = std::make_unique<inetd::SocketShare::Server>(process_group_.job_handle(), progname_, argv_);
+            multi_ = std::make_unique<inetd::SocketShare::Server>(progname_, nullptr, process_group_.job_handle(), argv_);
         }
     }
 
     Acceptor(inetd::ProcessGroup &process_group, const char *progname, const char **argv = NULL) :
-            process_group_(process_group), progname_(progname), argv_(argv), tracked_(0) {
+            process_group_(process_group), progname_(progname), argv_(argv), tracked_(0)
+    {
     }
 
-    void operator()(SOCKET listener) {
+    void operator()(SOCKET listener)
+    {
         if ((SOCKET)-1 == listener) {           // timeout event
             int status;
 
@@ -91,7 +94,7 @@ public:
                     }
                 } else {
                     inetd::SocketShare::Server
-                            server(process_group_.job_handle(), progname_, argv_);
+                            server(progname_, nullptr, process_group_.job_handle(), argv_);
                     if (server.publish(socket)) {
                         process_group_.track(server.child());
                     }

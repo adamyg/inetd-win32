@@ -32,12 +32,10 @@
  * $FreeBSD$
  */
 
-    //#include <paths.h>
-
 #if !defined(PATH_VARRUN)
-#define	_PATH_VARRUN	"/var/run/"
+#define _PATH_VARRUN "/var/run/"
 #endif
-#define	_PATH_INETDCONF	"/etc/inetd.conf"
-#define	_PATH_INETDPID	_PATH_VARRUN "inetd.pid"
+#define _PATH_INETDCONF	"/etc/inetd.conf"
+#define _PATH_INETDPID	_PATH_VARRUN "inetd.pid"
 
 //end

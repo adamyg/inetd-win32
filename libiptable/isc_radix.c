@@ -128,7 +128,8 @@ static void
 _clear_radix(isc_radix_tree_t *radix, isc_radix_destroyfunc_t func);
 
 static isc_result_t
-_new_prefix(isc_mem_t *mctx, isc_prefix_t **target, int family, void *dest, int bitlen) {
+_new_prefix(isc_mem_t *mctx, isc_prefix_t **target, int family, void *dest, int bitlen)
+{
 	isc_prefix_t *prefix;
 
 	assert(target != NULL);
@@ -307,6 +308,13 @@ isc_radix_process(isc_radix_tree_t *radix, isc_radix_processfunc_t func)
 	RADIX_WALK_END;
 }
 
+/*
+ *  ACLs use a “first-match” logic rather than “best-match”: if an address prefix matches an ACL element,
+ *  then that ACL is considered to have matched even if a later element would have matched more specifically. 
+ *  For example, the ACL { 10/8; !10.0.0.1; } would actually match a query from 10.0.0.1, because the first
+ *  element indicates that the query should be accepted, and the second element is ignored.
+ */
+
 isc_result_t
 isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix) 
 {
@@ -360,7 +368,7 @@ isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_p
 				    isc_prefix_tochar(prefix),
 				    node->prefix->bitlen))
 		{
-			int fam = ISC_RADIX_FAMILY(prefix);
+			const int fam = ISC_RADIX_FAMILY(prefix);
 			if (node->node_num[fam] != -1 &&
 			    ((*target == NULL) ||
 			     (*target)->node_num[tfam] > node->node_num[fam]))
@@ -376,6 +384,76 @@ isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_p
 	}
 	return (ISC_R_SUCCESS);
 }
+
+
+isc_result_t
+isc_radix_search_best(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix) 
+{
+	isc_radix_node_t *node;
+	isc_radix_node_t *stack[RADIX_MAXBITS + 1];
+	u_char *addr;
+	uint32_t bitlen;
+	int cnt = 0;
+
+	assert(radix != NULL);
+	assert(RADIX_TREE_VALID(radix->magic));
+	assert(prefix != NULL);
+	assert(target != NULL && *target == NULL);
+	assert(prefix->bitlen <= radix->maxbits);
+
+	*target = NULL;
+
+	node = radix->head;
+
+	if (node == NULL) {
+		return (ISC_R_NOTFOUND);
+	}
+
+	addr = isc_prefix_touchar(prefix);
+	bitlen = prefix->bitlen;
+
+	while (node != NULL && node->bit < bitlen) {
+		if (node->prefix) {
+			stack[cnt++] = node;
+		}
+
+		if (BIT_TEST(addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))) {
+			node = node->r;
+		} else {
+			node = node->l;
+		}
+	}
+
+	if (node != NULL && node->prefix) {
+		stack[cnt++] = node;
+	}
+
+	while (cnt-- > 0) {
+		node = stack[cnt];
+
+		if (prefix->bitlen < node->bit) {
+			continue;
+		}
+
+		if (_comp_with_mask(isc_prefix_tochar(node->prefix),
+				    isc_prefix_tochar(prefix),
+				    node->prefix->bitlen))
+		{
+			const int fam = ISC_RADIX_FAMILY(prefix);
+			if (node->node_num[fam] != -1)
+			{
+				*target = node;
+                                break;
+			}
+		}
+	}
+
+	if (*target == NULL) {
+		return (ISC_R_NOTFOUND);
+	}
+	return (ISC_R_SUCCESS);
+}
+
 
 isc_result_t
 isc_radix_insert(isc_radix_tree_t *radix, isc_radix_node_t **target,

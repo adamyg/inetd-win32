@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.1 2022/04/11 12:29:43 cvsuser Exp $")
+__CIDENT_RCSID(syslog_c,"$Id: syslog.c,v 1.2 2022/04/28 11:23:31 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -230,7 +230,7 @@ vxsyslog(int pri, const char *fmt, va_list ap, const char *suffix)
 			char *f, ch;
 
 			for (f = fmt_copy; 0 != (ch = *fmt++) && left;) {
-				if ('%' == ch && left > 4) { //strerror
+				if ('%' == ch && left > 4) { // strerror
 					if ('m' == *fmt) {
 						int len = snprintf(f, left, "%s", strerror(saved_errno));
 						if (len < 0 || len >= left) len = left;
@@ -238,7 +238,7 @@ vxsyslog(int pri, const char *fmt, va_list ap, const char *suffix)
 						++fmt;
 						continue;
 
-					} else if ('M' == *fmt) { //windows error
+					} else if ('M' == *fmt) { // windows error
 						DWORD dwError = GetLastError();
 						DWORD len = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS |
 								FORMAT_MESSAGE_MAX_WIDTH_MASK, NULL, dwError,
@@ -267,7 +267,7 @@ vxsyslog(int pri, const char *fmt, va_list ap, const char *suffix)
 	if (0 == (LOG_NOHEADER & syslog_option)) {
 		SYSTEMTIME stm = {0};
 
-		GetLocalTime(&stm);		// wall clock
+		GetLocalTime(&stm); // wall clock
 
 		if (LOG_TID & syslog_option) {
 			const DWORD tid = GetCurrentThreadId();
@@ -299,18 +299,18 @@ vxsyslog(int pri, const char *fmt, va_list ap, const char *suffix)
 	space = (sizeof(message) - NLCR) - hdrlen;
 
 	if ('%' == fmt[0] && 's' == fmt[1] && 0 == fmt[2]) {
-		//
-		//  syslog( "%s", buffer )
+		// syslog( "%s", buffer )
 		const char *buffer = va_arg(ap, const char *);
-		if (buffer && *buffer) {	// formatting optimization
+
+		msglen = 0;
+		if (buffer && *buffer) { // format optimization
 			if ((msglen = strlen(buffer)) > space) {
 				msglen = space;
 			}
 			memcpy(message + hdrlen, buffer, msglen);
 		}
 	} else {
-		//
-		//  syslog( ... )
+		// syslog( ... )
 		msglen = vsprintf_s(message + hdrlen, space, fmt, ap);
 	}
 

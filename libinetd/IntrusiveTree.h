@@ -72,8 +72,10 @@ namespace inetd {
 
 namespace Intrusive {
 template <typename Member>
-struct TreeMemberHook {
-	struct IComparator {
+struct TreeMemberHook
+{
+	struct IComparator
+	{
 		virtual inline int operator()(const TreeMemberHook *a, const TreeMemberHook *b) const = 0;
 			// XXX: an unfortunately messy interface, as the RB implementation requires the comparator
 			//  to be bound at compile-time, creating an unavoidable forward reference.
@@ -81,50 +83,61 @@ struct TreeMemberHook {
 	};
 
 	typedef RB_HEAD(rb, TreeMemberHook) MemberHead;
-	struct Collection {
-		Collection(IComparator &comparator) : comparator_(comparator) {
+	struct Collection
+	{
+		Collection(IComparator &comparator) : comparator_(comparator)
+		{
 			reset();
 		}
 
-		inline void reset() {
+		inline void reset()
+		{
 			RB_INIT(&head_);
 			count_ = 0;
 		}
 
-		inline bool empty() const {
+		inline bool empty() const
+		{
 			return RB_EMPTY(&head_);
 		}
 
-		inline TreeMemberHook *front() {
+		inline TreeMemberHook *front()
+		{
 			return RB_MIN(rb, &head_);
 		}
 
-		inline TreeMemberHook *root() {
+		inline TreeMemberHook *root()
+		{
 			return RB_ROOT(&head_);
 		}
 
-		inline TreeMemberHook *back() {
+		inline TreeMemberHook *back()
+		{
 			return RB_MAX(rb, &head_);
 		}
 
-		inline unsigned insert(Member *member, TreeMemberHook *hook) {
+		inline unsigned insert(Member *member, TreeMemberHook *hook)
+		{
 			RB_INSERT(rb, &head_, hook);
 			hook->collection_ = this;
 			hook->member_ = member;
 			return ++count_;
 		}
 
-		inline TreeMemberHook *find(TreeMemberHook *hook) const {
+		inline TreeMemberHook *find(TreeMemberHook *hook) const
+		{
 			return RB_FIND(rb, const_cast<MemberHead *>(&head_), hook);
 		}
 
-		inline bool exists(TreeMemberHook *hook) const {
+		inline bool exists(TreeMemberHook *hook) const
+		{
 			const TreeMemberHook *existing = RB_FIND(rb, const_cast<MemberHead *>(&head_), hook);
 			return (existing == hook);
 		}
 
 		template<class Parent, class Functor, class... TParameter>
-		int foreach(Parent &parent, Functor functor, TParameter... params) {
+		int foreach(Parent &parent, Functor functor, TParameter... params)
+		{
 			TreeMemberHook *hook;
 			RB_FOREACH(hook, rb, &head) {
 				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
@@ -138,22 +151,26 @@ struct TreeMemberHook {
 			return RB_NEXT(rb, &head_, hook);
 		}
 
-		inline TreeMemberHook *prev(TreeMemberHook *hook) {
+		inline TreeMemberHook *prev(TreeMemberHook *hook)
+		{
 			return RB_PREV(rb, &head_, hook);
 		}
 
-		inline unsigned remove(TreeMemberHook *hook) {
+		inline unsigned remove(TreeMemberHook *hook)
+		{
 			hook->collection_ = nullptr;
 			hook->member_ = nullptr;
 			RB_REMOVE(rb, &head_, hook);
 			return --count_;
 		}
 
-		inetd::CriticalSection& cs() {
+		inetd::CriticalSection& cs()
+		{
 			return cs_;
 		}
 
-		unsigned count() const {
+		unsigned count() const
+		{
 			return count_;
 		}
 
@@ -167,7 +184,8 @@ struct TreeMemberHook {
 		unsigned count_;
 	};
 
-	TreeMemberHook() : node_{}, collection_(nullptr), member_(nullptr) {
+	TreeMemberHook() : node_{}, collection_(nullptr), member_(nullptr)
+	{
 	}
 
 	RB_ENTRY(TreeMemberHook) node_;
@@ -181,7 +199,8 @@ struct TreeMemberHook {
 //	Tree container
 
 template <typename Member, typename Comparator, typename Hook, Hook Member::* PtrToMemberHook>
-struct intrusive_tree {
+struct intrusive_tree
+{
 	intrusive_tree(const intrusive_tree &) = delete;
 	intrusive_tree operator=(const intrusive_tree &) = delete;
 
@@ -190,7 +209,8 @@ public:
 	typedef typename Hook::Collection Collection;
 	typedef Hook MemberHook;
 
-	class Guard {
+	class Guard
+	{
 		Guard(const Guard &) = delete;
 		Guard& operator=(const Guard &) = delete;
 	public:
@@ -198,10 +218,12 @@ public:
 	private:
 		inetd::CriticalSection::Guard guard_;
 	};
+
 	friend class Guard;
 
 public:
-	struct iterator {
+	struct iterator
+	{
 		using iterator_category = std::forward_iterator_tag;
 		using difference_type = std::ptrdiff_t;
 		using value_type = Member;
@@ -210,17 +232,20 @@ public:
 
 		iterator(pointer ptr) : ptr_(ptr) { }
 
-		reference operator*() const {
+		reference operator*() const
+		{
 			assert(ptr_);
 			return *ptr_;
 		}
 
-		pointer operator->() {
+		pointer operator->()
+		{
 			assert(ptr_);
 			return ptr_;
 		}
 
-		iterator& operator++() {
+		iterator& operator++()
+		{
 			if (pointer ptr = ptr_) {
 				MemberHook *hook =
 					intrusive_tree::member_hook_assigned(ptr);
@@ -233,39 +258,46 @@ public:
 			return *this;
 		}
 
-		iterator operator++(int) {
+		iterator operator++(int)
+		{
 			iterator tmp(*this);
 			++(*this);
 			return tmp;
 		}
 
-		friend bool operator== (const iterator& a, const iterator& b) {
+		friend bool operator== (const iterator& a, const iterator& b)
+		{
 			return a.ptr_ == b.ptr_;
 		}
 
-		friend bool operator!= (const iterator& a, const iterator& b) {
+		friend bool operator!= (const iterator& a, const iterator& b)
+		{
 			return a.ptr_ != b.ptr_;
 		}
+
 	private:
 		pointer ptr_;
 	};
 
 private:
 	static inline MemberHook *
-	member_hook_naive(const Member *member) {
+	member_hook_naive(const Member *member)
+	{
 		assert(member);
 		return (MemberHook *)&((member)->*(PtrToMemberHook));
 	}
 
 	static inline MemberHook *
-	member_hook_unassigned(Member *member) {
+	member_hook_unassigned(Member *member)
+	{
 		assert(member);
 		assert((member->*PtrToMemberHook).member_ == nullptr);
 		return &((member)->*(PtrToMemberHook));
 	}
 
 	static inline MemberHook *
-	member_hook_assigned(Member *member) {
+	member_hook_assigned(Member *member)
+	{
 		assert(member);
 		assert((member->*PtrToMemberHook).member_ == member);
 		return &((member)->*(PtrToMemberHook));
@@ -273,36 +305,42 @@ private:
 
 public:
 	static inline Member *
-	hook_member(MemberHook *hook) {
-		constexpr size_t hook_offset = offsetof(Member, *PtrToMemberHook);
+	hook_member(MemberHook *hook)
+	{
+		size_t hook_offset = offsetof(Member, *PtrToMemberHook);
 		assert(hook);
 		assert(hook->member_ == (void *)((const char *)hook - hook_offset));
 		return (Member *)((const char *)hook - hook_offset);
 	}
 
 	static inline const Member *
-	hook_member_unassigned(const MemberHook *hook) {
-		constexpr size_t hook_offset = offsetof(Member, *PtrToMemberHook);
+	hook_member_unassigned(const MemberHook *hook)
+	{
+		size_t hook_offset = offsetof(Member, *PtrToMemberHook);
 		return (const Member *)((const char *)hook - hook_offset);
 	}
 
 public:
 	intrusive_tree() : collection_(icomparator_) { }
 
-	~intrusive_tree() {
+	~intrusive_tree()
+	{
 		assert(empty());
 		assert(0 == count());
 	}
 
-	bool empty() const {
+	bool empty() const
+	{
 		return collection_.empty();
 	}
 
-	int count() const {
+	int count() const
+	{
 		return collection_.count();
 	}
 
-	Member *front() {
+	Member *front()
+	{
 		if (MemberHook *hook = collection_.front()) {
 			return hook_member(hook);
 		}
@@ -311,7 +349,8 @@ public:
 
 	template<typename = std::enable_if<
 		std::is_member_function_pointer<decltype(&Hook::Collection::root)>::value>>
-	Member *root() {
+	Member *root()
+	{
 		if (MemberHook *hook = collection_.root()) {
 			return hook_member(hook);
 		}
@@ -320,7 +359,8 @@ public:
 
 	template<typename = std::enable_if<
 		std::is_member_function_pointer<decltype(&Hook::Collection::back)>::value>>
-	Member *back() {
+	Member *back()
+	{
 		if (MemberHook *hook = collection_.back()) {
 			return hook_member(hook);
 		}
@@ -336,69 +376,81 @@ public:
 		return find(member);
 	}
 
-	inline Member *find(const Member &member) const {
+	inline Member *find(const Member &member) const
+	{
 		if (MemberHook *hook = collection_.find(member_hook_naive(&member))) {
 			return hook_member(hook);
 		}
 		return nullptr;
 	}
 
-	inline bool exists_r(Member *member) const {
+	inline bool exists_r(Member *member) const
+	{
 		Guard guard(collection_);
 		return collection_.exists(member_hook_naive(member));
 	}
 
-	inline bool exists(Member *member) const {
+	inline bool exists(Member *member) const
+	{
 		return collection_.exists(member_hook_naive(member));
 	}
 
-	inline unsigned remove_r(Member *member) {
+	inline unsigned remove_r(Member *member)
+	{
 		Guard guard(collection_);
 		return remove(member);
 	}
 
-	inline unsigned remove(Member *member) {
+	inline unsigned remove(Member *member)
+	{
 #if defined(_DEBUG) && !defined(NDEBUG)
 		assert(exists(member));
 #endif
 		return collection_.remove(member_hook_assigned(member));
 	}
 
-	static void remove_self_r(Member *member) {
+	static void remove_self_r(Member *member)
+	{
 		MemberHook *hook = member_hook_assigned(member);
 		Hook::Collection *collection = hook->collection_;
 		Guard guard(*collection);
 		collection->remove(hook);
 	}
 
-	static void remove_self(Member *member) {
+	static void remove_self(Member *member)
+	{
 		MemberHook *hook = member_hook_assigned(member);
 		Hook::Collection *collection = hook->collection_;
 		collection->remove(hook);
 	}
 
-	inline void reset_r() {
+	inline void reset_r()
+	{
 		Guard guard(collection_);
 		reset(member);
 	}
 
-	inline void reset() {
+	inline void reset()
+	{
 		collection_.reset();
 	}
 
 	template<class Functor, class... TParameter>
-	int foreach_r(Functor functor, TParameter... params) {
+	int foreach_r(Functor functor, TParameter... params)
+	{
 		Guard guard(collection_);
 		return collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
-	int foreach(Functor functor, TParameter... params) {
+	int foreach(Functor functor, TParameter... params)
+	{
 		return collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
-	int foreach_term_r(Functor functor, TParameter... params) {
+	int foreach_term_r(Functor functor, TParameter... params)
+	{
 		Guard guard(collection_);
 		if (int ret = collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
@@ -407,7 +459,8 @@ public:
 	}
 
 	template<class Functor, class... TParameter>
-	int foreach_term(Functor functor, TParameter... params) {
+	int foreach_term(Functor functor, TParameter... params)
+	{
 		if (int ret = collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
@@ -415,18 +468,21 @@ public:
 	}
 
 	template<class Functor, class... TParameter>
-	int foreach_safe_r(Functor functor, TParameter... params) {
+	int foreach_safe_r(Functor functor, TParameter... params)
+	{
 		Guard guard(collection_);
 		return collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
-	int foreach_safe(Functor functor, TParameter... params) {
+	int foreach_safe(Functor functor, TParameter... params)
+	{
 		return collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
-	int foreach_term_safe_r(Functor functor, TParameter... params) {
+	int foreach_term_safe_r(Functor functor, TParameter... params)
+	{
 		Guard guard(collection_);
 		if (int ret = collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
@@ -435,7 +491,8 @@ public:
 	}
 
 	template<class Functor, class... TParameter>
-	int foreach_term_safe(Functor functor, TParameter... params) {
+	int foreach_term_safe(Functor functor, TParameter... params)
+	{
 		if (int ret = collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
@@ -443,7 +500,8 @@ public:
 	}
 
 	template<class Functor, class... TParameter>
-	void drain_r(Functor functor, TParameter... params) {
+	void drain_r(Functor functor, TParameter... params)
+	{
 		Guard guard(collection_);
 		while (! empty()) {
 			Member *member = front();
@@ -454,7 +512,8 @@ public:
 	}
 
 	template<class Functor, class... TParameter>
-	void drain(Functor functor, TParameter... params) {
+	void drain(Functor functor, TParameter... params)
+	{
 		while (! empty()) {
 			Member *member = front();
 			remove(member);
@@ -464,22 +523,26 @@ public:
 	}
 
 public:
-	iterator begin() {
+	iterator begin()
+	{
 		MemberHook *hook = collection_.front();
 		return iterator(hook ? hook_member(hook) : nullptr);
 	}
 
-	iterator end() {
+	iterator end()
+	{
 		return iterator(nullptr);
 	}
 
-	iterator iterator_to(Member *member) {
+	iterator iterator_to(Member *member)
+	{
 		assert(member);
 		assert(member->collection_ == &collection_);
 		return iterator(member);
 	}
 
-	void erase(iterator &it) {
+	void erase(iterator &it)
+	{
 		assert(it.ptr_);
 		assert(it.ptr_->collection_ == &collection_);
 		if (Member *member = it.ptr_) {
@@ -489,8 +552,10 @@ public:
 	}
 
 private:
-	struct ComparatorImpl : public IComparator {
-		inline int operator()(const MemberHook *a, const MemberHook *b) const override final {
+	struct ComparatorImpl : public IComparator
+	{
+		inline int operator()(const MemberHook *a, const MemberHook *b) const override final
+		{
 			return comparator_(hook_member_unassigned(a), hook_member_unassigned(b));
 		}
 		Comparator comparator_;

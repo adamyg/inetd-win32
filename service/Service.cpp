@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.9 2022/03/25 17:04:05 cvsuser Exp $")
+__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.10 2022/03/29 13:55:51 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -204,7 +204,8 @@ Service::Start(const struct Options &options)
         options_.logger = true;                 // implied.
     }
 
-    LoggerSyslog::attach(&logger_);             // attach logger to syslog
+    ServiceDiags::Syslog::attach(logger_);      // attach logger to syslog.
+  //LoggerSyslog::attach(logger_);
 
     CNTService::Start();
 }
@@ -218,9 +219,8 @@ Service::ConfigLogger()
     int ret;
 
     // TODO: logger section [logger.service|port]
-
-    ConfigGet("logger/path", szValue, sizeof(szValue));
-    ConfigGet("logger/age", szValue, sizeof(szValue));
+//  ConfigGet("logger/path", szValue, sizeof(szValue));
+//  ConfigGet("logger/age", szValue, sizeof(szValue));
 
     ret = ConfigGet("logger_path", szValue, sizeof(szValue));
     profile.base_path(ResolveRelative(ret ? szValue : "./logs/inetd_service.log"));
@@ -559,7 +559,7 @@ Service::logger_body(PipeEndpoint *endpoint)
 
                                 if ('\r' == line[t_sz-1]) --t_sz; // \r\n
                                 if (t_sz) {
-                                    ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, line, t_sz);
+                                    ServiceDiags::Adapter::push(logger_, ServiceDiags::Adapter::LLNONE, line, t_sz);
                                     if (INVALID_HANDLE_VALUE != hStdout) {
                                         if (! ::WriteConsoleA(hStdout, line, sz + 1, NULL, NULL)) {
                                             ::CloseHandle(hStdout);
@@ -582,7 +582,7 @@ Service::logger_body(PipeEndpoint *endpoint)
                             endpoint->popped(dwPopped);
                         } else if (0 == endpoint->avail) {
                                                 // otherwise on buffer full; flush
-                            ServiceDiags::LoggerAdapter::push(logger_, ServiceDiags::LoggerAdapter::LLNONE, endpoint->buffer, endpoint->size);
+                            ServiceDiags::Adapter::push(logger_, ServiceDiags::Adapter::LLNONE, endpoint->buffer, endpoint->size);
                             if (INVALID_HANDLE_VALUE != hStdout) {
                                 ::WriteConsoleA(hStdout, endpoint->buffer, endpoint->size, NULL, NULL);
                             }
