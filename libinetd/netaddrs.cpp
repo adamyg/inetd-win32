@@ -293,7 +293,6 @@ netaddrs::allowed(const struct sockaddr_storage *addr) const
 /////////////////////////////////////////////////////////////////////////////////////////
 //  netaddr's
 
-
 int
 accessip(PeerInfo &remote)
 {
