@@ -4,7 +4,7 @@
 
 inetd for windows - inetd is a super-server daemon on many Unix systems that provides Internet services. For each configured service, it listens for requests from connecting clients. Requests are served by spawning a process which runs the appropriate executable, but simple services such as echo are served internally.
 
-This service implements a similar framework under windows.
+This service implements a similar framework under windows, supporting both inetd and xinetd configuration styles.
 
 # Interface
 
