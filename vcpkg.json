@@ -2,7 +2,8 @@
         "name": "pkgs",
         "version-string": "1.0.0",
         "dependencies": [
-                "openssl"
+                "openssl",
+                "libmaxminddb"
         ],
         "builtin-baseline": "2ac61f87f69f0484b8044f95ab274038fbaf7bdd",
         "overrides": [
