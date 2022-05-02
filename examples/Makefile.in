@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.6 2022/03/28 15:09:54 cvsuser Exp $
+# $Id: Makefile.in,v 1.7 2022/05/02 09:07:28 cvsuser Exp $
 # example services Makefile
 #
 #
@@ -102,9 +102,9 @@ CINCLUDE+=	-I../libcertstore
 endif
 
 ifeq ("$(OPENSSL)","")
-OPENSSL		=../../vcpkg/installed/x86-windows
+OPENSSL		=../vcpkg_installed/x86-windows
 ifeq ("$(wildcard $(OPENSSL)/*)","")
-OPENSSL		=../vcpkg/installed/x86-windows
+OPENSSL		=../../vcpkg/installed/x86-windows
 ifeq ("$(wildcard $(OPENSSL)/*)","")
 OPENSSL		=
 endif

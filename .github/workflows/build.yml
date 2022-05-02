@@ -27,8 +27,7 @@ jobs:
         call ..\vcpkg\bootstrap-vcpkg.bat
         ..\vcpkg\vcpkg install
         ..\vcpkg\vcpkg integrate install
-        dir .
-        dir ..\vcpkg
+        dir /S .\vcpkg_installed
 
     - name: Generating Makefiles
       shell: cmd
