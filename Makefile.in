@@ -257,7 +257,7 @@ BUILDINFO=	include/buildinfo.h
 BINS=\
 	$(D_BIN)/service$(E)		\
 	$(D_BIN)/services$(E)		\
-	$(D_BIN)/control$(E)		\
+	$(D_BIN)/service_control$(E)	\
 	$(D_BIN)/clients$(E)		\
 	$(D_BIN)/examples$(E)
 
@@ -399,7 +399,7 @@ clean:
 		@echo $(BUILD_TYPE) clean
 		$(MAKE) -C examples clean
 		$(MAKE) -C clients clean
-		$(MAKE) -C control clean
+		$(MAKE) -C service_control clean
 		$(MAKE) -C services clean
 		$(MAKE) -C service clean
 		$(MAKE) -C libinetd clean
@@ -419,7 +419,7 @@ distclean:		clean
 		$(RM) $(RMFLAGS) config.cache config.log config.status \
 			examples/Makefile \
 			clients/Makefile \
-			control/Makefile \
+			service_control/Makefile \
 			service/Makefile \
 			services/Makefile \
 			libinetd/Makefile \
