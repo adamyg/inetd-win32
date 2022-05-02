@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: makelib.in,v 1.8 2022/04/11 10:19:08 cvsuser Exp $
+# $Id: makelib.in,v 1.9 2022/05/02 07:15:07 cvsuser Exp $
 # -*- mode: perl; tabs: 8; indent-width: 4; -*-
 # makelib configuration
 #
@@ -70,7 +70,7 @@ $PACKAGE_FILE   = 'package.h';
         'libinetd',
         'service',
         'services',
-        'control',
+        'service_control',
         'clients',
         'examples'
         );
