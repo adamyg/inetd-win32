@@ -82,7 +82,7 @@
 #if defined(HAVE_AFUNIX_H)
 #include <afunix.h>
 #define HAVE_AF_UNIX	1		/* Insider Build 17063 */
-		/*https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/*/
+	/*https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/*/
 #endif
 
 #define BUFSIZE		8192
@@ -217,9 +217,9 @@ public:
 	const Collection& operator()() const;
 	int match_default() const;
 	bool match_default(int status);
-        bool build();
-        bool allowed(const struct netaddr &addr) const;
-        bool allowed(const struct sockaddr_storage *addr) const;
+	bool build();
+	bool allowed(const struct netaddr &addr) const;
+	bool allowed(const struct sockaddr_storage *addr) const;
 	bool has_unspec(char op) const;
 	bool push(const netaddr &addr, char op);
 	bool erase(const netaddr &addr, char op);
@@ -269,12 +269,12 @@ struct servconfig {
 
 	servconfig();
 
-	const char *se_service; 	/* name of service */
+	const char *se_service;		/* name of service */
 	const struct biltin *se_bi;	/* if built-in, description */
 	int	se_socktype;		/* type of socket to use */
 	int	se_family;		/* address family */
 	int	se_port;		/* port */
-	inetd::String se_proto; 	/* protocol used */
+	inetd::String se_proto;		/* protocol used */
 	int	se_sndbuf;		/* sndbuf size (netbsd) */
 	int	se_rcvbuf;		/* rcvbuf size (netbsd) */
 	int	se_maxchild;		/* max number of children */
@@ -282,14 +282,14 @@ struct servconfig {
 	int	se_cpmwait;		/* delay post cpm limit, in seconds */
 	int	se_maxperip;		/* max number of children per src */
 	inetd::String se_user;		/* user name to run as */
-	inetd::String se_group; 	/* group name to run as */
+	inetd::String se_group;		/* group name to run as */
 	inetd::String se_banner;	/* banner sources; optional */
 	inetd::String se_banner_success;
 	inetd::String se_banner_fail;
-#ifdef	LOGIN_CAP
+#ifdef LOGIN_CAP
 	inetd::String se_class; 	/* login class name to run with */
 #endif
-#ifdef	IPSEC
+#ifdef IPSEC
 	inetd::String se_policy;	/* IPsec policy string */
 #endif
 	inetd::String se_server;	/* server program */
@@ -298,7 +298,7 @@ struct servconfig {
 #define MAXARGV 20
 	inetd::String se_arguments;	/* program arguments */
 	const char *se_argv[MAXARGV+1]; /* program arguments; vector */
-	environment se_environ; 	/* application environment */
+	environment se_environ;		/* application environment */
 	access_times se_access_times;	/* access time ranges */
 	netaddrs se_addresses;		/* only_from/no_access addresses */
 	union { 			/* bound address */
@@ -412,23 +412,28 @@ private:
 typedef void (bi_fn_t)(int, struct servtab *);
 
 struct biltin {
-	const char *bi_service; 	/* internally provided service name */
+	const char *bi_service;		/* internally provided service name */
 	int	bi_socktype;		/* type of socket supported */
 	short	bi_fork;		/* 1 if should fork before call */
 	int	bi_maxchild;		/* max number of children, -1=default */
-	bi_fn_t *bi_fn; 		/* function which performs it */
+	bi_fn_t *bi_fn;			/* function which performs it */
 };
 
 extern const struct biltin biltins[];
 
-Services	services();
+Services services();
 
-int		accessip(PeerInfo &remote);
-int		accesstm(PeerInfo &remote);
-int		cpmip(PeerInfo &remote);
+int	accessip(PeerInfo &remote);
+int	geoip(PeerInfo &remote);
+int	accesstm(PeerInfo &remote);
+int	cpmip(PeerInfo &remote);
 
-int		check_loop(const struct sockaddr *, const struct servtab *sep);
-void		inetd_setproctitle(const char *, int);
+int	banner(PeerInfo &remote);
+int	banner_success(PeerInfo &remote);
+int	banner_fail(PeerInfo &remote);
+
+int	check_loop(const struct sockaddr *, const struct servtab *sep);
+void	inetd_setproctitle(const char *, int);
 #if defined(TCPMUX)
 struct servtab *tcpmux(int);
 #endif
