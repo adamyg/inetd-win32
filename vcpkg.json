@@ -1,0 +1,13 @@
+{
+        "name": "pkgs",
+        "version-string": "1.0.0",
+        "dependencies": [
+                "openssl"
+        ],
+        "overrides": [
+                {
+                        "name": "openssl",
+                        "version-string": "1.1.1n"
+                }
+        ]
+}
