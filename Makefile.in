@@ -1,5 +1,5 @@
 # -*- mode: mak; -*-
-# $Id: Makefile.in,v 1.8 2022/04/11 10:19:08 cvsuser Exp $
+# $Id: Makefile.in,v 1.9 2022/05/02 03:04:31 cvsuser Exp $
 # inetd-win32 makefile.
 #
 #
@@ -317,6 +317,8 @@ new_release:			new_buildnumber
 BUILD_DATE=		$(shell date +'%Y%m%d')
 ifneq ($(APPVEYOR_BUILD_NUMBER),)
 BUILD_NUMBER=		$(APPVEYOR_BUILD_NUMBER)
+else ifneq ($(GITHUB_RUN_NUMBER),)
+BUILD_NUMBER=		$(GITHUB_RUN_NUMBER)
 else
 BUILD_NUMBER=		$(shell cat BUILDNUMBER)
 endif
