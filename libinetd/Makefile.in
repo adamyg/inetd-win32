@@ -55,6 +55,16 @@ ifneq ("$(BUILD_TYPE)","release")
 RTSUFFIX=d
 endif
 
+ifeq ("$(MAXMINDDB)","")
+MAXMINDDB	=../vcpkg_installed/x86-windows
+ifeq ("$(wildcard $(MAXMINDDB)/include/maxminddb/*)","")
+MAXMINDDB	=../../vcpkg/installed/x86-windows
+ifeq ("$(wildcard $(MAXMINDDB)/include/maxminddb/*)","")
+MAXMINDDB	=
+endif
+endif
+endif
+
 # Directories
 
 D_INC=		$(ROOT)/include
@@ -83,6 +93,11 @@ LDRELEASE=	@LDRELEASE@
 
 CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@
 CEXTRA=		@DEFS@ -DWIN32_SOCKET_MAP_NATIVE
+
+ifneq ("$(MAXMINDDB)","")
+CINCLUDE+=	-I$(MAXMINDDB)/include
+CEXTRA+=	-DHAVE_LIBMAXMINDDB
+endif
 
 ifeq ("$(BUILD_TYPE)","release")
 CFLAGS+=	$(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
