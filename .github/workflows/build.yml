@@ -20,7 +20,7 @@ jobs:
       with:
         arch: x86
 
-    - name: Build openssl 1.1.1n
+    - name: Generate vcpkgs
       shell: cmd
       run: |
         git clone https://github.com/microsoft/vcpkg ../vcpkg
