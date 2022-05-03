@@ -153,7 +153,7 @@ typedef struct CHost {
 		struct in_addr addr4;
 		struct in6_addr addr6;
 	} ch_addrs;
-	const char *ch_service; 		// service name.
+	const char *ch_service;			// service name.
 	CTime ch_times[CHTSIZE];		// usage.
 	time_t ch_ltime;			// late update time.
 	time_t ch_dtime;			// delay timestamp.
@@ -284,8 +284,7 @@ cpmip(PeerInfo &remote)
 	{
 		const int clret = hosts.check_limit(*rss, sep->se_service, maxcpm, cpmwait);
 		if (clret) {
-			syslog(LOG_ERR,
-			    "%s from %s exceeded counts/min (limit %d/min)%s",
+			syslog(LOG_ERR, "%s from %s exceeded counts/min (limit %d/min)%s",
 			    sep->se_service, remote.getname(), maxcpm, (2 == clret ? " -- wait delay" : ""));
 			r = -1;
 		}

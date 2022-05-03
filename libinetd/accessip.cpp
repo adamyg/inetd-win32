@@ -67,7 +67,7 @@ static bool acl_pos = true;
 
 
 AccessIP::AccessIP(const netaddrs &netaddrs, int match_default)
-	: at_acl{nullptr}
+	: at_acl(nullptr)
 {
 	memset(&at_mct, 0, sizeof(at_mct));
 	if (! netaddrs.empty() || match_default) {
@@ -203,27 +203,30 @@ AccessIP::acl_match(const struct sockaddr_storage *addr, int &match) const
 bool
 AccessIP::acl_match(const isc_prefix_t *pfx, int &match) const
 {
+	assert(pfx);
+	assert(at_acl);
+
 	if (nullptr == at_acl) {
 		match = 0;
 		return false;
 	}
 
 	isc_radix_node_t *node = NULL;
-	assert(pfx);
 
-	if (isc_radix_search_best(at_acl, &node, pfx) == ISC_R_SUCCESS && node) {
-		const int fam = ISC_RADIX_FAMILY(pfx);
-		const int match_num = node->node_num[fam];
-		if (*(const bool *)node->data[fam]) {
-			match = match_num;
-		} else {
-			match = -match_num;
-		}
-		return true;
+	if (isc_radix_search_best(at_acl, &node, pfx) != ISC_R_SUCCESS || NULL == node) {
+		match = 0;
+		return false;
+        }
+
+	const int fam = ISC_RADIX_FAMILY(pfx);
+	const int match_num = node->node_num[fam];
+	if (*(const bool *)node->data[fam]) {
+		match = match_num;
+	} else {
+		match = -match_num;
 	}
-
-	match = 0;
-	return false;
+	assert(match);
+	return true;
 }
 
 

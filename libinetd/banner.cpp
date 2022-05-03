@@ -41,16 +41,11 @@ bool load(const char *filename, Pred &pred)
 	}
 
 	char buffer[1024]; // MTU
-	while (stream.good() && !stream.eof()) {
-		stream.read(buffer, sizeof(buffer));
+	while (stream.read(buffer, sizeof(buffer))) {
 		const size_t count = static_cast<size_t>(stream.gcount());
-		if (count) {
-			pred(buffer, count);
-			continue;
-		}
-		break;
+		pred(buffer, count);
 	}
-	return true;
+	return (stream.eof() ? true : false);
 }
 
 

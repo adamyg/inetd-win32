@@ -117,6 +117,9 @@ class ParserImpl
 	static bool no_access(ParserImpl &parser, char op, const std::string &value);
 	static parse_status sndbuf(ParserImpl &parser, const xinetd::Attribute *attr);
 	static parse_status rcvbuf(ParserImpl &parser, const xinetd::Attribute *attr);
+	static parse_status geoip_database(ParserImpl &parser, const xinetd::Attribute *attr);
+	static parse_status geoip_allow(ParserImpl &parser, const xinetd::Attribute *attr);
+	static parse_status geoip_deny(ParserImpl &parser, const xinetd::Attribute *attr);
 	static parse_status socket_uid(ParserImpl &parser, const xinetd::Attribute *attr);
 	static parse_status socket_gid(ParserImpl &parser, const xinetd::Attribute *attr);
 	static parse_status socket_mode(ParserImpl &parser, const xinetd::Attribute *attr);
@@ -213,10 +216,14 @@ class ParserImpl
 		return false;
 	}
 
+#define WARNING_GEOIP_ALLOW	0x0001
+#define WARNING_GEOIP_DENY	0x0002
+
 	struct servconfig configent_;
 	Collection collection_;
 	Collection::const_iterator iterator_;
 	const struct configparams *params_;
+	unsigned warning_once_;
 	int flag_family_;
 
     private:
@@ -256,6 +263,9 @@ static const ParserImpl::KeyValue service_attributes[] = {
 	{ "no_access",		ParserImpl::no_access,		Default|Optional|Multiple|Modifier },
 	{ "sndbuf",		ParserImpl::sndbuf,		Default|Optional },
 	{ "rcvbuf",		ParserImpl::rcvbuf,		Default|Optional },
+	{ "geoip_database",     ParserImpl::geoip_database,     Default|Optional },
+	{ "geoip_allow",        ParserImpl::geoip_allow,        Default|Optional },
+	{ "geoip_deny",         ParserImpl::geoip_deny,         Default|Optional },
 #if defined(HAVE_AF_UNIX)
 	{ "socket_uid",		ParserImpl::socket_uid,		Optional },
 	{ "socket_gid",		ParserImpl::socket_gid,		Optional },
@@ -302,10 +312,10 @@ bool parse_file(ParserImpl &parser, const xinetd::Attribute *attr, Pred &pred)
 	std::string line;
 	line.reserve(1024);
 	while (std::getline(stream, line)) {
-                const size_t bang = line.find_first_of("#");
-                if (bang != std::string::npos) {
-                        line.erase(bang);
-                }
+		const size_t bang = line.find_first_of("#");
+		if (bang != std::string::npos) {
+			line.erase(bang);
+		}
 		Collection::trim(line);
 		if (! line.empty()) {
 			if (! pred(parser, attr->op, line)) {
@@ -387,7 +397,7 @@ xinetd::Parser::good() const
 //
 
 ParserImpl::ParserImpl(std::istream &stream, const char *filename)
-	: collection_(stream, filename), params_(nullptr), flag_family_(0)
+	: collection_(stream, filename), params_(nullptr), flag_family_(0), warning_once_(0)
 {
 	process_defaults();
 	if (good()) {
@@ -1450,9 +1460,9 @@ ParserImpl::only_from(ParserImpl &parser, const xinetd::Attribute *attr)
 
 		if (strcmp(attr->values[0].c_str(), "FILE") == 0) {
 			if (!parse_file(parser, attr,
-				    [&](auto &parser, char op, const std::string &value) -> bool {
-					    return only_from(parser, op, value);
-				    })) {
+					[&](auto &parser, char op, const std::string &value) -> bool {
+						return only_from(parser, op, value);
+					})) {
 				return Failure;
 			}
 		} else {
@@ -1477,12 +1487,12 @@ ParserImpl::only_from(ParserImpl &parser, char op, const std::string &value)
 	char errmsg[512];
 
 	if (_stricmp(value.c_str(), "ALL") == 0) { // wild-card
-	    	if (! addresses.match_default(1)) {
-		        parser.serverr("invalid only_from=ALL and no_access=ALL are mutually exclusive");
-                        return false;
-                }
+		if (! addresses.match_default(1)) {
+			parser.serverr("invalid only_from/no_access=ALL are mutually exclusive");
+			return false;
+		}
 		return true;
-        }
+	}
 
 	if (! getnetaddrx(value.c_str(), &addr, sep->se_family, NETADDR_IMPLIEDMASK, errmsg, sizeof(errmsg))) {
 		parser.serverr("invalid only_from address <%s>", value, errmsg);
@@ -1516,9 +1526,9 @@ ParserImpl::no_access(ParserImpl &parser, const xinetd::Attribute *attr)
 
 		if (strcmp(attr->values[0].c_str(), "FILE") == 0) {
 			if (!parse_file(parser, attr,
-				    [&](auto &parser, char op, const std::string &value) -> bool {
-					    return no_access(parser, op, value);
-				    })) {
+					[&](auto &parser, char op, const std::string &value) -> bool {
+						return no_access(parser, op, value);
+					})) {
 				return Failure;
 			}
 		} else {
@@ -1543,12 +1553,12 @@ ParserImpl::no_access(ParserImpl &parser, char op, const std::string &value)
 	char errmsg[512];
 
 	if (_stricmp(value.c_str(), "ALL") == 0) { // wild-card
-	    	if (! addresses.match_default(-1)) {
-		        parser.serverr("invalid only_from=ALL and no_access=ALL are mutually exclusive");
-                        return false;
-                }
+		if (! addresses.match_default(-1)) {
+			parser.serverr("invalid only_from/no_access=ALL are mutually exclusive");
+			return false;
+		}
 		return true;
-        }
+	}
 
 	if (! getnetaddrx(value.c_str(), &addr, sep->se_family, NETADDR_IMPLIEDMASK, errmsg, sizeof(errmsg))) {
 		parser.serverr("invalid no_access address <%s>", value, errmsg);
@@ -1603,6 +1613,86 @@ ParserImpl::rcvbuf(ParserImpl &parser, const xinetd::Attribute *attr)
 		return Failure;
 	}
 	sep->se_rcvbuf = (int)size;
+	return Success;
+}
+
+
+ParserImpl::parse_status
+ParserImpl::geoip_database(ParserImpl &parser, const xinetd::Attribute *attr)
+{
+	struct servconfig *sep = &parser.configent_;
+	if (nullptr == attr) {
+		return Success;
+	}
+
+	assert(1 == attr->values.size());
+	const char *arg = attr->values[0].c_str();
+#if defined(HAVE_LIBMAXMINDDB) && (0)
+	sep->se_geoip_database = arg;
+#endif
+	return Success;
+}
+
+
+ParserImpl::parse_status
+ParserImpl::geoip_allow(ParserImpl &parser, const xinetd::Attribute *attr)
+{
+	struct servconfig *sep = &parser.configent_;
+	if (nullptr == attr)
+		return Success;
+
+	assert(1 == attr->values.size());
+	const char *arg = attr->values[0].c_str();
+#if defined(HAVE_LIBMAXMINDDB) && (0)
+	if (_stricmp(arg, "ALL") == 0) { // wild-card
+		if (! sep->se_geoip_rule.match_default(1)) {
+			parser.serverr("invalid geoip_allow/deny=ALL are mutually exclusive");
+			return Failure;
+		}
+
+	} else if (! sep->se_geoip_rule.push('+', arg)) {
+		parser.serverr("invalid geoip_allow value <%s>", arg);
+		return Failure;
+	}
+
+#else
+	if (0 == (parser.warning_once_ & WARNING_GEOIP_ALLOW)) {
+		parser.servwarn("geoip support not available; geoip_allow option ignored");
+		parser.warning_once_ |= WARNING_GEOIP_ALLOW;
+	}
+#endif
+	return Success;
+}
+
+
+ParserImpl::parse_status
+ParserImpl::geoip_deny(ParserImpl &parser, const xinetd::Attribute *attr)
+{
+	struct servconfig *sep = &parser.configent_;
+	if (nullptr == attr)
+		return Success;
+
+	assert(1 == attr->values.size());
+	const char *arg = attr->values[0].c_str();
+
+#if defined(HAVE_LIBMAXMINDDB) && (0)
+	if (_stricmp(arg, "ALL") == 0) { // wild-card
+		if (! sep->se_geoip_rule.match_default(-1)) {
+			parser.serverr("invalid geoip_allow/deny=ALL are mutually exclusive");
+			return Failure;
+		}
+
+	} else if (! sep->se_geoip_rule.push('-', arg)) {
+		parser.serverr("invalid geoip_deny value <%s>", arg);
+		return Failure;
+	}
+
+#else
+	if (0 == (parser.warning_once_ & WARNING_GEOIP_DENY)) {
+		parser.servwarn("geoip support not available; geoip_deny option ignored");
+		parser.warning_once_ |= WARNING_GEOIP_DENY;
+	}
+#endif
 	return Success;
 }
 
@@ -1664,7 +1754,7 @@ ParserImpl::socket_mode(ParserImpl &parser, const xinetd::Attribute *attr)
 
 	assert(1 == attr->values.size());
 	const char *perm = attr->values[0].c_str();
-	long mode;
+	long mode = 0;
 
 	if (! parser.strbase8(perm, mode) || 0 == mode || mode > 0777) {
 		parser.serverr("invalid mode <%s>", perm);

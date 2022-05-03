@@ -691,7 +691,7 @@ body(int argc, char **argv)
 						syslog(LOG_ERR, "ioctl3 (FIONBIO, 0): %m");
 
 					PeerInfo remote(ctrl, sep);
-					if (accessip(remote) < 0 || cpmip(remote) < 0) {
+					if (accessip(remote) < 0 || geoip(remote) < 0 || cpmip(remote) < 0) {
 						sockclose(ctrl);
 						continue;
 					}
@@ -727,7 +727,7 @@ static void async_accept(inetd::instrusive_ptr<struct servtab> &service,
 
 	if (success) {				// connection made and running.
 		PeerInfo remote(cxt->fd(), sep);
-		if (accessip(remote) >= 0 && cpmip(remote) >= 0) {
+		if (accessip(remote) >= 0 && geoip(remote) >= 0 && cpmip(remote) >= 0) {
 			do_accept(remote);
 		}
 	}
@@ -1142,8 +1142,7 @@ addchild(struct servtab *sep, pid_t pid, struct procinfo *proc)
 	}
 
 	if (search_proc(pid, proc) != nullptr) {
-		syslog(LOG_ERR,
-		    "addchild: child already on process list");
+		syslog(LOG_ERR, "addchild: child already on process list");
 		terminate(EX_OSERR);
 		return;
 	}
@@ -1836,20 +1835,17 @@ enable(struct servtab *sep)
 
 #ifdef SANITY_CHECK
 	if (sep->se_fd < 0) {
-		syslog(LOG_ERR,
-		    "%s: %s: bad fd", __func__, sep->se_service);
+		syslog(LOG_ERR, "%s: %s: bad fd", __func__, sep->se_service);
 		terminate(EX_SOFTWARE);
 		return;
 	}
 	if (ISMUX(sep)) {
-		syslog(LOG_ERR,
-		    "%s: %s: is mux", __func__, sep->se_service);
+		syslog(LOG_ERR, "%s: %s: is mux", __func__, sep->se_service);
 		terminate(EX_SOFTWARE);
 		return;
 	}
 	if (FD_ISSET(sep->se_fd, &allsock)) {
-		syslog(LOG_ERR,
-		    "%s: %s: stream is sync", __func__, sep->se_service);
+		syslog(LOG_ERR, "%s: %s: stream is sync", __func__, sep->se_service);
 		terminate(EX_SOFTWARE);
 	}
 #endif
@@ -1889,20 +1885,17 @@ disable(struct servtab *sep, bool closing /*=false*/)
 
 #ifdef SANITY_CHECK
 		if (sep->se_fd < 0) {
-			syslog(LOG_ERR,
-			    "%s: %s: bad fd", __func__, sep->se_service);
+			syslog(LOG_ERR, "%s: %s: bad fd", __func__, sep->se_service);
 			terminate(EX_SOFTWARE);
 			return;
 		}
 		if (ISMUX(sep)) {
-			syslog(LOG_ERR,
-			    "%s: %s: is mux", __func__, sep->se_service);
+			syslog(LOG_ERR, "%s: %s: is mux", __func__, sep->se_service);
 			terminate(EX_SOFTWARE);
 			return;
 		}
 		if (FD_ISSET(sep->se_fd, &allsock)) {
-			syslog(LOG_ERR,
-			    "%s: %s: not off", __func__, sep->se_service);
+			syslog(LOG_ERR, "%s: %s: not off", __func__, sep->se_service);
 			terminate(EX_SOFTWARE);
 		}
 #endif

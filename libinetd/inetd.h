@@ -77,7 +77,11 @@
 #include "IntrusivePtr.h"		// Intrusive ptr
 #include "IOCPService.h"		// IO completion port support
 
-#include "../libiptable/netaddr.h"
+#include "netaddrs.h"
+#include "accesstm.h"
+#include "environ.h"
+#include "peerinfo.h"
+
 
 #if defined(HAVE_AFUNIX_H)
 #include <afunix.h>
@@ -124,7 +128,7 @@ struct procinfo {
 
 	inetd::Intrusive::TailMemberHook<procinfo> pr_procinfo_link_;
 	inetd::Intrusive::ListMemberHook<procinfo> pr_child_link_;
-	pid_t	pr_pid; 		/* child pid & linked, otherwise -1 */
+	pid_t pr_pid; 			/* child pid & linked, otherwise -1 */
 	struct conninfo *pr_conn;	/* associated host connection */
 	struct servtab *pr_sep; 	/* associated service */
 };
@@ -169,96 +173,6 @@ struct conninfo {
 typedef inetd::intrusive_list<conninfo, inetd::Intrusive::ListMemberHook<conninfo>, &conninfo::co_link_> ConnInfoList;
 
 #define PERIPSIZE	256		/* procinfo hash table size */
-
-struct servconfig;
-
-// access time
-class access_times {
-public:
-	struct time {
-		unsigned start;
-		unsigned end;
-	};
-
-	static unsigned to_time(unsigned hh, unsigned mm);
-	static bool to_access_range(const char *arg, struct time &range);
-
-	access_times();
-	bool allowed(unsigned now) const;
-	bool push(const time &tm);
-	size_t size() const;
-	bool empty() const;
-	void clear();
-	void sysdump() const;
-
-private:
-#define MAXACCESSV 10
-	struct time times_[MAXACCESSV];
-};
-
-class PeerInfo;
-class AccessIP;
-
-class netaddrs {
-	netaddrs operator=(const netaddrs &) = delete;
-
-public:
-	struct netaddress {
-		struct netaddr addr;
-		char op;
-	};
-	typedef std::vector<struct netaddress> Collection;
-
-	netaddrs();
-	netaddrs(const netaddrs &rhs);
-	netaddrs& operator=(netaddrs &&rhs);
-	~netaddrs();
-
-	const Collection& operator()() const;
-	int match_default() const;
-	bool match_default(int status);
-	bool build();
-	bool allowed(const struct netaddr &addr) const;
-	bool allowed(const struct sockaddr_storage *addr) const;
-	bool has_unspec(char op) const;
-	bool push(const netaddr &addr, char op);
-	bool erase(const netaddr &addr, char op);
-	void sysdump() const;
-	size_t size() const;
-	bool empty() const;
-	void clear(char op);
-	void clear();
-	void reset();
-
-private:
-	int match_default_;
-	Collection addresses_;
-	mutable AccessIP *table_;
-};
-
-class environment {
-	environment operator=(const environment &) = delete;
-
-public:
-	typedef std::vector<inetd::String> Collection;
-
-	environment();
-	environment(const environment &rhs);
-	environment& operator=(environment &&rhs);
-	~environment();
-
-	const char **get() const;
-	Collection& passenv();
-	Collection& setenv();
-	bool empty() const;
-	void clear();
-	void reset();
-
-private:
-	Collection passenv_;
-	Collection setenv_;
-	mutable const char **env_;
-};
 
 // service configuration
 struct servconfig {
@@ -390,25 +304,6 @@ struct servtab : public servconfig,
 typedef std::vector<inetd::instrusive_ptr<servtab>> ServiceCollection;
 typedef std::shared_ptr<ServiceCollection> Services;
 
-extern int	debug;
-
-class PeerInfo {
-public:
-	PeerInfo(int fd, struct servtab *sep);
-	int fd() const;
-	struct servtab *getserv() const;
-	const struct timespec &timestamp() const;
-	const struct sockaddr_storage *getaddr();
-	const char *getname();
-
-private:
-	const int fd_;
-	struct servtab *sep_;
-	struct sockaddr_storage rss_;
-	struct timespec timestamp_;
-	char pname_[NI_MAXHOST];
-};
-
 typedef void (bi_fn_t)(int, struct servtab *);
 
 struct biltin {
@@ -420,6 +315,7 @@ struct biltin {
 };
 
 extern const struct biltin biltins[];
+extern int debug;
 
 Services services();
 
