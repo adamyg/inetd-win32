@@ -1,5 +1,5 @@
 {
-        "name": "pkgs",
+        "name": "inetd-win32",
         "version-string": "1.0.0",
         "dependencies": [
                 "openssl",
