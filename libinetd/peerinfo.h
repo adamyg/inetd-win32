@@ -1,7 +1,8 @@
 #pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
-  * windows inetd service.
+ * PeerInfo
+ * windows inetd service.
  *
  * Copyright (c) 2022, Adam Young.
  * All rights reserved.
@@ -30,6 +31,7 @@ struct servtab;
 class PeerInfo {
 public:
 	PeerInfo(int fd, struct servtab *sep);
+
 	int fd() const;
 	struct servtab *getserv() const;
 	const struct timespec &timestamp() const;

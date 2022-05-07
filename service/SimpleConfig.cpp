@@ -73,12 +73,7 @@ SimpleConfig::Load(const std::string &file, std::string &errmsg)
                 values_t *values = FetchSection("");
 
                 for (std::string line; std::getline(input, line); ) {
-
-                        // line
-                        //      line.erase(std::remove_if(line.begin(), line.end(), isspace),line.end());
-                        //      if (line[0] == '#' || line.empty()) {
-                        //              continue;
-                        //      }
+                        // comment/blank lines
                         const size_t bang = line.find_first_of("#");
                         if (bang != std::string::npos) {
                                 line.erase(bang);

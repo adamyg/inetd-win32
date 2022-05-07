@@ -26,36 +26,43 @@
  * ==
  */
 
+#include <string>
 #include <vector>
 
-#include "../libiptable/netaddr.h"
+#include "SimpleString.h"
 
-class AccessIP;
+class geoipdb;
 
-class netaddrs {
-	netaddrs operator=(const netaddrs &) = delete;
+class geoips {
+	geoips operator=(const geoips &) = delete;
 
 public:
-	struct netaddress {
-		struct netaddr addr;
+	enum geoip_type { GEOIP_NONE, GEOIP_CONTINENT, GEOIP_COUNTRY, GEOIP_TIMEZONE, GEOIP_CITY };
+
+	struct rule {
+		std::string spec;
+		geoip_type type;
 		char op;
 	};
-	typedef std::vector<struct netaddress> Collection;
+	typedef std::vector<struct rule> Collection;
 
-	netaddrs();
-	netaddrs(const netaddrs &rhs);
-	netaddrs& operator=(netaddrs &&rhs);
-	~netaddrs();
+	geoips();
+	geoips(const geoips &rhs);
+	geoips& operator=(geoips &&rhs);
+	~geoips();
 
 	const Collection& operator()() const;
 	bool build();
 	bool allowed(const struct netaddr &addr) const;
-	bool allowed(const struct sockaddr_storage *addr) const;
+	bool allowed(const struct sockaddr *addr) const;
 	int match_default() const;
 	bool match_default(int status);
-	bool has_unspec(char op) const;
-	bool push(const netaddr &addr, char op);
-	bool erase(const netaddr &addr, char op);
+	const inetd::String& database() const;
+	bool database(const char *database);
+	bool push(const std::vector<std::string> &rules, char op);
+	bool push(const char *value, char op);
+	bool erase(const std::vector<std::string> &rules, char op);
+	bool erase(const char *value, char op);
 	void sysdump() const;
 	size_t size() const;
 	bool empty() const;
@@ -65,8 +72,9 @@ public:
 
 private:
 	int match_default_;
-	Collection addresses_;
-	mutable AccessIP *table_;
+	inetd::String database_;
+	Collection rules_;
+	mutable geoipdb *geoipdb_;
 };
 
 //end

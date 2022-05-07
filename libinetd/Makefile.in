@@ -134,6 +134,7 @@ LIBCPPSOURCES=\
 	config2.cpp \
 	connprocs.cpp \
 	environ.cpp \
+	geoips.cpp \
 	inetd.cpp \
 	netaddrs.cpp \
 	peerinfo.cpp \

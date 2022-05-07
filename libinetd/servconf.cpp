@@ -183,6 +183,7 @@ freeconfig(struct servconfig *sep)
 	memset(sep->se_argv, 0, sizeof(sep->se_argv));
 	sep->se_access_times.clear();	/* access times */
 	sep->se_addresses.clear();	/* access control */
+	sep->se_geoips.clear();		/* geoip rules */
 	sep->se_environ.clear();	/* environment */
 	memset(&sep->se_un, 0, sizeof(sep->se_un)); /* bound address */
 	sep->se_ctrladdr_size = 0;

@@ -32,8 +32,9 @@
 
 class Arguments {
 public:
-    Arguments(const std::vector<std::string> &args, bool clone = false) :
-            argc_(0), argv_(NULL), cloned_(0) {
+    Arguments(const std::vector<std::string> &args, bool clone = false)
+        : argc_(0), argv_(NULL), cloned_(0)
+    {
         argv_ = (const char **)calloc(args.size() + 1, sizeof(char *));
         if (argv_) {
             size_t v = 0;
@@ -67,24 +68,28 @@ public:
         }
     }
 
-    ~Arguments() {
+    ~Arguments()
+    {
         if (argv_) {
             if (cloned_) ::free(cloned_);
             ::free(argv_);
         }
     }
 
-    int argc() const {
+    int argc() const
+    {
         return argc_;
     }
 
-    const char **argv() const {
+    const char **argv() const
+    {
         return argv_;
     }
 
 public:
     static void
-    split(std::vector<std::string> &argv, const char *cmd, bool escapes = true) {
+    split(std::vector<std::string> &argv, const char *cmd, bool escapes = true)
+    {
         if (char *t_cmd = ::_strdup(cmd)) {
             emplace_split(argv, t_cmd, escapes);
             ::free(t_cmd);
@@ -92,7 +97,8 @@ public:
     }
 
     static void
-    emplace_split(std::vector<std::string> &argv, char *cmd, bool escapes = true) {
+    emplace_split(std::vector<std::string> &argv, char *cmd, bool escapes = true)
+    {
         char *start, *end;
 
         if (cmd == NULL) return;

@@ -1,7 +1,7 @@
 #pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
-  * windows inetd service.
+ * windows inetd service.
  *
  * Copyright (c) 2022, Adam Young.
  * All rights reserved.

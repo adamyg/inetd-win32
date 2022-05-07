@@ -263,9 +263,9 @@ static const ParserImpl::KeyValue service_attributes[] = {
 	{ "no_access",		ParserImpl::no_access,		Default|Optional|Multiple|Modifier },
 	{ "sndbuf",		ParserImpl::sndbuf,		Default|Optional },
 	{ "rcvbuf",		ParserImpl::rcvbuf,		Default|Optional },
-	{ "geoip_database",     ParserImpl::geoip_database,     Default|Optional },
-	{ "geoip_allow",        ParserImpl::geoip_allow,        Default|Optional },
-	{ "geoip_deny",         ParserImpl::geoip_deny,         Default|Optional },
+	{ "geoip_database",	ParserImpl::geoip_database,	Default|Optional },
+	{ "geoip_allow",	ParserImpl::geoip_allow,	Default|Optional|Multiple|Modifier },
+	{ "geoip_deny",		ParserImpl::geoip_deny,		Default|Optional|Multiple|Modifier },
 #if defined(HAVE_AF_UNIX)
 	{ "socket_uid",		ParserImpl::socket_uid,		Optional },
 	{ "socket_gid",		ParserImpl::socket_gid,		Optional },
@@ -321,7 +321,7 @@ bool parse_file(ParserImpl &parser, const xinetd::Attribute *attr, Pred &pred)
 			if (! pred(parser, attr->op, line)) {
 				return false;
 			}
-                }
+		}
 	}
 	return true;
 }
@@ -1627,9 +1627,7 @@ ParserImpl::geoip_database(ParserImpl &parser, const xinetd::Attribute *attr)
 
 	assert(1 == attr->values.size());
 	const char *arg = attr->values[0].c_str();
-#if defined(HAVE_LIBMAXMINDDB) && (0)
-	sep->se_geoip_database = arg;
-#endif
+	sep->se_geoips.database(arg);
 	return Success;
 }
 
@@ -1641,21 +1639,31 @@ ParserImpl::geoip_allow(ParserImpl &parser, const xinetd::Attribute *attr)
 	if (nullptr == attr)
 		return Success;
 
-	assert(1 == attr->values.size());
-	const char *arg = attr->values[0].c_str();
-#if defined(HAVE_LIBMAXMINDDB) && (0)
-	if (_stricmp(arg, "ALL") == 0) { // wild-card
-		if (! sep->se_geoip_rule.match_default(1)) {
+	const auto& values = attr->values;
+	if ('-' == attr->op) {
+		parser.serverr("operator -= not applicable for geoip_allow");
+		return Failure;
+	} else if ('=' == attr->op) {
+		sep->se_geoips.clear('+');
+	}
+
+#if defined(HAVE_LIBMAXMINDDB)
+	if (_stricmp(values[0].c_str(), "ALL") == 0) { // wild-card
+		if (! sep->se_geoips.match_default(1)) {
 			parser.serverr("invalid geoip_allow/deny=ALL are mutually exclusive");
+			return Failure;
+
+		} else if (attr->values.size() > 1) {
+			parser.serverr("unexpected geoip_allow trailing value(s) <%s ... >", values[1].c_str());
 			return Failure;
 		}
 
-	} else if (! sep->se_geoip_rule.push('+', arg)) {
-		parser.serverr("invalid geoip_allow value <%s>", arg);
+	} else if (! sep->se_geoips.push(values, '+')) {
+		parser.serverr("invalid geoip_allow value <%s>", attr->value.c_str());
 		return Failure;
 	}
 
-#else
+#else //HAVE_LIBMAXMINDDB
 	if (0 == (parser.warning_once_ & WARNING_GEOIP_ALLOW)) {
 		parser.servwarn("geoip support not available; geoip_allow option ignored");
 		parser.warning_once_ |= WARNING_GEOIP_ALLOW;
@@ -1672,22 +1680,31 @@ ParserImpl::geoip_deny(ParserImpl &parser, const xinetd::Attribute *attr)
 	if (nullptr == attr)
 		return Success;
 
-	assert(1 == attr->values.size());
-	const char *arg = attr->values[0].c_str();
+	const auto& values = attr->values;
+	if ('-' == attr->op) {
+		parser.serverr("operator -= not applicable for geoip_deny");
+		return Failure;
+	} else if ('=' == attr->op) {
+		sep->se_geoips.clear('-');
+	}
 
-#if defined(HAVE_LIBMAXMINDDB) && (0)
-	if (_stricmp(arg, "ALL") == 0) { // wild-card
-		if (! sep->se_geoip_rule.match_default(-1)) {
+#if defined(HAVE_LIBMAXMINDDB)
+	if (_stricmp(values[0].c_str(), "ALL") == 0) { // wild-card
+		if (! sep->se_geoips.match_default(-1)) {
 			parser.serverr("invalid geoip_allow/deny=ALL are mutually exclusive");
+			return Failure;
+
+		} else if (attr->values.size() > 1) {
+			parser.serverr("unexpected geoip_deny trailing value(s) <%s ... >", values[1].c_str());
 			return Failure;
 		}
 
-	} else if (! sep->se_geoip_rule.push('-', arg)) {
-		parser.serverr("invalid geoip_deny value <%s>", arg);
+	} else if (! sep->se_geoips.push(values, '-')) {
+		parser.serverr("invalid geoip_deny value <%s>", attr->value.c_str());
 		return Failure;
 	}
 
-#else
+#else //HAVE_LIBMAXMINDDB
 	if (0 == (parser.warning_once_ & WARNING_GEOIP_DENY)) {
 		parser.servwarn("geoip support not available; geoip_deny option ignored");
 		parser.warning_once_ |= WARNING_GEOIP_DENY;

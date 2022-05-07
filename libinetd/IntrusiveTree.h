@@ -1,3 +1,4 @@
+#pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * inetd::Instrusive_tree
@@ -367,11 +368,13 @@ public:
 		return nullptr;
 	}
 
-	inline void insert(Member &member) {
+	inline void insert(Member &member)
+	{
 		collection_.insert(&member, member_hook_unassigned(&member));
 	}
 
-	inline Member *find_r(const Member &member) const {
+	inline Member *find_r(const Member &member) const
+	{
 		Guard guard(collection_);
 		return find(member);
 	}

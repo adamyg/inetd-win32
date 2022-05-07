@@ -103,6 +103,9 @@
 
 #include "accessip.h"
 
+/////////////////////////////////////////////////////////////////////////////////////////
+//  netaddr's
+
 static inetd::CriticalSection netaddr_lock;
 
 
@@ -144,115 +147,13 @@ netaddrs::operator()() const
 }
 
 
-int
-netaddrs::match_default() const
-{
-	return match_default_;
-}
-
-
-bool
-netaddrs::match_default(int status)
-{
-	if (status && match_default_) {
-		return ((match_default_ < 0 && status < 0) || (match_default_ > 0 && status > 0));
-	}
-	match_default_ = status;
-	return true;
-}
-
-
-bool
-netaddrs::has_unspec(char op) const
-{
-	return std::find_if(addresses_.begin(), addresses_.end(), [&](const auto &element) {
-			    return (op == element.op && AF_UNSPEC == element.addr.family);
-			}) != addresses_.end();
-}
-
-
-bool
-netaddrs::push(const netaddr &addr, char op)
-{
-	if (std::find_if(addresses_.begin(), addresses_.end(), [&](const auto &element) {
-			    return (0 == netaddrcmp(&addr, &element.addr));
-			}) != addresses_.end())
-		return false; // non-unique
-
-	addresses_.push_back({addr, op});
-	return true;
-}
-
-
-bool
-netaddrs::erase(const netaddr &addr, char op)
-{
-	std::remove_if(addresses_.begin(), addresses_.end(), [&](const auto &element) {
-			    return (op == element.op && 0 == netaddrcmp(&addr, &element.addr));
-			});
-	return true;
-}
-
-
-void
-netaddrs::sysdump() const
-{
-	for (const auto &address : addresses_) {
-		const int masklen = getmasklength(&address.addr);
-		char t_addr[64], t_mask[64];
-
-		inet_ntop(address.addr.family, (void *)&address.addr.network, t_addr, sizeof(t_addr));
-		inet_ntop(address.addr.family, (void *)&address.addr.mask, t_mask, sizeof(t_mask));
-		syslog(LOG_DEBUG, "%c: %s/%d (%s)", address.op, t_addr, masklen, t_mask);
-	}
-}
-
-
-size_t
-netaddrs::size() const
-{
-	return addresses_.size();
-}
-
-
-bool
-netaddrs::empty() const
-{
-	return addresses_.empty();
-}
-
-
-void
-netaddrs::clear(char op)
-{
-	std::remove_if(addresses_.begin(), addresses_.end(), [&](const auto &element) {
-			    return (op == element.op);
-			});
-}
-
-
-void
-netaddrs::clear()
-{
-	addresses_.clear();
-	reset();
-}
-
-
-void
-netaddrs::reset()
-{
-	delete table_;
-	table_ = nullptr;
-}
-
-
 bool
 netaddrs::build()
 {
 	inetd::CriticalSection::Guard guard(netaddr_lock);
 	if (nullptr == table_) {
-		table_ = new AccessIP(*this, match_default());
+		if (nullptr == (table_ = new(std::nothrow) AccessIP(*this, match_default())))
+			return false;
 	}
 	return true;
 }
@@ -287,6 +188,114 @@ netaddrs::allowed(const struct sockaddr_storage *addr) const
 		}
 	}
 	return table_->allowed(addr);
+}
+
+
+int
+netaddrs::match_default() const
+{
+	return match_default_;
+}
+
+
+bool
+netaddrs::match_default(int status)
+{
+	if (status && match_default_) {
+		return ((match_default_ < 0 && status < 0) || (match_default_ > 0 && status > 0));
+	}
+	match_default_ = status;
+	return true;
+}
+
+
+bool
+netaddrs::has_unspec(char op) const
+{
+	return std::find_if(addresses_.begin(), addresses_.end(), [&](const auto &element) {
+				return (op == element.op && AF_UNSPEC == element.addr.family);
+			}) != addresses_.end();
+}
+
+
+bool
+netaddrs::push(const netaddr &addr, char op)
+{
+	if (std::find_if(addresses_.begin(), addresses_.end(), [&](const auto &element) {
+				return (0 == netaddrcmp(&addr, &element.addr));
+			}) != addresses_.end())
+		return false; // non-unique
+
+	addresses_.push_back({addr, op});
+	return true;
+}
+
+
+bool
+netaddrs::erase(const netaddr &addr, char op)
+{
+	unsigned count = 0;
+	addresses_.erase(std::remove_if(addresses_.begin(), addresses_.end(),
+				[&](const auto &element) {
+					return (op == element.op && 0 == netaddrcmp(&addr, &element.addr) ? ++count : false);
+				}), addresses_.end());
+	return (0 != count);
+}
+
+
+void
+netaddrs::sysdump() const
+{
+	for (const auto &address : addresses_) {
+		const int masklen = getmasklength(&address.addr);
+		char t_addr[64], t_mask[64];
+
+		inet_ntop(address.addr.family, (void *)&address.addr.network, t_addr, sizeof(t_addr));
+		inet_ntop(address.addr.family, (void *)&address.addr.mask, t_mask, sizeof(t_mask));
+		syslog(LOG_DEBUG, "%c: %s/%d (%s)", address.op, t_addr, masklen, t_mask);
+	}
+}
+
+
+size_t
+netaddrs::size() const
+{
+	return addresses_.size();
+}
+
+
+bool
+netaddrs::empty() const
+{
+	return addresses_.empty();
+}
+
+
+size_t
+netaddrs::clear(char op)
+{
+	size_t count = 0;
+	addresses_.erase(std::remove_if(addresses_.begin(), addresses_.end(),
+				[&](const auto &element) {
+					return (op == element.op ? ++count : 0);
+				}), addresses_.end());
+	return count;
+}
+
+
+void
+netaddrs::clear()
+{
+	addresses_.clear();
+	reset();
+}
+
+
+void
+netaddrs::reset()
+{
+	delete table_;
+	table_ = nullptr;
 }
 
 

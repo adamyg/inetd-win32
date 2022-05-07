@@ -1,3 +1,4 @@
+#pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * Configuration
@@ -208,7 +209,7 @@ class Split {
 	enum { SPLIT_ESCAPES = 1, SPLIT_EXPAND = 2 };
 
     public:
-	Split(class Attributes *defaults) : defaults_(defaults)
+	Split(class Attributes *defaults = nullptr) : defaults_(defaults)
 	{
 	}
 
@@ -217,9 +218,24 @@ class Split {
 	operator()(const std::string &value, unsigned options = SPLIT_ESCAPES|SPLIT_EXPAND)
 	{
 		std::vector<std::string> values;
-		if (char *t_value = ::_strdup(value.c_str())) {
-			emplace_split(values, t_value, options);
-			::free(t_value);
+		if (! value.empty()) {
+			if (char *t_value = ::_strdup(value.c_str())) {
+				emplace_split(values, t_value, options);
+				::free(t_value);
+			}
+		}
+		return values;
+	}
+
+	std::vector<std::string>
+	operator()(const char *value, unsigned options = SPLIT_ESCAPES|SPLIT_EXPAND)
+	{
+		std::vector<std::string> values;
+		if (value && *value) {
+			if (char *t_value = ::_strdup(value)) {
+				emplace_split(values, t_value, options);
+				::free(t_value);
+			}
 		}
 		return values;
 	}
@@ -556,7 +572,7 @@ class Collection {
 
 			rtrim(key);
 			if (key.empty())
-				throw Exception::Attribute("missing attribute key");		
+				throw Exception::Attribute("missing attribute key");
 			if (!valid_symbol(key))
 				throw Exception::Attribute("invalid attribute key");
 

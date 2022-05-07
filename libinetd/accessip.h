@@ -1,3 +1,4 @@
+#pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * windows inetd service - ACL.
@@ -44,7 +45,7 @@ private:
 	bool acl_add(isc_prefix_t *pfx, bool pos);
 	bool acl_match(const netaddr *addr, int &match) const;
 	bool acl_match(const struct sockaddr_storage *addr, int &match) const;
-        bool acl_match(const isc_prefix_t *pfx, int &match) const;
+	bool acl_match(const isc_prefix_t *pfx, int &match) const;
 	void acl_reset();
 
 private:

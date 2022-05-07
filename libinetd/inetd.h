@@ -79,6 +79,7 @@
 
 #include "netaddrs.h"
 #include "accesstm.h"
+#include "geoips.h"
 #include "environ.h"
 #include "peerinfo.h"
 
@@ -215,6 +216,7 @@ struct servconfig {
 	environment se_environ;		/* application environment */
 	access_times se_access_times;	/* access time ranges */
 	netaddrs se_addresses;		/* only_from/no_access addresses */
+	geoips se_geoips;		/* geoip rules */
 	union { 			/* bound address */
 		struct sockaddr se_un_ctrladdr;
 		struct sockaddr_in se_un_ctrladdr4;
