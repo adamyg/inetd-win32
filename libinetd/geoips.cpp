@@ -375,7 +375,7 @@ geoips::database(const char *database)
 }
 
 
-// <city|country|continent> <values ...>
+// <city|timezone|country|continent> <values ...>
 bool
 geoips::push(const std::vector<std::string> &rules, char op)
 {
