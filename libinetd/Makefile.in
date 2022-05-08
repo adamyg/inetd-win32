@@ -55,15 +55,7 @@ ifneq ("$(BUILD_TYPE)","release")
 RTSUFFIX=d
 endif
 
-ifeq ("$(MAXMINDDB)","")
-MAXMINDDB	=../vcpkg_installed/x86-windows
-ifeq ("$(wildcard $(MAXMINDDB)/include/maxminddb/*)","")
-MAXMINDDB	=../../vcpkg/installed/x86-windows
-ifeq ("$(wildcard $(MAXMINDDB)/include/maxminddb/*)","")
-MAXMINDDB	=
-endif
-endif
-endif
+include ../libmaxminddb.inc
 
 # Directories
 
@@ -91,13 +83,8 @@ endif
 LDDEBUG=	@LDDEBUG@
 LDRELEASE=	@LDRELEASE@
 
-CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@
-CEXTRA=		@DEFS@ -DWIN32_SOCKET_MAP_NATIVE
-
-ifneq ("$(MAXMINDDB)","")
-CINCLUDE+=	-I$(MAXMINDDB)/include
-CEXTRA+=	-DHAVE_LIBMAXMINDDB
-endif
+CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@ $(INCMAXMINDDB)
+CEXTRA=		@DEFS@ $(DEFMAXMINDDB) -DWIN32_SOCKET_MAP_NATIVE
 
 ifeq ("$(BUILD_TYPE)","release")
 CFLAGS+=	$(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
@@ -108,7 +95,7 @@ CFLAGS+=	$(CDEBUG) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
 CXXFLAGS+=	$(CXXDEBUG) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
 LDFLAGS=	$(LDDEBUG) @LDFLAGS@
 endif
-LDLIBS=		-L$(D_LIB) @LIBS@ @EXTRALIBS@
+LDLIBS=		-L$(D_LIB) @LIBS@ @EXTRALIBS@ $(LIBMAXMINDDB)
 
 ARFLAGS=	rcv
 RMFLAGS=	-f

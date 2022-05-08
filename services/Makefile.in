@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.4 2022/04/29 04:47:10 cvsuser Exp $
+# $Id: Makefile.in,v 1.5 2022/05/08 03:53:50 cvsuser Exp $
 # inetd_services Makefile
 #
 #
@@ -63,6 +63,8 @@ ifneq ("$(BUILD_TYPE)","release")
 RTSUFFIX=d
 endif
 
+include ../libmaxminddb.inc
+
 # Directories
 
 D_INC=		$(ROOT)/include
@@ -89,8 +91,8 @@ endif
 LDDEBUG=	@LDDEBUG@
 LDRELEASE=	@LDRELEASE@
 
-CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@
-CEXTRA=		@DEFS@ -DWIN32_SOCKET_MAP_NATIVE
+CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@ $(INCMAXMINDDB)
+CEXTRA=		@DEFS@ $(DEFMAXMINDDB) -DWIN32_SOCKET_MAP_NATIVE
 
 ifeq ("$(BUILD_TYPE)","release")
 CFLAGS+=	$(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
@@ -101,7 +103,7 @@ CFLAGS+=	$(CDEBUG) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
 CXXFLAGS+=	$(CXXDEBUG) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
 LDFLAGS=	$(LDDEBUG) @LDFLAGS@
 endif
-LDLIBS=		-L$(D_LIB) $(LINKLIBS) @LIBS@ @EXTRALIBS@
+LDLIBS=		-L$(D_LIB) $(LINKLIBS) @LIBS@ @EXTRALIBS@ $(LIBMAXMINDDB)
 
 ARFLAGS=	rcv
 YFLAGS=		-d

@@ -142,15 +142,16 @@ public:
         typedef std::vector<std::pair <std::string, std::string>> elements_t;
 
 private:
-        typedef struct {
+        struct values_t {
                 collection_t collection;
                 elements_t elements;
 
-                void insert(const std::string &key, const std::string &value) {
+                void insert(const std::string &key, const std::string &value)
+                {
                         collection.insert(std::make_pair(key, value));
                         elements.push_back(std::make_pair(key, value));
                 }
-        } values_t;
+        };
 
         typedef std::map<std::string, values_t *, iless> sections_t;
 

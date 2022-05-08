@@ -44,7 +44,11 @@
 #if defined(ssize_t)
 #undef ssize_t
 #endif
+#if defined(_DEBUG)
 #pragma comment(lib, "libmaxminddbd.lib")
+#else
+#pragma comment(lib, "libmaxminddb.lib")
+#endif
 
 #include <maxminddb/maxminddb.h>
 
