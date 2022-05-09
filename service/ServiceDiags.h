@@ -40,7 +40,7 @@ class Logger;
 
 class ServiceDiags {
 public:
-    struct LoggerAdapter {
+    struct Adapter {
         enum loglevel {
             LLNONE, LLERROR, LLWARNING, LLINFO, LLDEBUG
         };
@@ -55,35 +55,47 @@ public:
         static bool logms_;
     };
 
+    class Syslog {
+        static int  hook(void *self, int op, int pri, const char *msg, size_t msglen);
+    public:
+        static void attach(Logger &logger);
+        static void detach();
+    };
+
     static NTService::IDiagnostics& Get(Logger &logger) {
         static struct ServiceDiagnosticsIOImpl : public NTService::IDiagnostics {
-            ServiceDiagnosticsIOImpl(Logger &logger) : logger_(logger) {
+            ServiceDiagnosticsIOImpl(Logger &logger) : logger_(logger)
+            {
             }
 
             ///////////////////////////////////////////////////////////////////
 
-            virtual void ferror(const char *fmt, ...) {
+            virtual void ferror(const char *fmt, ...)
+            {
                 va_list ap;
                 va_start(ap, fmt);
                 verror(fmt, ap);
                 va_end(ap);
             }
 
-            virtual void fwarning(const char *fmt, ...) {
+            virtual void fwarning(const char *fmt, ...)
+            {
                 va_list ap;
                 va_start(ap, fmt);
                 vwarning(fmt, ap);
                 va_end(ap);
             }
 
-            virtual void finfo(const char *fmt, ...) {
+            virtual void finfo(const char *fmt, ...)
+            {
                 va_list ap;
                 va_start(ap, fmt);
                 vinfo(fmt, ap);
                 va_end(ap);
             }
 
-            virtual void fdebug(const char *fmt, ...) {
+            virtual void fdebug(const char *fmt, ...)
+            {
                 va_list ap;
                 va_start(ap, fmt);
                 vdebug(fmt, ap);
@@ -92,53 +104,64 @@ public:
 
             ///////////////////////////////////////////////////////////////////
 
-            virtual void verror(const char *fmt, va_list ap) {
-                fprint(LoggerAdapter::LLERROR, fmt, ap);
+            virtual void verror(const char *fmt, va_list ap)
+            {
+                fprint(Adapter::LLERROR, fmt, ap);
             }
 
-            virtual void vwarning(const char *fmt, va_list ap) {
-                fprint(LoggerAdapter::LLWARNING, fmt, ap);
+            virtual void vwarning(const char *fmt, va_list ap)
+            {
+                fprint(Adapter::LLWARNING, fmt, ap);
             }
 
-            virtual void vinfo(const char *fmt, va_list ap) {
-                fprint(LoggerAdapter::LLINFO, fmt, ap);
+            virtual void vinfo(const char *fmt, va_list ap)
+            {
+                fprint(Adapter::LLINFO, fmt, ap);
             }
 
-            virtual void vdebug(const char *fmt, va_list ap) {
-                fprint(LoggerAdapter::LLDEBUG, fmt, ap);
+            virtual void vdebug(const char *fmt, va_list ap)
+            {
+                fprint(Adapter::LLDEBUG, fmt, ap);
             }
 
             ///////////////////////////////////////////////////////////////////
 
-            virtual void error(const char *msg) {
-                sprint(LoggerAdapter::LLERROR, msg);
+            virtual void error(const char *msg)
+            {
+                sprint(Adapter::LLERROR, msg);
             }
 
-            virtual void warning(const char *msg) {
-                sprint(LoggerAdapter::LLWARNING, msg);
+            virtual void warning(const char *msg)
+            {
+                sprint(Adapter::LLWARNING, msg);
             }
 
-            virtual void info(const char *msg) {
-                sprint(LoggerAdapter::LLINFO, msg);
+            virtual void info(const char *msg)
+            {
+                sprint(Adapter::LLINFO, msg);
             }
 
-            virtual void debug(const char *msg) {
-                sprint(LoggerAdapter::LLDEBUG, msg);
+            virtual void debug(const char *msg)
+            {
+                sprint(Adapter::LLDEBUG, msg);
             }
 
         private:
-            void fprint(enum LoggerAdapter::loglevel type, const char *fmt, va_list &ap) {
-                LoggerAdapter::print(logger_, type, fmt, &ap);
+            void fprint(enum Adapter::loglevel type, const char *fmt, va_list &ap)
+            {
+                Adapter::print(logger_, type, fmt, &ap);
             }
 
-            void sprint(enum LoggerAdapter::loglevel type, const char *msg) {
-                LoggerAdapter::print(logger_, type, msg);
+            void sprint(enum Adapter::loglevel type, const char *msg)
+            {
+                Adapter::print(logger_, type, msg);
             }
 
         private:
             Logger &logger_;
 
         } diag_(logger);
+
         return diag_;
     }
 };

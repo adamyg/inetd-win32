@@ -1,0 +1,48 @@
+name: build
+on: [push]
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+    steps:
+
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Checkout submodules
+      run: |
+        git submodule update --init --recursive
+
+    - uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x86
+
+    - name: Generate vcpkgs
+      shell: cmd
+      run: |
+        git clone https://github.com/microsoft/vcpkg ../vcpkg
+        call ..\vcpkg\bootstrap-vcpkg.bat
+        ..\vcpkg\vcpkg install
+        ..\vcpkg\vcpkg integrate install
+        dir /S .\vcpkg_installed
+
+    - name: Generating Makefiles
+      shell: cmd
+      run: |
+        @set PERL=c:/Strawberry/perl/bin/perl
+        c:/Strawberry/perl/bin/perl makelib.pl --perlpath=c:/Strawberry/perl/bin --busybox=./win32/busybox --wget=./win32/wget vc2022
+
+    - name: Compiling
+      shell: cmd
+      run: |
+        @set PERL=c:/Strawberry/perl/bin/perl
+        .\win32\gmake-42 release
+
+    - name: Package
+      uses: actions/upload-artifact@v2
+      with:
+        name: package-win32
+        path: ./bin.vs170/release/*

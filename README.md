@@ -2,9 +2,17 @@
 
 # inetd-win32
 
-inetd for windows - inetd is a super-server daemon on many Unix systems that provides Internet services. For each configured service, it listens for requests from connecting clients. Requests are served by spawning a process which runs the appropriate executable, but simple services such as echo are served internally.
+extended inetd for windows - inetd is a super-server daemon on many Unix systems that provides Internet services. For each configured service, it listens for requests from connecting clients. Requests are served by spawning a process which runs the appropriate executable, but simple services such as echo are served internally.
 
-This service implements a similar framework under windows.
+This service implements a similar framework under windows, supporting both inetd and xinetd configuration styles.
+
+# Features
+
+   - IOCP suppport, dynamic worker thread configuration.
+   - client address and time-of-day service access control checks.
+   - service argument, environment and working-directory options.
+   - load checks and service client limits.
+   - geoip2 access control support.
 
 # Interface
 

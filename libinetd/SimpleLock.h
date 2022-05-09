@@ -29,50 +29,68 @@
 #include <atomic>
 
 namespace inetd {
-struct SpinLock {
+
+struct SpinLock
+{
 	SpinLock(const SpinLock &) = delete;
 	SpinLock& operator=(const SpinLock &) = delete;
 
-	struct Guard {
-		Guard(SpinLock &lock) : lock_(lock) {
+	struct Guard
+	{
+		Guard(SpinLock &lock) : lock_(lock)
+		{
 			while (lock.flag_.test_and_set(std::memory_order_acquire))
 				; /* acquire-lock, spin */
 		}
-		~Guard() {
+
+		~Guard()
+		{
 			lock_.flag_.clear(std::memory_order_release);
 		}
+
 		SpinLock &lock_;
 	};
 
-	SpinLock() : flag_{ATOMIC_FLAG_INIT} {
+	SpinLock() : flag_{ATOMIC_FLAG_INIT}
+	{
 	}
 
 	std::atomic_flag flag_;
 };
 
-struct CriticalSection {
+
+struct CriticalSection
+{
 	CriticalSection(const CriticalSection &) = delete;
 	CriticalSection& operator=(const CriticalSection &) = delete;
 
-	class Guard {
+	class Guard
+	{
 		Guard(const Guard &) = delete;
 		Guard& operator=(const Guard &) = delete;
+
 	public:
-		Guard(CriticalSection &lock) : lock_(lock) {
+		Guard(CriticalSection &lock) : lock_(lock)
+		{
 			::EnterCriticalSection(&lock.cs_);
 		}
-		~Guard() {
+
+		~Guard()
+		{
 			::LeaveCriticalSection(&lock_.cs_);
 		}
+
 	private:
 		CriticalSection &lock_;
 	};
 
-	CriticalSection() {
+	CriticalSection()
+	{
 		::InitializeCriticalSectionAndSpinCount(&cs_, 0x00000400);
 	}
 
-	~CriticalSection() {
+	~CriticalSection()
+	{
 		::DeleteCriticalSection(&cs_);
 	}
 

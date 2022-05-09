@@ -24,14 +24,11 @@
  * ==end==
  */
 
-#include <cstdio>
-#include <cstdlib>
-#include <cassert>
-#include <err.h>
-#include <unistd.h>
-
 #include "../libinetd/SocketShare.h"
 #include "../libinetd/inetd.h"
+
+#include <err.h>
+#include <unistd.h>
 
 #include <buildinfo.h>
 
@@ -137,7 +134,7 @@ main(int argc, const char **argv)
 	}
 
 	struct servtab sep;
-	sep.se_service = (char *)service;
+	sep.se_service = (const char *)service;
 	(bi->bi_fn)(socket, &sep);
 	return 0;
 }
@@ -172,7 +169,7 @@ license(void)
 {
 	printf(WININETD_PACKAGE " - " WININETD_PACKAGE_NAME " " WININETD_VERSION "\n\n");
 
-	printf("Copyright (C) 2020-2021 Adam Young, All rights reserved.\n");
+	printf("Copyright (C) 2020-2022 Adam Young, All rights reserved.\n");
 	printf("Licensed under GNU General Public License version 3.0.\n");
 
 	printf("\n\nThis program comes with ABSOLUTELY NO WARRANTY. This is free software,\n");
@@ -189,7 +186,7 @@ license(void)
 }
 
 
-extern "C" void
+/*extern "C"*/ void
 inetd_setproctitle(const char *a, int s)
 {
 	socklen_t size;
@@ -202,12 +199,12 @@ inetd_setproctitle(const char *a, int s)
 		(void) sprintf_s(buf, sizeof(buf), "%s [%s]", a, pbuf);
 	} else {
 		(void) sprintf_s(buf, sizeof(buf), "%s", a);
-        }    		
+	}
 	setproctitle("%s", buf);
 }
 
 
-extern "C" int
+/*extern "C"*/ int
 check_loop(const struct sockaddr *sa, const struct servtab *sep)
 {
 	// Not required for TCP services.

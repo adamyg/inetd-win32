@@ -1,0 +1,337 @@
+#
+# Sample configuration file for xinetd style setup.
+#
+
+#include /devl/inetd-win32/examples/inetd1.xconf
+#includedir /devl/inetd-win32/examples/xinetd.d
+
+defaults
+{
+        log_type         =  FILE ./log/servicelog
+        log_on_success   =  PID
+        log_on_failure   =  HOST RECORD
+        instances        =  10
+        disabled         =  rstatd
+
+        # bogusnets/
+        #  RFC1918 space and some reserved space,
+        #  which is commonly used in spoofing attacks.
+        #
+        bogusnet         =  0.0.0.0/8 192.0.2.0/24 224.0.0.0/3 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+}
+
+## standard
+
+service ftp
+{
+        disable         =  yes
+        socket_type     =  stream
+        wait            =  no
+        nice            =  10
+        user            =  root
+        server          =  /usr/etc/in.ftpd
+        server_args     =  -l
+        instances       =  4
+        log_on_success  += DURATION HOST USERID
+        access_times    =  2:00-9:00 12:00-24:00
+        deny_time       =  60
+}
+
+service telnet
+{
+        disable         =  yes
+        flags           =  REUSE
+        socket_type     =  stream
+        wait            =  no
+        user            =  root
+        server          =  /usr/kerberos/sbin/telnetd
+        log_on_failure  += USERID
+        no_access       =  $(bogusnet)
+#       no_access       =  $(xbogusnet)
+#       no_access       =  $(bogusnet
+        no_access       += ALL
+        log_on_success  += PID HOST EXIT
+        access_times    =  09:45-16:15
+}
+
+## daytime
+
+service daytime
+{
+        id              =  daytime-stream-tcp4
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp4
+        user            =  root
+        wait            =  no
+        instances       =  UNLIMITED
+
+##      access_times    =  00:20-00:30 23:15-23:30
+}
+
+service daytime
+{
+        id              =  daytime-dgram-tcp4
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp4
+        user            =  root
+        wait            =  no
+}
+
+service daytime
+{
+        id              =  daytime-stream-tcp6
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp6
+        user            =  root
+        wait            =  no
+}
+
+service daytime
+{
+        id              =  daytime-dgram-tcp6
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp6
+        user            =  root
+        wait            =  no
+}
+
+## time
+
+service time
+{
+        id              =  time-stream-tcp4
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp4
+        user            =  root
+        wait            =  no
+}
+
+service time
+{
+        id              =  time-dgram-tcp4
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp4
+        user            =  root
+        wait            =  no
+}
+
+service time
+{
+        id              =  time-stream-tcp6
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp6
+        user            =  root
+        wait            =  no
+}
+
+service time
+{
+        id              =  time-dgram-tcp6
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp6
+        user            =  root
+        wait            =  no
+}
+
+## echo
+
+service echo
+{
+        id              =  echo-stream-tcp4
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp4
+        rcvbuf          =  1k
+        user            =  root
+        wait            =  no
+}
+
+service echo
+{
+        id              =  echo-dgram-tcp4
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp4
+        user            =  root
+        wait            =  no
+}
+
+service echo
+{
+        id              =  echo-stream-tcp6
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp6
+        user            =  root
+        wait            =  no
+}
+
+service echo
+{
+        id              =  echo-dgram-tcp6
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp6
+        user            =  root
+        wait            =  no
+}
+
+## discard
+
+service discard
+{
+        id              =  discard-stream-tcp4
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp4
+        user            =  root
+        wait            =  no
+}
+
+service discard
+{
+        id              =  discard-dgram-tcp4
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp4
+        user            =  root
+        wait            =  no
+}
+
+service discard
+{
+        id              =  discard-stream-tcp6
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp6
+        user            =  root
+        wait            =  no
+}
+
+service discard
+{
+        id              =  discard-dgram-tcp6
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp6
+        user            =  root
+        wait            =  no
+}
+
+## chargen
+
+service chargen
+{
+        id              =  chargen-stream-tcp4
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp4
+        user            =  root
+        wait            =  no
+}
+
+service chargen
+{
+        id              =  chargen-dgram-tcp4
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp4
+        user            =  root
+        wait            =  no
+}
+
+service chargen
+{
+        id              =  chargen-stream-tcp6
+        type            =  INTERNAL
+        socket_type     =  stream
+        protocol        =  tcp6
+        user            =  root
+        wait            =  no
+}
+
+service chargen
+{
+        id              =  chargen-dgram-tcp6
+        type            =  INTERNAL
+        socket_type     =  dgram
+        protocol        =  udp6
+        user            =  root
+        wait            =  no
+}
+
+## others
+
+service http
+{
+        id              =  ws-ip4
+        socket_type     =  stream
+        protocol        =  tcp
+        wait            =  no
+        server          =  /devl/inetd-win32/msvc2015/Debug/ws_service
+        server_args     =  --ip4
+        instances       =  4
+        per_source      =  2
+}
+
+service http
+{
+        id              =  ws-ip6
+        socket_type     =  stream
+        protocol        =  tcp6
+        wait            =  no
+        server          =  /devl/inetd-win32/msvc2015/Debug/ws_service
+        server_args     =  --ip6
+        instances       =  4
+        per_source      =  2
+        bind            =  fe80::404c:62f4:f1dc:c3fb%2
+}
+
+service https
+{
+        id              =  wws-ip4
+        socket_type     =  stream
+        protocol        =  tcp
+        wait            =  no
+        server          =  /devl/inetd-win32/msvc2015/Debug/ws_service
+        server_args     =  --ip4 --ssl
+        instances       =  4
+        per_source      =  2
+        bind            =  192.168.1.136
+
+#       no_access       =  ALL
+#       only_from       =  128.138.193.0 128.138.204.0 128.138.209.0 128.138.243.0
+#       only_from       += localhost 192.168.1.0/24
+}
+
+service https
+{
+        id              =  wws-ip6
+        socket_type     =  stream
+        protocol        =  tcp6
+        wait            =  no
+        server          =  /devl/inetd-win32/msvc2015/Debug/ws_service
+        server_args     =  --ip6 --ssl
+        instances       =  4
+        per_source      =  2
+}
+
+service my_service
+{
+        type            =  UNLISTED
+        socket_type     =  stream
+        protocol        =  tcp
+        wait            =  no
+        server          =  /devl/inetd-win32/msvc2015/Debug/my_service
+        port            =  20020
+}
+
+#end

@@ -52,29 +52,24 @@
  */
 
 #include <sys/cdefs.h>
-    //__FBSDID("$FreeBSD$");
 
-    //#include <sys/filio.h>
-    //#include <sys/ioccom.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-    //#include <sys/sysctl.h>
-    //#include <sys/ucred.h>
 #include <sys/uio.h>
-    //#include <sys/utsname.h>
 
 #include <ctype.h>
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <pwd.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <pwd.h>
+#include <err.h>
 #include <sysexits.h>
-#include "../service/syslog.h"
+#include <syslog.h>
 #include <unistd.h>
 #include "libcompat.h"
 
@@ -94,7 +89,9 @@ static void	discard_stream(int, struct servtab *);
 static void	echo_dg(int, struct servtab *);
 static void	echo_stream(int, struct servtab *);
 static int	get_line(int, char *, int);
+#if defined(BUILTIN_AUTH)
 static void	iderror(int, int, int, const char *);
+#endif
 static void	ident_stream(int, struct servtab *);
 static void	initring(void);
 static uint32_t	machtime(void);
@@ -351,6 +348,8 @@ echo_stream(int s, struct servtab *sep)
  * support.
  */
 
+#if defined(BUILTIN_AUTH)
+
 /* RFC 1413 says the following are the only errors you can return. */
 #define ID_INVALID	"INVALID-PORT"	/* Port number improperly specified. */
 #define ID_NOUSER	"NO-USER"	/* Port not in use/not identifable. */
@@ -380,7 +379,6 @@ iderror(int lport, int fport, int s, const char *er)
 	exit(0);
 }
 
-#if defined(BUILTIN_AUTH)
 /* Ident service (AKA "auth") */
 /* ARGSUSED */
 static void
@@ -717,8 +715,7 @@ fakeid_fail:
 
 printit:
 	/* Finally, we make and send the reply. */
-	if (asprintf(&p, "%d , %d : USERID : %s : %s\r\n", lport, fport, osname,
-	    idbuf) == -1) {
+	if (asprintf(&p, "%d , %d : USERID : %s : %s\r\n", lport, fport, osname, idbuf) == -1) {
 		syslog(LOG_ERR, "asprintf: %m");
 		exit(EX_OSERR);
 	}
@@ -803,13 +800,13 @@ get_line(int fd, char *buf, int len)
 
 		FD_ZERO(&readable);
 		FD_SET(fd, &readable);
-		timeout.tv_sec = 10;            /* timeout */
+		timeout.tv_sec = 10;		/* timeout */
 		timeout.tv_usec = 0;
 		if ((n = select(FD_SETSIZE /*dummy*/, &readable, (fd_set *)0, (fd_set *)0, &timeout)) <= 0) {
 			break;
 		}
 
-//		DWORD timeout = 10 * 1000;      /* recv timeout */
+//		DWORD timeout = 10 * 1000;	/* recv timeout */
 //		setsockopt(fs, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 
 		n = sockread(fd, buf, len-count);
@@ -874,4 +871,5 @@ tcpmux(int s)
 	strwrite(s, "-Service not available\r\n");
 	return (NULL);
 }
+
 #endif  //TCPMUX

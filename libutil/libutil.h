@@ -38,8 +38,8 @@
  * $FreeBSD$
  */
 
-#ifndef	_LIBUTIL_H_
-#define	_LIBUTIL_H_
+#ifndef _LIBUTIL_H_
+#define _LIBUTIL_H_
 
 #include <sys/cdefs.h>
 #include <sys/utypes.h>
@@ -86,29 +86,29 @@ typedef struct _property {
 struct in_addr;
 struct pidfh;
 struct sockaddr;
-struct termios;
-struct winsize;
+/*struct termios;*/
+/*struct winsize;*/
 
 __BEGIN_DECLS
-char	*auth_getval(const char *_name);
-void	clean_environment(const char * const *_white, const char * const *_more_white);
-int	expand_number(const char *_buf, uint64_t *_num);
-int	extattr_namespace_to_string(int _attrnamespace, char **_string);
-int	extattr_string_to_namespace(const char *_string, int *_attrnamespace);
-int	flopen(const char *_path, int _flags, ...);
-int	flopenat(int _dirfd, const char *_path, int _flags, ...);
-int	forkpty(int *_amaster, char *_name, struct termios *_termp, struct winsize *_winp);
+/*char	*auth_getval(const char *_name);*/
+/*void	clean_environment(const char * const *_white, const char * const *_more_white);*/
+/*int	expand_number(const char *_buf, uint64_t *_num);*/
+/*int	extattr_namespace_to_string(int _attrnamespace, char **_string);*/
+/*int	extattr_string_to_namespace(const char *_string, int *_attrnamespace);*/
+/*int	flopen(const char *_path, int _flags, ...);*/
+/*int	flopenat(int _dirfd, const char *_path, int _flags, ...);*/
+/*int	forkpty(int *_amaster, char *_name, struct termios *_termp, struct winsize *_winp);*/
 void	hexdump(const void *_ptr, int _length, const char *_hdr, int _flags);
 int	humanize_number(char *_buf, size_t _len, int64_t _number, const char *_suffix, int _scale, int _flags);
-struct kinfo_file *kinfo_getfile(pid_t _pid, int *_cntp);
-struct kinfo_vmentry *kinfo_getvmmap(pid_t _pid, int *_cntp);
-struct kinfo_vmobject *kinfo_getvmobject(int *_cntp);
-struct kinfo_proc *kinfo_getallproc(int *_cntp);
-struct kinfo_proc *kinfo_getproc(pid_t _pid);
-int	kld_isloaded(const char *_name);
-int	kld_load(const char *_name);
-int	login_tty(int _fd);
-int	openpty(int *_amaster, int *_aslave, char *_name, struct termios *_termp, struct winsize *_winp);
+/*struct kinfo_file *kinfo_getfile(pid_t _pid, int *_cntp);*/
+/*struct kinfo_vmentry *kinfo_getvmmap(pid_t _pid, int *_cntp);*/
+/*struct kinfo_vmobject *kinfo_getvmobject(int *_cntp);*/
+/*struct kinfo_proc *kinfo_getallproc(int *_cntp);*/
+/*struct kinfo_proc *kinfo_getproc(pid_t _pid);*/
+/*int	kld_isloaded(const char *_name);*/
+/*int	kld_load(const char *_name);*/
+/*int	login_tty(int _fd);*/
+/*int	openpty(int *_amaster, int *_aslave, char *_name, struct termios *_termp, struct winsize *_winp);*/
 int	pidfile_close(struct pidfh *_pfh);
 int	pidfile_fileno(const struct pidfh *_pfh);
 struct pidfh *pidfile_open(const char *_path, mode_t _mode, pid_t *_pidptr);
@@ -117,14 +117,29 @@ int	pidfile_write(struct pidfh *_pfh);
 void	properties_free(properties _list);
 char	*property_find(properties _list, const char *_name);
 properties properties_read(int _fd);
-int	realhostname(char *_host, size_t _hsize, const struct in_addr *_ip);
-int	realhostname_sa(char *_host, size_t _hsize, struct sockaddr *_addr, int _addrlen);
-int	_secure_path(const char *_path, uid_t _uid, gid_t _gid);
-void	trimdomain(char *_fullhost, int _hostsize);
-const char *uu_lockerr(int _uu_lockresult);
-int	uu_lock(const char *_ttyname);
-int	uu_unlock(const char *_ttyname);
-int	uu_lock_txfr(const char *_ttyname, pid_t _pid);
+/*int	realhostname(char *_host, size_t _hsize, const struct in_addr *_ip);*/
+/*int	realhostname_sa(char *_host, size_t _hsize, struct sockaddr *_addr, int _addrlen);*/
+/*int	_secure_path(const char *_path, uid_t _uid, gid_t _gid);*/
+/*void	trimdomain(char *_fullhost, int _hostsize);*/
+/*const char *uu_lockerr(int _uu_lockresult);*/
+/*int	uu_lock(const char *_ttyname);*/
+/*int	uu_unlock(const char *_ttyname);*/
+/*int	uu_lock_txfr(const char *_ttyname, pid_t _pid);*/
+char *	strspct(char *buf, size_t bufsiz, intmax_t numerator, intmax_t denominator, size_t digits);
+char *	strpct(char *buf, size_t bufsiz, uintmax_t numerator, uintmax_t denominator, size_t digits);
+size_t	estrlcpy(char *dst, const char *src, size_t len);
+size_t	estrlcat(char *dst, const char *src, size_t len);
+char *	estrdup(const char *s);
+char *	estrndup(const char *s, size_t len);
+void *	emalloc(size_t n);
+void *	ecalloc(size_t n, size_t s);
+void *	erealloc(void *p, size_t n);
+/*void	ereallocarr(void *p, size_t n, size_t s);*/
+FILE *	efopen(const char *p, const char *m);
+int	easprintf(char **  ret, const char *  format, ...);
+int	evasprintf(char **  ret, const char *  format, va_list ap);
+/*intmax_t estrtoi(const char * nptr, int base, intmax_t lo, intmax_t hi);*/
+/*uintmax_t estrtou(const char * nptr, int base, uintmax_t lo, uintmax_t hi);*/
 
 /*
  * Conditionally prototype the following functions if the include

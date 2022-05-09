@@ -125,6 +125,22 @@ typedef struct isc_radix_tree {
 isc_result_t
 isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix);
 /*%<
+ * Search 'radix' for the best match to 'prefix' (see above).
+ * Return the node found in '*target'.
+ *
+ * Requires:
+ * \li	'radix' to be valid.
+ * \li	'target' is not NULL and "*target" is NULL.
+ * \li	'prefix' to be valid.
+ *
+ * Returns:
+ * \li	ISC_R_NOTFOUND
+ * \li	ISC_R_SUCCESS
+ */
+
+isc_result_t
+isc_radix_search_best(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix);
+/*%<
  * Search 'radix' for the best match to 'prefix'.
  * Return the node found in '*target'.
  *
@@ -139,8 +155,7 @@ isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_p
  */
 
 isc_result_t
-isc_radix_insert(isc_radix_tree_t *radix, isc_radix_node_t **target,
-		 isc_radix_node_t *source, isc_prefix_t *prefix);
+isc_radix_insert(isc_radix_tree_t *radix, isc_radix_node_t **target, isc_radix_node_t *source, isc_prefix_t *prefix);
 /*%<
  * Insert 'source' or 'prefix' into the radix tree 'radix'.
  * Return the node added in 'target'.

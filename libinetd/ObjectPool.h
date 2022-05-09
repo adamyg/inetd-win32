@@ -179,7 +179,8 @@ public:
 	}
 
 	inline void
-	destroy(element_type *element) {
+	destroy(element_type *element)
+	{
 		assert(element);
 		if (element) {
 			Node *node = element_to_node(element);

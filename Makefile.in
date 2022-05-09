@@ -1,5 +1,5 @@
 # -*- mode: mak; -*-
-# $Id: Makefile.in,v 1.7 2022/03/28 03:16:28 cvsuser Exp $
+# $Id: Makefile.in,v 1.11 2022/05/09 05:30:15 cvsuser Exp $
 # inetd-win32 makefile.
 #
 #
@@ -257,13 +257,16 @@ BUILDINFO=	include/buildinfo.h
 BINS=\
 	$(D_BIN)/service$(E)		\
 	$(D_BIN)/services$(E)		\
-	$(D_BIN)/control$(E)		\
+	$(D_BIN)/service_control$(E)	\
+	$(D_BIN)/mmdblookup$(E)		\         
 	$(D_BIN)/clients$(E)		\
 	$(D_BIN)/examples$(E)
 
 LIBS+=\
 	$(LW)w32$(A)			\
 	$(LW)compat$(A)			\
+	$(LW)util$(A)			\
+	$(LW)syslog$(A)			\
 	$(LW)sthread$(A)		\
 	$(LW)NTService$(A)		\
 	$(LW)iptable$(A)		\
@@ -315,6 +318,8 @@ new_release:			new_buildnumber
 BUILD_DATE=		$(shell date +'%Y%m%d')
 ifneq ($(APPVEYOR_BUILD_NUMBER),)
 BUILD_NUMBER=		$(APPVEYOR_BUILD_NUMBER)
+else ifneq ($(GITHUB_RUN_NUMBER),)
+BUILD_NUMBER=		$(GITHUB_RUN_NUMBER)
 else
 BUILD_NUMBER=		$(shell cat BUILDNUMBER)
 endif
@@ -395,13 +400,16 @@ clean:
 		@echo $(BUILD_TYPE) clean
 		$(MAKE) -C examples clean
 		$(MAKE) -C clients clean
-		$(MAKE) -C control clean
+		$(MAKE) -C mmdblookup
+		$(MAKE) -C service_control clean
 		$(MAKE) -C services clean
 		$(MAKE) -C service clean
 		$(MAKE) -C libinetd clean
 		$(MAKE) -C libiptable clean
 		$(MAKE) -C libNTService clean
 		$(MAKE) -C libsthread clean
+		$(MAKE) -C libsyslog clean
+		$(MAKE) -C libutil clean
 		$(MAKE) -C libcompat clean
 		$(MAKE) -C libw32 clean
 
@@ -413,13 +421,16 @@ distclean:		clean
 		$(RM) $(RMFLAGS) config.cache config.log config.status \
 			examples/Makefile \
 			clients/Makefile \
-			control/Makefile \
+			mmdblookup/Makefile \
+			service_control/Makefile \
 			service/Makefile \
 			services/Makefile \
 			libinetd/Makefile \
 			libiptable/Makefile \
 			libNTService/Makefile \
 			libsthread/Makefile \
+			libsyslog/Makefile \
+			libutil/Makefile \
 			libcompat/Makefile \
 			libw32/Makefile \
 			Makefile

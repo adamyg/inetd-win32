@@ -78,10 +78,6 @@ isc_netaddr_equal(const isc_netaddr_t *a, const isc_netaddr_t *b)
 		return (false);
 	}
 
-//	if (a->zone != b->zone) {
-//		return (false);
-//	}
-
 	switch (a->family) {
 	case AF_INET:
 		if (a->netaddr_v4addr.s_addr != b->netaddr_v4addr.s_addr) {
@@ -95,13 +91,15 @@ isc_netaddr_equal(const isc_netaddr_t *a, const isc_netaddr_t *b)
 			return (false);
 		}
 		break;
-#ifndef _WIN32
+#if defined(HAVE_AF_UNIX) || !defined(_WIN32)
 	case AF_UNIX:
 		if (strcmp(a->type.un, b->type.un) != 0) {
 			return (false);
 		}
 		break;
 #endif /* ifndef _WIN32 */
+	case AF_UNSPEC:
+		break;
 	default:
 		return (false);
 	}
@@ -121,10 +119,6 @@ isc_netaddr_eqprefix(const isc_netaddr_t *a, const isc_netaddr_t *b, unsigned in
 	if (a->family != b->family) {
 		return (false);
 	}
-
-//	if (a->zone != b->zone && b->zone != 0) {
-//		return (false);
-//	}
 
 	switch (a->family) {
 	case AF_INET:
@@ -189,15 +183,9 @@ isc_netaddr_totext(const isc_netaddr_t *netaddr, char *buffer, size_t buflen /*i
 	case AF_INET6:
 		type = &netaddr->netaddr_v6addr;
 		break;
-#ifndef _WIN32
+#if defined(HAVE_AF_UNIX) || !defined(_WIN32)
 	case AF_UNIX:
 		alen = strlen(netaddr->type.un);
-//		if (alen > isc_buffer_availablelength(target)) {
-//			return (ISC_R_NOSPACE);
-//		}
-//		isc_buffer_putmem(target, (const unsigned char *)(netaddr->type.un), alen);
-//		return (ISC_R_SUCCESS);
-
 		if ((alen + 1) > buflen) {
 			return -1;
 		}
@@ -205,7 +193,7 @@ isc_netaddr_totext(const isc_netaddr_t *netaddr, char *buffer, size_t buflen /*i
 		memcpy(buffer, (const unsigned char *)(netaddr->type.un), alen);
 		buffer[alen] = 0;
 		return alen;
-#endif /* ifndef _WIN32 */
+#endif
 	default:
 		return -1;
 	}
@@ -225,15 +213,6 @@ isc_netaddr_totext(const isc_netaddr_t *netaddr, char *buffer, size_t buflen /*i
 		}
 		assert((unsigned int)zlen < sizeof(zbuf));
 	}
-
-//	if (alen + zlen > isc_buffer_availablelength(target)) {
-//		return (ISC_R_NOSPACE);
-//	}
-//
-//	isc_buffer_putmem(target, (unsigned char *)abuf, alen);
-//	isc_buffer_putmem(target, (unsigned char *)zbuf, (unsigned int)zlen);
-//
-//	return (ISC_R_SUCCESS);
 
 	if ((alen + zlen + 1) > buflen) {
 		return -1;
@@ -371,7 +350,8 @@ isc_netaddr_fromin(isc_netaddr_t *netaddr, const struct in_addr *ina)
 }
 
 void
-isc_netaddr_fromin6(isc_netaddr_t *netaddr, const struct in6_addr *ina6) {
+isc_netaddr_fromin6(isc_netaddr_t *netaddr, const struct in6_addr *ina6)
+{
 	memset(netaddr, 0, sizeof(*netaddr));
 	netaddr->family = AF_INET6;
 	netaddr->netaddr_v6addr = *ina6;
@@ -381,7 +361,7 @@ isc_netaddr_fromin6(isc_netaddr_t *netaddr, const struct in6_addr *ina6) {
 int
 isc_netaddr_frompath(isc_netaddr_t *netaddr, const char *path)
 {
-#ifndef _WIN32
+#if defined(HAVE_AF_UNIX) || !defined(_WIN32)
 	if (strlen(path) > sizeof(netaddr->type.un) - 1) {
 		return (ISC_R_NOSPACE);
 	}
@@ -391,15 +371,14 @@ isc_netaddr_frompath(isc_netaddr_t *netaddr, const char *path)
 	strlcpy(netaddr->type.un, path, sizeof(netaddr->type.un));
 	netaddr->zone = 0;
 	return (ISC_R_SUCCESS);
-#else  /* ifndef _WIN32 */
+#else
 	UNUSED(netaddr);
 	UNUSED(path);
 	return (ISC_R_NOTIMPLEMENTED);
-#endif /* ifndef _WIN32 */
+#endif
 }
 #endif  /*TODO*/
 
-#if (TODO)
 void
 isc_netaddr_setzone(isc_netaddr_t *netaddr, uint32_t zone)
 {
@@ -408,15 +387,12 @@ isc_netaddr_setzone(isc_netaddr_t *netaddr, uint32_t zone)
 
 	netaddr->zone = zone;
 }
-#endif  /*TODO*/
 
-#if (TODO)
 uint32_t
 isc_netaddr_getzone(const isc_netaddr_t *netaddr)
 {
 	return (netaddr->zone);
 }
-#endif  /*TODO*/
 
 #if (TODO)
 void
@@ -433,12 +409,12 @@ isc_netaddr_fromsockaddr(isc_netaddr_t *t, const isc_sockaddr_t *s)
 		memmove(&t->netaddr_v6addr, &s->type.sin6.sin6_addr, 16);
 		t->zone = s->type.sin6.sin6_scope_id;
 		break;
-#ifndef _WIN32
+#if defined(HAVE_AF_UNIX) || !defined(_WIN32)
 	case AF_UNIX:
 		memmove(t->type.un, s->type.sunix.sun_path, sizeof(t->type.un));
 		t->zone = 0;
 		break;
-#endif /* ifndef _WIN32 */
+#endif
 	default:
 		assert(0);
 		ISC_UNREACHABLE();
@@ -556,8 +532,7 @@ isc_netaddr_isloopback(const isc_netaddr_t *na)
 {
 	switch (na->family) {
 	case AF_INET:
-		return (((ntohl(na->netaddr_v4addr.s_addr) & 0xff000000U) ==
-			 0x7f000000U));
+		return (((ntohl(na->netaddr_v4addr.s_addr) & 0xff000000U) == 0x7f000000U));
 	case AF_INET6:
 		return (IN6_IS_ADDR_LOOPBACK(&na->netaddr_v6addr));
 	default:

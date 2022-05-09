@@ -23,30 +23,46 @@
 #define false	0
 
 static int	netaddr_pton4m(const char *src, const char *end, struct netaddr *res);
+static int	netaddr_impliedmask(const struct netaddr *res);
+
 
 int
-getnetaddr(const char *addr, struct netaddr *res, int numeric)
+getnetaddr(const char *addr, struct netaddr *res, int family, unsigned flags)
+{
+	return getnetaddrx(addr, res, family, flags, NULL, 0);
+}
+
+
+int
+getnetaddrx(const char *addr, struct netaddr *res, int family, unsigned flags, char *errmsg, unsigned errlen)
 {
 	const char *p = addr;
 	char t_addr[128], *t = t_addr;
 	struct addrinfo hints, *ai;
 	int ret_ga;
 
-	if (NULL == addr || NULL == res)
+	if (NULL == addr || !*addr || NULL == res || (errmsg && errlen < 64)) {
+		if (errmsg && errlen) {
+			snprintf(errmsg, errlen, "getnetaddr: invalid arguments");
+			errmsg[errlen - 1] = 0;
+		}
 		return false;
+	}
 
 	memset(res, 0, sizeof(*res));
 	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = family;
 	hints.ai_socktype = SOCK_DGRAM;
-	if (numeric)
+	if (NETADDR_NUMERICHOST & flags)
 		hints.ai_flags = AI_NUMERICHOST;
+	//hints.ai_flags |= AI_V4MAPPED;
 
 	for (char *tend = t + (sizeof(t_addr)-1); t < tend;) {
 		const char ch = *p++;
 		if (0 == ch)  { 		/* EOS */
 			p = NULL;
 			break;
-		} else if (ch == '/') { 	/* prefix only with numeric addresses */
+		} else if (ch == '/') { 	/* prefix only with numeric addresses; implied */
 			hints.ai_flags |= AI_NUMERICHOST;
 			break;
 		}
@@ -67,6 +83,10 @@ getnetaddr(const char *addr, struct netaddr *res, int numeric)
 			res->length = sizeof(res->netaddr_v6addr);
 			break;
 		default:
+			if (errmsg) {
+				snprintf(errmsg, errlen, "getnetaddr: unknown family");
+				errmsg[errlen - 1] = 0;
+			}
 			freeaddrinfo(ai);
 			return false;
 		}
@@ -74,73 +94,87 @@ getnetaddr(const char *addr, struct netaddr *res, int numeric)
 		ai = NULL;
 
 	} else {
-
-		if (NULL == p) {		/* x.x.*.* */
-			if (netaddr_pton4m(addr, addr + strlen(addr), res)) {
-				res->family = AF_INET;
-				res->length = sizeof(res->netaddr_v4addr);
-				return true;
-			}
-		}
-
-		char *ep = NULL;	    	/* <numeric-value> */
-		const uint64_t val = strtoull(addr, &ep, 10);
-		if ((p && ep == p) || (!p && ep && !*ep)) {
-			if (val >= 0xffffffffULL) {
-				res->family = AF_INET6;
-				res->length = sizeof(res->netaddr_v6addr);
-				res->netaddr_viaddr = ((uint64_t)htonl((uint32_t)val)) << 32 |
-					htonl((uint32_t)(val >> 32));
-			} else {
-				res->family = AF_INET;
-				res->length = sizeof(res->netaddr_v4addr);
-				res->netaddr_v4addr.s_addr = htonl((uint32_t)val);
+		if (AF_INET6 != family &&
+				netaddr_pton4m(t_addr, t_addr + strlen(t_addr), res)) {
+			res->family = AF_INET;	/* x.x.*.* or x.x.0.0 */
+			res->length = sizeof(res->netaddr_v4addr);
+			if (NULL == p) {
+				return true;	/* done */
 			}
 
 		} else {
-//			fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret_ga));
-			return false;
+			char *ep = NULL;	/* <numeric-value> */
+			const uint64_t val = strtoull(addr, &ep, 10);
+			if ((p && ep == p) || (!p && ep && !*ep)) {
+				if (val >= 0xffffffffULL) {
+					res->family = AF_INET6;
+					res->length = sizeof(res->netaddr_v6addr);
+					res->netaddr_viaddr =
+						((uint64_t)htonl((uint32_t)val)) << 32 | htonl((uint32_t)(val >> 32));
+				} else {
+					res->family = AF_INET;
+					res->length = sizeof(res->netaddr_v4addr);
+					res->netaddr_v4addr.s_addr = htonl((uint32_t)val);
+				}
+
+			} else {
+				if (errmsg) {
+					snprintf(errmsg, errlen, "getnetaddr: %s", gai_strerror(ret_ga));
+					errmsg[errlen - 1] = 0;
+				}
+				return false;
+			}
 		}
 	}
 
 	// netmask
+	int64_t prefix = 0;
 	if (NULL == p) {
-		memset(&res->mask, 0xff, res->length);
+		if (0 == (NETADDR_IMPLIEDMASK & flags)) {
+			memset(&res->mask, 0xff, res->length);
+			return true;		/* none */
+		}
+		prefix = netaddr_impliedmask(res);
 
 	} else {
-		char *ep = NULL;
-		const int64_t prefix =
-			strtoll(p, &ep, res->family == AF_INET6 ? 128 : 32);
+		char *ep = NULL;		/* prefix */
+		prefix = strtoul(p, &ep, 10);
 		if (ep == p || *ep) {
 			if (AF_INET == res->family &&
 					1 == inet_pton(AF_INET, p, &res->netaddr_v4mask)) {
 				return true;
 			}
-//			fprintf(stderr, "invalid prefix: %s\n", p);
+			prefix = 0;
+		}
+		if (prefix < 0 || prefix > (AF_INET == res->family ? 32 : 128)) {
+			if (errmsg) {
+				snprintf(errmsg, errlen, "invalid prefix: %s", p);
+				errmsg[errlen - 1] = 0;
+			}
 			return false;
 		}
+	}
 
-		switch (res->family) {
-		case AF_INET:
-			memset(&res->netaddr_v4mask, 0, sizeof(res->netaddr_v4mask));
-			res->netaddr_v4mask.s_addr = htonl((uint32_t) (0xffffffffffULL << (32 - prefix)));
-			break;
-		case AF_INET6: {
-				const int64_t q = prefix >> 3;
-				const int64_t r = prefix & 7;
+	switch (res->family) {
+	case AF_INET:
+		memset(&res->netaddr_v4mask, 0, sizeof(res->netaddr_v4mask));
+		res->netaddr_v4mask.s_addr = htonl((uint32_t) (0xffffffffffULL << (32 - prefix)));
+		break;
+	case AF_INET6: {
+			const int64_t q = prefix >> 3;
+			const int64_t r = prefix & 7;
 
-				memset(&res->netaddr_v6mask, 0, sizeof(res->netaddr_v6mask));
-				if (q > 0) {
-					memset((void *)&res->netaddr_v6mask, 0xff, (size_t)q);
-				}
-				if (r > 0) {
-					*((u_char *)&res->netaddr_v6mask + q) = (0xff00 >> r) & 0xff;
-				}
+			memset(&res->netaddr_v6mask, 0, sizeof(res->netaddr_v6mask));
+			if (q > 0) {
+				memset((void *)&res->netaddr_v6mask, 0xff, (size_t)q);
 			}
-			break;
-		default:
-			return true;
+			if (r > 0) {
+				*((u_char *)&res->netaddr_v6mask + q) = (0xff00 >> r) & 0xff;
+			}
 		}
+		break;
+	default:
+		break;
 	}
 	return true;
 }
@@ -199,6 +233,59 @@ netaddr_pton4m(const char *src, const char *end, struct netaddr *res /*uint8_t *
 	memcpy(&res->netaddr_v4addr, t_addr, sizeof(t_addr));
 	memcpy(&res->netaddr_v4mask, t_mask, sizeof(t_mask));
 	return true;
+}
+
+
+static int
+netaddr_impliedmask(const struct netaddr *res)
+{
+	unsigned int nbits = 0, ipbytes = 0;
+	const unsigned char *p;
+
+	switch (res->family) {
+	case AF_INET:
+		p = (const unsigned char *)&res->netaddr_v4addr;
+		ipbytes = 4;
+		break;
+	case AF_INET6:
+		p = (const unsigned char *)&res->netaddr_v6addr;
+		ipbytes = 16;
+		break;
+	default:
+		return 0;
+	}
+
+	nbits = 8 * ipbytes;
+	while (ipbytes) {
+		if (p[--ipbytes]) {		/* eg. x.x.x.0 */
+			break;
+		}
+		nbits -= 8;
+	}
+	return nbits;
+}
+
+
+int
+netaddrcmp(const struct netaddr *a, const struct netaddr *b)
+{
+	if (a->family == b->family && a->length == b->length) {
+		switch (a->family) {
+		case AF_INET:
+		case AF_INET6:
+			if (0 == memcmp(&a->network, &b->network, a->length) &&
+			    0 == memcmp(&a->mask, &b->mask, a->length)) {
+				return 0;
+			}
+			break;
+		case AF_UNSPEC:
+			return 0;
+		default:
+			break;
+		}
+		return 1;
+	}
+	return -1;
 }
 
 

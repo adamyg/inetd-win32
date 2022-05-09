@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.5 2022/03/25 17:02:08 cvsuser Exp $
+# $Id: Makefile.in,v 1.7 2022/05/02 09:07:28 cvsuser Exp $
 # example services Makefile
 #
 #
@@ -50,6 +50,8 @@ ifeq ("$(CXX)","")
 CXX=		$(CC)
 endif
 RM=		@RM@
+RMDIR=		@RMDIR@
+CP=		@CP@
 RC=		@RC@
 PERL=		@PERL@
 
@@ -100,22 +102,27 @@ CINCLUDE+=	-I../libcertstore
 endif
 
 ifeq ("$(OPENSSL)","")
-OPENSSL		=../../vcpkg/installed/x86-windows
+OPENSSL		=../vcpkg_installed/x86-windows
 ifeq ("$(wildcard $(OPENSSL)/*)","")
-OPENSSL		=../vcpkg/installed/x86-windows
+OPENSSL		=../../vcpkg/installed/x86-windows
 ifeq ("$(wildcard $(OPENSSL)/*)","")
 OPENSSL		=
 endif
 endif
 endif
+
 ifneq ("$(OPENSSL)","")
 CEXTRA+=	-DHAVE_OPENSSL
 CINCLUDE+=	-I$(OPENSSL)/include
 ifeq ("$(BUILD_TYPE)","debug")
-LINKLIBS+=	/LIBPATH:$(OPENSSL)/debug/lib
+OPENSSL_LIB=	$(OPENSSL)/debug/lib
+OPENSSL_BIN=	$(OPENSSL)/debug/bin
 else
-LINKLIBS+=	/LIBPATH:$(OPENSSL)/lib
+OPENSSL_LIB=	$(OPENSSL)/lib
+OPENSSL_BIN=	$(OPENSSL)/bin
 endif
+OPENSSL_DLLS=	$(notdir $(wildcard $(OPENSSL_BIN)/*.dll))
+LINKLIBS+=	/LIBPATH:$(OPENSSL_LIB)
 endif
 
 CINCLUDE+=	-I../references/Simple-WebSocket-Server
@@ -145,14 +152,19 @@ TARGETS=	\
 	$(D_BIN)/ws_client$(E)		\
 	$(D_BIN)/ws_service$(E)
 
+IMPORT=
+ifneq ("$(OPENSSL_DLLS)","")
+IMPORT=		$(addprefix $(D_BIN)/,$(OPENSSL_DLLS))
+endif
+
 XCLEAN=
 
 
 #########################################################################################
 # Rules
 
-.PHONY:			build release debug
-build:		directories $(TARGETS)
+.PHONY:			build
+build:		directories $(TARGETS) import
 
 release:
 		$(MAKE) BUILD_TYPE=release $(filter-out release, $(MAKECMDGOALS))
@@ -161,17 +173,33 @@ debug:
 
 directories:	$(D_OBJ)/.created
 
+$(D_OBJ)/.created:
+		-@mkdir $(D_OBJ)
+		@echo "do not delete" > $@
+
+.PHONY:			import
+import:				$(IMPORT)
+
+.PHONY:		clean
+clean:
+		-@$(RM) $(RMFLAGS) $(BAK) $(TARGETS) $(OBJS) $(CLEAN) $(XCLEAN) >/dev/null 2>&1
+
+.PHONY:		vclean
+vclean:		clean
+		-$(RM) $(IMPORT) >nul 2>&1
+
+
+#########################################################################################
+# Applications
+
 $(D_BIN)/%$(E):			MAPFILE=$(basename $@).map
 $(D_BIN)/%$(E):			LINKLIBS+=-linetd -lsthread -lcompat
 $(D_BIN)/%$(E):			$(D_OBJ)/%$(O)
 		$(CC) $(LDFLAGS) -o $@ $< $(LDLIBS) @LDMAPFILE@
 
-$(D_OBJ)/.created:
-		-@mkdir $(D_OBJ)
-		@echo "do not delete" > $@
 
-clean:
-		-@$(RM) $(RMFLAGS) $(BAK) $(TARGETS) $(OBJS) $(CLEAN) $(XCLEAN) >/dev/null 2>&1
+#########################################################################################
+# Resources
 
 $(D_OBJ)/%$(O):		%$(C)
 		$(CC) $(CFLAGS) -o $@ -c $<
@@ -182,5 +210,10 @@ $(D_OBJ)/%$(O):		%.cpp
 $(D_OBJ)/%.res:		%.rc
 		$(RC) -nologo -Fo$@ -I../include -I../libNTService $<
 
-#end
+ifneq ("$(OPENSSL_DLLS)","")
+$(D_BIN)/%.dll:		$(OPENSSL_BIN)/%.dll
+		@echo importing $@ ..
+		@$(CP) $^ $@
+endif
 
+#end

@@ -1,0 +1,15 @@
+{
+        "name": "inetd-win32",
+        "version-string": "1.0.0",
+        "dependencies": [
+                "openssl",
+                "libmaxminddb"
+        ],
+        "builtin-baseline": "2ac61f87f69f0484b8044f95ab274038fbaf7bdd",
+        "overrides": [
+                {
+                        "name": "openssl",
+                        "version-string": "1.1.1n"
+                }
+        ]
+}

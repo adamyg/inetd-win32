@@ -86,11 +86,11 @@ public:
 
 public:
 	Getopt(const char *ostr, const char *progname = NULL) :
-		    ostr_(ostr), long_options_(NULL),
-		    progname_(progname),
-		    place_(NULL), optarg_(NULL), optind_(1), longindex_(-1), optopt_(0), optret_(0),
-		    optmissing_('?'), opterr_(1) {
-
+		ostr_(ostr), long_options_(NULL),
+		progname_(progname),
+		place_(NULL), optarg_(NULL), optind_(1), longindex_(-1), optopt_(0), optret_(0),
+		optmissing_('?'), opterr_(1)
+	{
 		assert(ostr_);
 		if (ostr_ && ':' == ostr[0]) {
 			optmissing_ = ':';
@@ -100,11 +100,11 @@ public:
 	}
 
 	Getopt(const char *ostr, struct Option *long_options, const char *progname = 0) :
-		    ostr_(ostr), long_options_(long_options),
-		    progname_(progname),
-		    place_(NULL), optarg_(NULL), optind_(1), longindex_(-1), optopt_(0), optret_(0),
-		    optmissing_('?'), opterr_(1) {
-
+		ostr_(ostr), long_options_(long_options),
+		progname_(progname),
+		place_(NULL), optarg_(NULL), optind_(1), longindex_(-1), optopt_(0), optret_(0),
+		optmissing_('?'), opterr_(1)
+	{
 		assert(ostr_);
 		if (ostr_ && ':' == ostr_[0]) {
 			optmissing_ = ':';
@@ -113,48 +113,59 @@ public:
 		}
 	}
 
-	const char *progname() const {
+	const char *progname() const
+	{
 		return progname_;
 	}
 
-	int optret() const {
+	int optret() const
+	{
 		return optret_;
 	}
 
-	int optind() const {
+	int optind() const
+	{
 		return optind_;
 	}
 
-	int optopt() const {
+	int optopt() const
+	{
 		return optopt_;
 	}
 
-	const char *optarg() const {
+	const char *optarg() const
+	{
 		return optarg_;
 	}
 
-	void opterr(int flag) {
+	void opterr(int flag)
+	{
 		opterr_ = flag;
 	}
 
-	int opterr() const {
+	int opterr() const
+	{
 		return opterr_;
 	}
 
-	int longindex() const {
+	int longindex() const
+	{
 		return longindex_;
 	}
 
-	int shift(int nargc, const char * const *nargv) {
+	int shift(int nargc, const char * const *nargv)
+	{
 		return (optret_ = pop_argument(nargc, nargv, nullptr));
 	}
 
-	int shift(int nargc, const char * const *nargv, std::string &msg) {
+	int shift(int nargc, const char * const *nargv, std::string &msg)
+	{
 		return (optret_ = pop_argument(nargc, nargv, &msg));
 	}
 
 public:
-	virtual void error_report(enum error_code code, const char *message) {
+	virtual void error_report(enum error_code code, const char *message)
+	{
 		if (msg_) {
 			msg_->assign(message);
 		} else {
@@ -163,7 +174,8 @@ public:
 	}
 
 private:
-	int pop_argument(int nargc, const char * const *nargv, std::string *msg) {
+	int pop_argument(int nargc, const char * const *nargv, std::string *msg)
+	{
 		assert(nargc >= 1);
 		assert(nargv);
 
@@ -181,7 +193,8 @@ private:
 		return ret;
 	}
 
-	int short_argument(int nargc, const char * const *nargv) {
+	int short_argument(int nargc, const char * const *nargv)
+	{
 		const char *oli = NULL;
 
 		if (NULL == place_ || !*place_) {
@@ -234,7 +247,8 @@ private:
 	}
 
 	int
-	long_argument(int nargc, const char * const *nargv) {
+	long_argument(int nargc, const char * const *nargv)
+	{
 		const char *arg, *has_equal;
 		int ambiguous = 0, match = -1, arglen, i;
 
@@ -257,17 +271,17 @@ private:
 		for (i = 0; long_options_[i].name; ++i) {
 			/* find matching long option */
 			if (strncmp(arg, long_options_[i].name, arglen))
-			    continue;
+				continue;
 
 			if (strlen(long_options_[i].name) == (unsigned)arglen) {
-			    match = i;
-			    ambiguous = 0;
-			    break;
+				match = i;
+				ambiguous = 0;
+				break;
 			}
 
 			/* partial match */
 			if (match == -1)
-			    match = i;
+				match = i;
 			else ambiguous = 1;
 		}
 
@@ -320,7 +334,8 @@ private:
 
 private:
 	void
-	short_fatal(enum error_code code, const char *msg) {
+	short_fatal(enum error_code code, const char *msg)
+	{
 		if (!opterr_) return;
 
 		char buffer[1024];
@@ -334,7 +349,8 @@ private:
 	}
 
 	void
-	long_fatal(enum error_code code, const char *msg, const char *arg, int arglen = -1) {
+	long_fatal(enum error_code code, const char *msg, const char *arg, int arglen = -1)
+	{
 		if (!opterr_) return;
 
 		char buffer[1024];

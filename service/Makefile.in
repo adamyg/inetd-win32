@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.3 2022/03/26 06:07:07 cvsuser Exp $
+# $Id: Makefile.in,v 1.6 2022/05/08 03:53:50 cvsuser Exp $
 # inetd_service Makefile
 #
 #
@@ -63,6 +63,8 @@ ifneq ("$(BUILD_TYPE)","release")
 RTSUFFIX=d
 endif
 
+include ../libmaxminddb.inc
+
 # Directories
 
 D_INC=		$(ROOT)/include
@@ -89,8 +91,8 @@ endif
 LDDEBUG=	@LDDEBUG@
 LDRELEASE=	@LDRELEASE@
 
-CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@
-CEXTRA=		@DEFS@ -DWIN32_SOCKET_MAP_NATIVE
+CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@ $(INCMAXMINDDB)
+CEXTRA=		@DEFS@ $(DEFMAXMINDDB) -DWIN32_SOCKET_MAP_NATIVE
 
 ifeq ("$(BUILD_TYPE)","release")
 CFLAGS+=	$(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
@@ -101,7 +103,7 @@ CFLAGS+=	$(CDEBUG) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
 CXXFLAGS+=	$(CXXDEBUG) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
 LDFLAGS=	$(LDDEBUG) @LDFLAGS@
 endif
-LDLIBS=		-L$(D_LIB) $(LINKLIBS) @LIBS@ @EXTRALIBS@
+LDLIBS=		-L$(D_LIB) $(LINKLIBS) @LIBS@ @EXTRALIBS@ $(LIBMAXMINDDB)
 
 ARFLAGS=	rcv
 YFLAGS=		-d
@@ -119,15 +121,13 @@ CPPSOURCES=\
 	main.cpp\
 	Service.cpp\
 	ServiceDiags.cpp\
+	ServiceDiagsSyslog.cpp\
 	NTService.cpp\
 	NTServiceReg.cpp\
 	NTServiceConfig.cpp\
 	NTServiceControl.cpp\
 	Logger.cpp\
 	SimpleConfig.cpp
-
-CSOURCES=\
-	syslog.c
 
 RESOURCES=\
 	Service.rc\
@@ -160,7 +160,7 @@ bsd_license.h:		bsd_license.txt mklicense.pl
 		@$(PERL) mklicense.pl $< $@ bsd_license
 
 $(D_BIN)/$(TARGET):	MAPFILE=$(basename $@).map
-$(D_BIN)/$(TARGET):	LINKLIBS=-linetd -lsthread -lcompat
+$(D_BIN)/$(TARGET):	LINKLIBS=-linetd -liptable -lsthread -lsyslog -lutil -lcompat
 $(D_BIN)/$(TARGET):	$(D_OBJ)/.created $(OBJS) $(RESOURCES)
 		$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS) @LDMAPFILE@
 

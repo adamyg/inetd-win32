@@ -1,3 +1,4 @@
+#pragma once
 /* -*- mode: c; indent-width: 8; -*- */
 /*
  * windows inetd service.
@@ -63,30 +64,41 @@
 #include <sys/queue.h>
 
 #include <netinet/in.h>
+#include <errno.h>
 
-#include <stdio.h>
-
+#include <msvc_system_error.hpp>
 #include <memory>
+#include <array>
 #include <vector>
 
 #include "SimpleLock.h"
-#include "IntrusiveList.h"              // Intrusive list
-#include "IntrusivePtr.h"               // Intrusive ptr
-#include "IOCPService.h"                // IO completion port support
+#include "SimpleString.h"
+#include "IntrusiveList.h"		// Intrusive list
+#include "IntrusivePtr.h"		// Intrusive ptr
+#include "IOCPService.h"		// IO completion port support
+
+#include "netaddrs.h"
+#include "accesstm.h"
+#include "geoips.h"
+#include "environ.h"
+#include "peerinfo.h"
+
 
 #if defined(HAVE_AFUNIX_H)
 #include <afunix.h>
 #define HAVE_AF_UNIX	1		/* Insider Build 17063 */
-		/*https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/*/
+	/*https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/*/
 #endif
 
 #define BUFSIZE		8192
 #define LINESIZ		72
 
-#define NORM_TYPE	0
+#define NORM_TYPE	0		// well-known service.
 #define MUX_TYPE	1
 #define MUXPLUS_TYPE	2
 #define FAITH_TYPE	4
+#define INTERNAL_TYPE	5		// well-known internal service; xinetd
+#define UNLISTED_TYPE	6		// unlisted external/rpc service; xinetd
 #define ISMUX(sep)	(((sep)->se_type == MUX_TYPE) || ((sep)->se_type == MUXPLUS_TYPE))
 #define ISMUXPLUS(sep)	((sep)->se_type == MUXPLUS_TYPE)
 
@@ -117,8 +129,8 @@ struct procinfo {
 
 	inetd::Intrusive::TailMemberHook<procinfo> pr_procinfo_link_;
 	inetd::Intrusive::ListMemberHook<procinfo> pr_child_link_;
-	pid_t	pr_pid; 		/* child pid & linked, otherwise -1 */
-	struct conninfo	*pr_conn;	/* associated host connection */
+	pid_t pr_pid; 			/* child pid & linked, otherwise -1 */
+	struct conninfo *pr_conn;	/* associated host connection */
 	struct servtab *pr_sep; 	/* associated service */
 };
 
@@ -143,7 +155,7 @@ private:
 	struct Guard;
 	inetd::SpinLock cp_lock;	/* spin lock */
 	std::vector<struct procinfo *> cp_procs; /* child proc entries */
-	int	cp_maxchild;		/* max number of children */
+	int cp_maxchild;		/* max number of children */
 };
 
 // host connection
@@ -151,11 +163,11 @@ struct conninfo {
 	conninfo(const conninfo &) = delete;
 	conninfo operator=(const conninfo &) = delete;
 
-	conninfo(int maxperip) : co_procs(maxperip) { 
+	conninfo(int maxperip) : co_procs(maxperip) {
 	}
 
 	inetd::Intrusive::ListMemberHook<conninfo> co_link_;
-	struct sockaddr_storage	co_addr;/* source address */
+	struct sockaddr_storage co_addr;/* source address */
 	connprocs co_procs;		/* array of child proc entry, from same host/addr */
 };
 
@@ -165,40 +177,71 @@ typedef inetd::intrusive_list<conninfo, inetd::Intrusive::ListMemberHook<conninf
 
 // service configuration
 struct servconfig {
+	servconfig operator=(const servconfig &) = delete;
+
+	static const char *newname(const char *name);
+	static const char *newarg(const char *arg);
+
+	servconfig();
+
 	const char *se_service;		/* name of service */
+	const struct biltin *se_bi;	/* if built-in, description */
 	int	se_socktype;		/* type of socket to use */
 	int	se_family;		/* address family */
-	const char *se_proto;		/* protocol used */
+	int	se_port;		/* port */
+	inetd::String se_proto;		/* protocol used */
 	int	se_sndbuf;		/* sndbuf size (netbsd) */
 	int	se_rcvbuf;		/* rcvbuf size (netbsd) */
 	int	se_maxchild;		/* max number of children */
-	int	se_maxcpm;		/* max connects per IP per minute */
-	const char *se_user;		/* user name to run as */
-	const char *se_group;		/* group name to run as */
-#ifdef  LOGIN_CAP
-	const char *se_class;		/* login class name to run with */
+	int	se_cpmmax;		/* max connects per IP per minute */
+	int	se_cpmwait;		/* delay post cpm limit, in seconds */
+	int	se_maxperip;		/* max number of children per src */
+	inetd::String se_user;		/* user name to run as */
+	inetd::String se_group;		/* group name to run as */
+	inetd::String se_banner;	/* banner sources; optional */
+	inetd::String se_banner_success;
+	inetd::String se_banner_fail;
+#ifdef LOGIN_CAP
+	inetd::String se_class; 	/* login class name to run with */
 #endif
-	const struct biltin *se_bi;	/* if built-in, description */
-	const char *se_server;		/* server program */
-	const char *se_server_name;	/* server program without path */
-#define	MAXARGV 20
-	const char *se_argv[MAXARGV+1];	/* program arguments */
 #ifdef IPSEC
-	const char *se_policy;		/* IPsec policy string */
+	inetd::String se_policy;	/* IPsec policy string */
 #endif
-	union {				/* bound address */
-		struct	sockaddr se_un_ctrladdr;
-		struct	sockaddr_in se_un_ctrladdr4;
-		struct	sockaddr_in6 se_un_ctrladdr6;
+	inetd::String se_server;	/* server program */
+	const char *se_server_name;	/* server program without path; se_server reference */
+	inetd::String se_working_directory; /* optional working directory */
+#define MAXARGV 20
+	inetd::String se_arguments;	/* program arguments */
+	const char *se_argv[MAXARGV+1]; /* program arguments; vector */
+	environment se_environ;		/* application environment */
+	access_times se_access_times;	/* access time ranges */
+	netaddrs se_addresses;		/* only_from/no_access addresses */
+	geoips se_geoips;		/* geoip rules */
+	union { 			/* bound address */
+		struct sockaddr se_un_ctrladdr;
+		struct sockaddr_in se_un_ctrladdr4;
+		struct sockaddr_in6 se_un_ctrladdr6;
 #if defined(HAVE_AF_UNIX)
-		struct	sockaddr_un se_un_ctrladdr_un;
+		struct sockaddr_un se_un_ctrladdr_un;
 #endif
+#define se_ctrladdr se_un.se_un_ctrladdr
+#define se_ctrladdr4 se_un.se_un_ctrladdr4
+#define se_ctrladdr6 se_un.se_un_ctrladdr6
+#define se_ctrladdr_un se_un.se_un_ctrladdr_un
 	} se_un;
-#define se_ctrladdr	se_un.se_un_ctrladdr
-#define se_ctrladdr4	se_un.se_un_ctrladdr4
-#define se_ctrladdr6	se_un.se_un_ctrladdr6
-#define se_ctrladdr_un	se_un.se_un_ctrladdr_un
 	socklen_t se_ctrladdr_size;
+	int	se_remote_family;	/* remote address family */
+	int	se_remote_port; 	/* port */
+	inetd::String se_remote_name;	/* remote host name */
+	union { 			/* bound address */
+		struct sockaddr se_un_remoteaddr;
+		struct sockaddr_in se_un_remoteaddr4;
+		struct sockaddr_in6 se_un_remoteaddr6;
+#define se_remoteaddr se_un_remote.se_un_remoteaddr
+#define se_remoteaddr4 se_un_remote.se_un_remoteaddr4
+#define se_remoteaddr6 se_un_remote.se_un_remoteaddr6
+	} se_un_remote;
+	socklen_t se_remoteaddr_size;
 	uid_t	se_sockuid;		/* Owner for unix domain socket */
 	gid_t	se_sockgid;		/* Group for unix domain socket */
 	mode_t	se_sockmode;		/* Mode for unix domain socket */
@@ -206,12 +249,11 @@ struct servconfig {
 	u_char	se_accept;		/* i.e., wait/nowait mode */
 	u_char	se_nomapped;
 #if defined(RPC)
-	u_char	se_rpc;			/* ==1 if RPC service */
+	u_char	se_rpc; 		/* ==1 if RPC service */
 	int	se_rpc_prog;		/* RPC program number */
-	u_int	se_rpc_lowvers;		/* RPC low version */
+	u_int	se_rpc_lowvers; 	/* RPC low version */
 	u_int	se_rpc_highvers;	/* RPC high version */
 #endif
-	int	se_maxperip;		/* max number of children per src */
 };
 
 // service instance
@@ -253,18 +295,16 @@ struct servtab : public servconfig,
 	ChildList se_children;		/* active child processes */
 };
 
-#define	se_reset	se_flags.se_reset
-#define	se_checked	se_flags.se_checked
+#define se_reset	se_flags.se_reset
+#define se_checked	se_flags.se_checked
 
-#define	SERVTAB_EXCEEDS_LIMIT(sep)	\
+#define SERVTAB_EXCEEDS_LIMIT(sep)	\
 	((sep)->se_maxchild > 0 && (sep)->se_children.count() >= (sep)->se_maxchild)
-#define	SERVTAB_EXCEEDS_LIMITX(sep, count) \
+#define SERVTAB_EXCEEDS_LIMITX(sep, count) \
 	((sep)->se_maxchild > 0 && (count) >= (sep)->se_maxchild)
 
 typedef std::vector<inetd::instrusive_ptr<servtab>> ServiceCollection;
 typedef std::shared_ptr<ServiceCollection> Services;
-
-extern int	debug;
 
 typedef void (bi_fn_t)(int, struct servtab *);
 
@@ -273,21 +313,27 @@ struct biltin {
 	int	bi_socktype;		/* type of socket supported */
 	short	bi_fork;		/* 1 if should fork before call */
 	int	bi_maxchild;		/* max number of children, -1=default */
-	bi_fn_t	*bi_fn;			/* function which performs it */
+	bi_fn_t *bi_fn;			/* function which performs it */
 };
 
 extern const struct biltin biltins[];
+extern int debug;
 
-Services	services();
+Services services();
 
-int		cpmip(const struct servtab *sep, int ctrl);
+int	accessip(PeerInfo &remote);
+int	geoip(PeerInfo &remote);
+int	accesstm(PeerInfo &remote);
+int	cpmip(PeerInfo &remote);
 
-__BEGIN_DECLS
-int		check_loop(const struct sockaddr *, const struct servtab *sep);
-void		inetd_setproctitle(const char *, int);
+int	banner(PeerInfo &remote);
+int	banner_success(PeerInfo &remote);
+int	banner_fail(PeerInfo &remote);
+
+int	check_loop(const struct sockaddr *, const struct servtab *sep);
+void	inetd_setproctitle(const char *, int);
 #if defined(TCPMUX)
 struct servtab *tcpmux(int);
 #endif
-__END_DECLS
 
 //end

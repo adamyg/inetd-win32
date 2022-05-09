@@ -34,7 +34,7 @@
 #include "WindowStd.h"
 #include <process.h>    // _beginthread, _endthread
 
-#include "../service/syslog.h"
+#include <syslog.h>
 
 namespace inetd {
 class IOCPService {
@@ -63,6 +63,7 @@ public:
 		operator HANDLE () {
 			return (HANDLE)fd_;
 		}
+
 	private:
 		friend class IOCPService;
 		int fd_;
@@ -93,7 +94,8 @@ public:
 
 	public:
 		enum State { Closed, Accept, Connected, Read, Write };
-		struct OVERLAPPEDEX {
+		struct OVERLAPPEDEX
+		{
 			OVERLAPPEDEX(Socket *self) : self_(self) {
 				reset();
 			}
@@ -110,7 +112,7 @@ public:
 	public:
 		Socket(int fd = INVALID_SOCKET) : state_(fd >= 0 ? State::Connected : State::Closed),
 				fd_(fd), iocp_(INVALID_HANDLE_VALUE), ovlpex_(this)
-                {
+		{
 			(void) memset(&accept_buffer_, 0, sizeof(accept_buffer_));
 		}
 
@@ -154,11 +156,31 @@ public:
 			return false;
 		}
 
-//		bool read(void *buffer, size_t buflen) {
-//		}
+		int sync_read(void *buffer, size_t buflen)
+		{
+			if (INVALID_HANDLE_VALUE == iocp_ || INVALID_SOCKET == fd_ ||
+					nullptr == buffer || 0 == buflen || Connected != state_) {
+				return -1;
+			}
 
-//		bool write(const void *buffer, size_t buflen) {
-//		}
+			DWORD dwBytes = 0, dwFlags = 0;
+			WSABUF wsabuf = {buflen, static_cast<char *>(buffer)};
+
+			return (0 == ::WSARecv(fd_, &wsabuf, 1, &dwBytes, &dwFlags, NULL, NULL) ? (int)dwBytes : -1);
+		}
+
+		int sync_write(const void *buffer, size_t buflen)
+		{
+			if (INVALID_HANDLE_VALUE == iocp_ || INVALID_SOCKET == fd_ ||
+					nullptr == buffer || 0 == buflen || Connected != state_) {
+				return -1;
+			}
+
+			DWORD dwBytes = 0;
+			WSABUF wsabuf = {buflen, (char *)(buffer)};
+
+			return (0 == ::WSASend(fd_, &wsabuf, 1, &dwBytes, 0, NULL, NULL) ? (int)dwBytes : -1);
+		}
 
 		bool async_read(void *buffer, size_t buflen, IOCallback callback)
 		{
@@ -171,12 +193,9 @@ public:
 			}
 
 			DWORD dwBytes = 0, dwFlags = 0;
-			WSABUF wsabuf;
+			WSABUF wsabuf = {buflen, static_cast<char *>(buffer)};
 
-			wsabuf.len = buflen;
-			wsabuf.buf = static_cast<char *>(buffer);
 			ovlpex_.reset();
-
 			io_callback_ = std::move(callback);
 			state_ = Read;
 
@@ -208,12 +227,9 @@ public:
 			}
 
 			DWORD dwBytes = 0;
-			WSABUF wsabuf;
+			WSABUF wsabuf = {buflen, (char *)buffer};
 
-			wsabuf.len = buflen;
-			wsabuf.buf = (char *)buffer;
 			ovlpex_.reset();
-
 			io_callback_ = std::move(callback);
 			state_ = Write;
 

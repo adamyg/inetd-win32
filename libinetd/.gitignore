@@ -2,4 +2,5 @@ freebsd/
 netbsd/
 sav/
 ref/
+SimpleString_test*
 

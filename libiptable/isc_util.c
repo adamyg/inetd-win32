@@ -32,10 +32,6 @@ isc_compare_eqprefix(const isc_prefix_t *a, const isc_prefix_t *b, unsigned int 
 		return 0;
 	}
 
-//	if (a->zone != b->zone && b->zone != 0) {
-//		return (false);
-//	}
-
 	switch (a->family) {
 	case AF_INET:
 		pa = (const unsigned char *)&a->add.sin;
@@ -43,6 +39,9 @@ isc_compare_eqprefix(const isc_prefix_t *a, const isc_prefix_t *b, unsigned int 
 		ipabytes = 4;
 		break;
 	case AF_INET6:
+//		if (a->zone != b->zone && b->zone != 0) {
+//			return (false);
+//		}
 		pa = (const unsigned char *)&a->add.sin6;
 		pb = (const unsigned char *)&b->add.sin6;
 		ipabytes = 16;

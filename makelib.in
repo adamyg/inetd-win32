@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: makelib.in,v 1.7 2022/03/28 03:16:32 cvsuser Exp $
+# $Id: makelib.in,v 1.10 2022/05/09 05:30:15 cvsuser Exp $
 # -*- mode: perl; tabs: 8; indent-width: 4; -*-
 # makelib configuration
 #
@@ -45,6 +45,9 @@ $PACKAGE_FILE   = 'package.h';
         'w32',
         'compat',
         'sthread',
+        'util',
+        'syslog',
+        'iptable',
         'inetd'
         );
 
@@ -60,12 +63,15 @@ $PACKAGE_FILE   = 'package.h';
         'libw32',
         'libcompat',
         'libsthread',
+        'libsyslog',
+        'libutil',
         'libNTService',
         'libiptable',
         'libinetd',
         'service',
         'services',
-        'control',
+        'service_control',
+        'mmdblookup',
         'clients',
         'examples'
         );

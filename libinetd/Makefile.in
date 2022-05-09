@@ -55,6 +55,8 @@ ifneq ("$(BUILD_TYPE)","release")
 RTSUFFIX=d
 endif
 
+include ../libmaxminddb.inc
+
 # Directories
 
 D_INC=		$(ROOT)/include
@@ -81,8 +83,8 @@ endif
 LDDEBUG=	@LDDEBUG@
 LDRELEASE=	@LDRELEASE@
 
-CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@
-CEXTRA=		@DEFS@ -DWIN32_SOCKET_MAP_NATIVE
+CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@ $(INCMAXMINDDB)
+CEXTRA=		@DEFS@ $(DEFMAXMINDDB) -DWIN32_SOCKET_MAP_NATIVE
 
 ifeq ("$(BUILD_TYPE)","release")
 CFLAGS+=	$(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
@@ -93,7 +95,7 @@ CFLAGS+=	$(CDEBUG) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
 CXXFLAGS+=	$(CXXDEBUG) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
 LDFLAGS=	$(LDDEBUG) @LDFLAGS@
 endif
-LDLIBS=		-L$(D_LIB) @LIBS@ @EXTRALIBS@
+LDLIBS=		-L$(D_LIB) @LIBS@ @EXTRALIBS@ $(LIBMAXMINDDB)
 
 ARFLAGS=	rcv
 RMFLAGS=	-f
@@ -107,24 +109,34 @@ RMDFLAGS=	-rf
 
 LIBROOT=	inetd
 
-LIBCSOURCES=\
-	libutil_pidfile.c
+LIBCSOURCES=
 
 LIBCPPSOURCES=\
-	inetd.cpp \
+	accessip.cpp \
+	accesstm.cpp \
+	banner.cpp \
+	builtins.cpp \
 	cmpip.cpp \
-	connprocs.cpp \
 	config.cpp \
-	builtins.cpp
+	config2.cpp \
+	connprocs.cpp \
+	environ.cpp \
+	geoips.cpp \
+	inetd.cpp \
+	netaddrs.cpp \
+	peerinfo.cpp \
+	servconf.cpp \
+	xinetd.cpp
 
 LIBHSOURCES=\
 	inetd.h \
+	xinetd.h \
 	pathnames.h
 
 LIBOBJS=\
 	$(addprefix $(D_OBJ)/,$(subst .c,$(O),$(LIBCSOURCES))) \
 	$(addprefix $(D_OBJ)/,$(subst .cpp,$(O),$(LIBCPPSOURCES)))
-	
+
 LIBRARY=	$(D_LIB)/$(LP)$(LIBROOT)$(A)
 
 

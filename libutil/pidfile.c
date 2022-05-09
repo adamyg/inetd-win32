@@ -27,10 +27,8 @@
  */
 
 #include <sys/cdefs.h>
-    //__FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
-    //#include <sys/capsicum.h>
 #include <sys/socket.h>
 #include <sys/file.h>
 #include <sys/stat.h>
@@ -38,7 +36,6 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-    //#include <libgen.h>
 #include "libutil.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -562,3 +559,5 @@ pidfile_fileno(const struct pidfh *pfh)
 	}
 	return (pfh->pf_fd);
 }
+
+//end

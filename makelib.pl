@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: makelib.pl,v 1.2 2022/03/24 13:11:40 cvsuser Exp $
+# $Id: makelib.pl,v 1.4 2022/05/01 16:56:49 cvsuser Exp $
 # Makefile generation under WIN32 (MSVC/WATCOMC/MINGW) and DJGPP.
 # -*- perl; tabs: 8; indent-width: 4; -*-
 # Automake emulation for non-unix environments.
@@ -361,7 +361,7 @@ my %x_environment   = (
             CINCLUDE        => '',
             RTLIBRARY       => '-MDd',
             CFLAGS          => '-nologo @RTLIBRARY@ -fp:precise',
-            CXXFLAGS        => '-nologo @RTLIBRARY@ -EHsc -fp:precise',
+            CXXFLAGS        => '-nologo @RTLIBRARY@ -EHsc -fp:precise -Zc:offsetof-',
             CDEBUG          => '-Zi -RTC1 -Od',
             CRELEASE        => '-O2 -GL -Gy -DNDEBUG',
             CWARN           => '-W3',
@@ -399,7 +399,7 @@ my %x_environment   = (
             CINCLUDE        => '',
             RTLIBRARY       => '-MDd',
             CFLAGS          => '-nologo @RTLIBRARY@ -fp:precise',
-            CXXFLAGS        => '-nologo @RTLIBRARY@ -EHsc -fp:precise',
+            CXXFLAGS        => '-nologo @RTLIBRARY@ -EHsc -fp:precise -Zc:offsetof-',
             CDEBUG          => '-Zi -RTC1 -Od',
             CRELEASE        => '-O2 -GL -Gy -DNDEBUG',
             CWARN           => '-W3',
@@ -896,7 +896,8 @@ my @x_headers2      = (     #headers; check only
         'xthreads.h',
         'windows.h',
         'wincrypt.h',
-        'bcrypt.h'
+        'bcrypt.h',
+        'afunix.h'
         );
 
 my @x_decls         = (     #stdint/intypes.h

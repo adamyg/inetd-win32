@@ -37,12 +37,15 @@
 #include "SimpleLock.h"
 
 namespace inetd {
-class ProcessGroup {
+
+class ProcessGroup 
+{
 	ProcessGroup(const ProcessGroup &) = delete;
 	ProcessGroup& operator=(const ProcessGroup &) = delete;
 
 private:
-	struct Process {
+	struct Process 
+	{
 		Process(const Process &) = delete;
 		Process& operator=(const Process &) = delete;
 
@@ -113,7 +116,7 @@ public:
 		if (/*auto*/ -1 == signal_event && sigchld)
 			signal_event = 0;
 		if (signal_event) {
-			if (! waitevent_.IsValid()) {				// optional
+			if (! waitevent_.IsValid()) { // optional
 				waitevent_.Set(::CreateEventA(NULL,
 				    (2 == signal_event ? TRUE /*auto*/: FALSE /*manual*/), FALSE /*off*/, NULL));
 			}

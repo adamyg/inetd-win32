@@ -61,8 +61,6 @@
 #include <sys/cdefs.h>
 #include <sys/tree.h>
 
-#include <exception>
-
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -81,7 +79,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../service/syslog.h"
+#include <syslog.h>
 #include <unistd.h>
 
 #include "SimpleLock.h"
@@ -90,17 +88,23 @@
 #include "ObjectPool.h"
 #include "inetd.h"
 
+/////////////////////////////////////////////////////////////////////////////////////////
+//      Host collection
+
+namespace {
+
 #define CHTGRAN		10
 #define CHTSIZE		6
 
 typedef struct CTime {
-	unsigned long	ct_ticks;
-	int		ct_count;
+	unsigned long ct_ticks;
+	unsigned ct_count;
 } CTime;
 
-typedef struct CHash {
+typedef struct CHost {
 	struct Compare {
-		int operator()(const CHash *a, const CHash *b) const {
+		int operator()(const CHost *a, const CHost *b) const
+		{
 			const int cmp = strcmp(a->ch_service, b->ch_service);
 			if (0 == cmp) {
 				if (a->ch_family == b->ch_family) {
@@ -116,8 +120,9 @@ typedef struct CHash {
 		}
 	};
 
-	CHash(const struct sockaddr_storage &rss, const char *service) :
-			ch_family(rss.ss_family), ch_addrs(), ch_service(service), ch_ltime(0), ch_times() {
+	CHost(const struct sockaddr_storage &rss, const char *service) :
+			ch_family(rss.ss_family), ch_addrs(), ch_service(service), ch_times(), ch_ltime(0), ch_dtime(0)
+	{
 		if (AF_INET6 == ch_family) {
 			ch_addrs.addr6 = ((const struct sockaddr_in6 *)&rss)->sin6_addr;
 		} else {
@@ -125,52 +130,64 @@ typedef struct CHash {
 		}
 	}
 
-	CHash(const CHash &chash) {
+	CHost(const CHost &chash)
+	{
 		reassign(chash);
 	}
 
-	CHash operator=(const CHash &chash) = delete;
+	CHost operator=(const CHost &chash) = delete;
 
-	void reassign(const CHash &chash) {
+	void reassign(const CHost &chash)
+	{
 		ch_service = chash.ch_service;
 		ch_family = chash.ch_family;
 		ch_addrs = chash.ch_addrs;
 		(void) memset(ch_times, 0, sizeof(ch_times));
 	}
 
-	inetd::Intrusive::TreeMemberHook<CHash> ch_rbnode;
-	inetd::Intrusive::TailMemberHook<CHash> ch_listnode;
+	inetd::Intrusive::TreeMemberHook<CHost> ch_rbnode;
+	inetd::Intrusive::TailMemberHook<CHost> ch_listnode;
 
-	int		ch_family;
+	int ch_family;				// AF_INET or AF_INET6
 	union {
 		struct in_addr addr4;
 		struct in6_addr addr6;
 	} ch_addrs;
-	const char *	ch_service;
-	time_t		ch_ltime;
-	CTime		ch_times[CHTSIZE];
-} CHash;
+	const char *ch_service;			// service name.
+	CTime ch_times[CHTSIZE];		// usage.
+	time_t ch_ltime;			// late update time.
+	time_t ch_dtime;			// delay timestamp.
+} CHost;
 
-typedef inetd::intrusive_tree<CHash, CHash::Compare, inetd::Intrusive::TreeMemberHook<CHash>, &CHash::ch_rbnode> CHashTree_t;
-typedef inetd::intrusive_list<CHash, inetd::Intrusive::TailMemberHook<CHash>, &CHash::ch_listnode> CHashList_t;
+typedef inetd::intrusive_tree<CHost, CHost::Compare, inetd::Intrusive::TreeMemberHook<CHost>, &CHost::ch_rbnode> CHostTree_t;
+typedef inetd::intrusive_list<CHost, inetd::Intrusive::TailMemberHook<CHost>, &CHost::ch_listnode> CHostList_t;
 
 class HostCollection {
 	HostCollection(const HostCollection &) = delete;
 	HostCollection& operator=(const HostCollection &) = delete;
 
 public:
-	HostCollection() {
+	HostCollection()
+	{
 	}
 
-	bool check_limit(const struct sockaddr_storage &rss, const char *service, int maxcpm) {
+	int check_limit(const struct sockaddr_storage &rss, const char *service, int maxcpm, int cpmwait)
+	{
 		const time_t now = time(nullptr);
 		const unsigned int ticks = (unsigned int)(now / CHTGRAN);
 		inetd::CriticalSection::Guard guard(cs_);
-		CHash *node = nullptr;
+		CHost *node = nullptr;
 		int cnt = 0;
 
 		if (nullptr == (node = get_node(rss, service, now)))
-			return false;
+			return 0;		// node assignment error.
+
+		if (node->ch_dtime) {
+			if (now < node->ch_dtime && cpmwait > 0) {
+				return 2;	// temporarily disable active.
+			}
+			node->ch_dtime = 0;
+		}
 
 		{	CTime &ct = node->ch_times[ticks % CHTSIZE];
 			if (ct.ct_ticks != ticks) {
@@ -187,12 +204,20 @@ public:
 			}
 		}
 
-		return (((cnt * 60) / (CHTSIZE * CHTGRAN)) > maxcpm);
+		if (((cnt * 60) / (CHTSIZE * CHTGRAN)) > maxcpm) {
+			if (cpmwait > 0) {	// temporarily disabled for cpmwait seconds
+				node->ch_dtime = now + cpmwait;
+			}
+			return 1;
+		}
+
+		return 0;
 	}
 
 private:
-	CHash *get_node(const struct sockaddr_storage &rss, const char *service, time_t now) {
-		CHash t_node(rss, service), *node = nullptr;
+	CHost *get_node(const struct sockaddr_storage &rss, const char *service, time_t now)
+	{
+		CHost t_node(rss, service), *node = nullptr;
 
 		// lookup existing
 
@@ -202,7 +227,7 @@ private:
 		// expire an existing, re-cycle node
 
 		} else if (nullptr != (node = list_.front()) &&
-				node->ch_ltime < (now - 60)) {
+				(now + 60) > node->ch_ltime && now >= node->ch_dtime) {
 			list_.remove(node);
 			tree_.remove(node);
 
@@ -227,45 +252,44 @@ private:
 
 private:
 	inetd::CriticalSection cs_;
-	inetd::ObjectPool<CHash> pool_;
-	CHashTree_t tree_;
-	CHashList_t list_;
+	inetd::ObjectPool<CHost> pool_;
+	CHostTree_t tree_;
+	CHostList_t list_;
 };
+
+};  //namespace anon
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+//      Public interface
 
 static HostCollection hosts;
 
 int
-cpmip(const struct servtab *sep, int ctrl)
+cpmip(PeerInfo &remote)
 {
-	struct sockaddr_storage rss = {0};
-	socklen_t rsslen = sizeof(rss);
-	const int maxcpm = sep->se_maxcpm;
+	const struct servtab *sep = remote.getserv();
+	const int maxcpm = sep->se_cpmmax, cpmwait = sep->se_cpmwait;
+	const struct sockaddr_storage *rss;
 	int r = 0;
 
 	/*
-	 * If getpeername() fails, just let it through (if logging is
-	 * enabled the condition is caught elsewhere)
+	 *  If getpeername() fails, just let it through (if logging is enabled the condition is caught elsewhere)
 	 */
-	if (maxcpm > 0 &&
-		    (sep->se_family == AF_INET || sep->se_family == AF_INET6) &&
-		    getpeername(ctrl, (struct sockaddr *)&rss, &rsslen) == 0) {
+	if (maxcpm <= 0)
+		return r;
 
-		if (hosts.check_limit(rss, sep->se_service, maxcpm)) {
-			char pname[NI_MAXHOST] = "unknown";
-			int ret;
-
-			if ((ret = getnameinfo((struct sockaddr *)&rss, SOCKLEN_SOCKADDR_STORAGE(rss),
-				    pname, sizeof(pname), NULL, 0, NI_NUMERICHOST)) != 0) {
-				syslog(LOG_ERR, "%s getnameinfo error : %M", sep->se_service);
-			}
-
-			syslog(LOG_ERR,
-			    "%s from %s exceeded counts/min (limit %d/min)",
-			    sep->se_service, pname, maxcpm);
+	if ((sep->se_family == AF_INET || sep->se_family == AF_INET6) &&
+			nullptr != (rss = remote.getaddr()))
+	{
+		const int clret = hosts.check_limit(*rss, sep->se_service, maxcpm, cpmwait);
+		if (clret) {
+			syslog(LOG_ERR, "%s from %s exceeded counts/min (limit %d/min)%s",
+			    sep->se_service, remote.getname(), maxcpm, (2 == clret ? " -- wait delay" : ""));
 			r = -1;
 		}
 	}
-	return(r);
+	return r;
 }
 
 //end

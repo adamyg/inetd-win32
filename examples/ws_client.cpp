@@ -40,7 +40,7 @@
 
 #define PROGNAME    "ws_client"
 
-static void         usage(const inetd::Getopt &options, const char *fmt = NULL, ...); /*no-return*/
+static void         usage(const inetd::Getopt &options, const char *fmt, ...); /*no-return*/
 
 static const char *short_options = "h:u:s";
 static struct inetd::Getopt::Option long_options[] = {
@@ -192,10 +192,15 @@ main(int argc, const char **argv)
             break;
         case 1100:          // usage
         case '?':
-            usage(options);
+            usage(options, nullptr);
         default:            // error
-            usage("%s", msg.c_str());
+            usage(options, "%s", msg.c_str());
         }
+    }
+
+    argv += options.optind();
+    if (0 != (argc -= options.optind())) {
+        usage(options, "unexpected arguments %s ...", argv[0]);
     }
 
     ws::Diagnostics diags;
