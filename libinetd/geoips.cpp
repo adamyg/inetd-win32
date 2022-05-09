@@ -166,6 +166,7 @@ public:
 		if (status != MMDB_SUCCESS || !entry_data.has_data)
 			return false;
 		profile.country.assign(entry_data.utf8_string, entry_data.data_size);
+			// https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes
 
 		status = MMDB_get_value(&result.entry, &entry_data, "country", "names", "en", NULL);
 		if (status != MMDB_SUCCESS)
@@ -174,15 +175,22 @@ public:
 			profile.country_name.assign(entry_data.utf8_string, entry_data.data_size);
 
 		status = MMDB_get_value(&result.entry, &entry_data, "continent", "names", "en", NULL);
-		if (status == MMDB_SUCCESS && entry_data.has_data)
+		if (status == MMDB_SUCCESS && entry_data.has_data) // country/city database
 			profile.continent.assign(entry_data.utf8_string, entry_data.data_size);
+			//  AF - Africa
+			//  AN - Antarctica
+			//  AS - Asia
+			//  EU - Europe
+			//  NA - North America
+			//  OC - Oceania
+			//  SA - South America
 
 		status = MMDB_get_value(&result.entry, &entry_data, "location", "time_zone", NULL);
-		if (status == MMDB_SUCCESS && entry_data.has_data)
+		if (status == MMDB_SUCCESS && entry_data.has_data) // city database only
 			profile.timezone.assign(entry_data.utf8_string, entry_data.data_size);
 
 		status = MMDB_get_value(&result.entry, &entry_data, "city", "names", "en", NULL);
-		if (status == MMDB_SUCCESS && entry_data.has_data)
+		if (status == MMDB_SUCCESS && entry_data.has_data) // city database only
 			profile.city.assign(entry_data.utf8_string, entry_data.data_size);
 
 		return true;
@@ -417,7 +425,7 @@ geoips::push(const char *value, char op)
 }
 
 
-bool 
+bool
 geoips::erase(const std::vector<std::string> &rules, char op)
 {
 	if (rules.size() < 2)
@@ -450,7 +458,7 @@ geoips::erase(const std::vector<std::string> &rules, char op)
 }
 
 
-bool 
+bool
 geoips::erase(const char *value, char op)
 {
 	xinetd::Split split;

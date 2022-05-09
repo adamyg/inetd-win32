@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: makelib.in,v 1.9 2022/05/02 07:15:07 cvsuser Exp $
+# $Id: makelib.in,v 1.10 2022/05/09 05:30:15 cvsuser Exp $
 # -*- mode: perl; tabs: 8; indent-width: 4; -*-
 # makelib configuration
 #
@@ -71,6 +71,7 @@ $PACKAGE_FILE   = 'package.h';
         'service',
         'services',
         'service_control',
+        'mmdblookup',
         'clients',
         'examples'
         );

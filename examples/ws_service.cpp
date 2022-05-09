@@ -134,7 +134,7 @@ main(int argc, const char **argv)
 
     argv += options.optind();
     if (0 != (argc -= options.optind())) {
-        usage("unexpected arguments");
+        usage("unexpected arguments %s ...", argv[0]);
     }
 
     SOCKET socket = inetd::SocketShare::GetSocket(basename, WSA_FLAG_OVERLAPPED /*asio*/);

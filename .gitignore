@@ -14,6 +14,7 @@ CVS/
 Makefile
 .created
 testcerts/
+testmmdb/
 libcertstore/
 .#*
 wd*.bat

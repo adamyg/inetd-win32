@@ -1,5 +1,5 @@
 # -*- mode: mak; -*-
-# $Id: Makefile.in,v 1.10 2022/05/02 09:35:22 cvsuser Exp $
+# $Id: Makefile.in,v 1.11 2022/05/09 05:30:15 cvsuser Exp $
 # inetd-win32 makefile.
 #
 #
@@ -258,6 +258,7 @@ BINS=\
 	$(D_BIN)/service$(E)		\
 	$(D_BIN)/services$(E)		\
 	$(D_BIN)/service_control$(E)	\
+	$(D_BIN)/mmdblookup$(E)		\         
 	$(D_BIN)/clients$(E)		\
 	$(D_BIN)/examples$(E)
 
@@ -399,6 +400,7 @@ clean:
 		@echo $(BUILD_TYPE) clean
 		$(MAKE) -C examples clean
 		$(MAKE) -C clients clean
+		$(MAKE) -C mmdblookup
 		$(MAKE) -C service_control clean
 		$(MAKE) -C services clean
 		$(MAKE) -C service clean
@@ -419,6 +421,7 @@ distclean:		clean
 		$(RM) $(RMFLAGS) config.cache config.log config.status \
 			examples/Makefile \
 			clients/Makefile \
+			mmdblookup/Makefile \
 			service_control/Makefile \
 			service/Makefile \
 			services/Makefile \
