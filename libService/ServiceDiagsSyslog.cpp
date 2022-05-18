@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiagsSysLog.cpp,v 1.1 2022/03/29 13:55:51 cvsuser Exp $")
+__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiagsSyslog.cpp,v 1.2 2022/05/18 03:06:59 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*

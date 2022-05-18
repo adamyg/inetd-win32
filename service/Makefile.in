@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.6 2022/05/08 03:53:50 cvsuser Exp $
+# $Id: Makefile.in,v 1.7 2022/05/18 03:06:52 cvsuser Exp $
 # inetd_service Makefile
 #
 #
@@ -115,7 +115,9 @@ RMFLAGS=	-f
 
 TARGET=		inetd_service$(E)
 
-VPATH=		../libNTService
+CINCLUDE+=	-I../libService
+VPATH+=		../libService
+VPATH+=		../libNTService
 
 CPPSOURCES=\
 	main.cpp\
