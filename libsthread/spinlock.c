@@ -30,10 +30,11 @@
 #include "sthread.h"
 #include "satomic.h"
 
+#include <errno.h>
 #include <assert.h>
 
 
-/*  The pthread_spin_init() function allocates any resources required for the 
+/*  The pthread_spin_init() function allocates any resources required for the
  *  use of the spin lock referred to by lock and initializes the lock to be in
  *  the unlocked state.  The pshared argument must have one of the following values:
  *
@@ -42,7 +43,7 @@
  *      the thread that calls pthread_spin_init().
  *
  *  PTHREAD_PROCESS_SHARED
- *      The spin lock may be operated on by any thread in any process that has 
+ *      The spin lock may be operated on by any thread in any process that has
  *      access to the memory containing the lock.
  */
 int
@@ -59,7 +60,7 @@ pthread_spin_init(pthread_spinlock_t *lock, int pshared)
 }
 
 
-/*  The pthread_spin_destroy() function destroys a previously initialized spin lock, 
+/*  The pthread_spin_destroy() function destroys a previously initialized spin lock,
  *  freeing any resources that were allocated for that lock.  Destroying a spin lock
  *  that has not been previously been initialized or destroying a spin lock while
  *  another thread holds the lock results in undefined behavior.
@@ -67,7 +68,7 @@ pthread_spin_init(pthread_spinlock_t *lock, int pshared)
 int
 pthread_spin_destroy(pthread_spinlock_t *lock)
 {
-      /* Once a spin lock has been destroyed, performing any operation on the lock 
+      /* Once a spin lock has been destroyed, performing any operation on the lock
        * other than once more initializing it with pthread_spin_init() results in undefined behavior.
        */
     if (!lock)
@@ -80,9 +81,9 @@ pthread_spin_destroy(pthread_spinlock_t *lock)
 }
 
 
-/*  The pthread_spin_lock() function locks the spin lock referred to by lock.  
+/*  The pthread_spin_lock() function locks the spin lock referred to by lock.
  *  If the spin lock is currently unlocked, the calling thread acquires the lock
- *  immediately.  If the spin lock is currently locked by another thread, the 
+ *  immediately.  If the spin lock is currently locked by another thread, the
  *  calling thread spins, testing the lock until it becomes available, at which
  *  point the calling thread acquires the lock.
  */
@@ -91,7 +92,7 @@ pthread_spin_lock(pthread_spinlock_t *lock)
 {
     const DWORD id = GetCurrentThreadId();
         /*  Calling pthread_spin_lock() on a lock that is already held by the
-         *  caller or a lock that has not been initialized with pthread_spin_init(3) 
+         *  caller or a lock that has not been initialized with pthread_spin_init(3)
          *  results in undefined behavior.
          */
     if (!lock)

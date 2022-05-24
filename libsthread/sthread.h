@@ -56,6 +56,7 @@
 #define THREAD_MAGIC 0x21F00D1E
 #define MUTEX_MAGIC 0xBABEFAC1
 #define COND_MAGIC 0xBABEFAC2
+#define TLS_MAGIC 0xBABEFAC3
 #endif
 
 #ifdef __cplusplus
@@ -195,6 +196,8 @@ int pthread_once(pthread_once_t *once_control, void (*init_routine)(void));
  */
 
 typedef DWORD pthread_key_t;
+
+#define PTHREAD_MAX_KEYS 64
 
 int pthread_key_create(pthread_key_t *key, void (*destr_function) (void *));
 int pthread_key_delete(pthread_key_t key);

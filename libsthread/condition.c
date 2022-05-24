@@ -37,8 +37,11 @@
 #include "timespec.h"
 #include "satomic.h"
 
+#if !defined(ETIMEDOUT)
+#define ETIMEDOUT EAGAIN
+#endif
 
-static inline DWORD
+static __inline DWORD
 timespec_to_msec(const struct timespec *a)
 {
     return (DWORD)(a->tv_sec * 1000) + (a->tv_nsec / 1000000);

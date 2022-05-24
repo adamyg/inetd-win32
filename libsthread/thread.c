@@ -32,7 +32,19 @@
  */
 
 #include "sthread.h"
+
+#if defined(__WATCOMC__) || \
+        (defined(_MSC_VER) && (_MSC_VER <= 1800)) /*2013**/
+#include <process.h>
+#define  WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#if !defined(RTL_RUN_ONCE_INIT)
+#define RTL_RUN_ONCE_INIT       {0}
+#endif
+
+#else //_MSC_VER
 #include <processthreadsapi.h>
+#endif
 
 #include <sys/socket.h>
 #include <time.h>
@@ -40,6 +52,7 @@
 #include <unistd.h>
 
 #include "satomic.h"
+#include "thread_instance.h"
 
 #define ATTRIBUTE_MAGIC         0
 #define ATTRIBUTE_STACKSIZE     1
@@ -48,38 +61,16 @@
 #define VALID_HANDLE(_h)        (_h && INVALID_HANDLE_VALUE != _h)
 #define CURRENT_THREAD          ((HANDLE)(-2))  /* current thread psuedo handle */
 
-typedef struct pthread_instance {
-    unsigned magic;
-    HANDLE handle;
-    satomic_lock_t joining;
-    DWORD id;
-    void *(*routine)(void *);
-    void *arg;
-    void *ret;
-
-//#define PTHREAD_MAX_KEYS      32
-#if defined(PTHREAD_MAX_KEYS)
-    void *keys[PTHREAD_MAX_KEYS];
-#endif
-} instance_t;
-
-#if defined(PTHREAD_MAX_KEYS)
-typedef void (*destructor_t)(void *);
-
-#define KEY_DESTRUCTOR_NULL     ((destructor_t)-1)
-static pthread_rwlock_t key_lock_ = PTHREAD_RWLOCK_INITIALIZER;
-static destructor_t key_destructors_[PTHREAD_MAX_KEYS] = {0};
-#endif
+static pthread_instance_t *instance_new(void);
 
 static pthread_once_t thread_once_ = RTL_RUN_ONCE_INIT; 
 static DWORD thread_tls_ = 0;
 
-
-static instance_t *
-instance_new()
+static pthread_instance_t *
+instance_new(void)
 {      
-    instance_t *instance;
-    if (NULL != (instance = calloc(sizeof(instance_t), 1))) {
+    pthread_instance_t *instance;
+    if (NULL != (instance = (pthread_instance_t *)calloc(sizeof(pthread_instance_t), 1))) {
         instance->magic = THREAD_MAGIC;
     }
     return instance;
@@ -87,7 +78,7 @@ instance_new()
 
 
 static void
-instance_free(instance_t *instance)
+instance_free(pthread_instance_t *instance)
 {      
     assert(THREAD_MAGIC == instance->magic);
     instance->magic = 0;
@@ -102,13 +93,13 @@ thread_tls_once(void)
 }
 
 
-static instance_t *
-thread_instance(int create)
+pthread_instance_t *
+_pthread_instance(int create)
 {
-    instance_t *instance;
+    pthread_instance_t *instance;
 
     pthread_once(&thread_once_, thread_tls_once);
-    if (NULL == (instance = (instance_t *) TlsGetValue(thread_tls_))) {
+    if (NULL == (instance = (pthread_instance_t *) TlsGetValue(thread_tls_))) {
         if (create) {           
             if (NULL != (instance = instance_new())) {
                 TlsSetValue(thread_tls_, (void *)instance);
@@ -119,87 +110,15 @@ thread_instance(int create)
 }
 
 
-#if defined(PTHREAD_MAX_KEYS)
-static pthread_key_t
-thread_key_new(destructor_t destructor)
-{
-    pthread_key_t val = (pthread_key_t)-1;
-    unsigned key;
-
-    pthread_rwlock_wrlock(&key_lock_);
-    for (key = 0; key < PTHREAD_MAX_KEYS; ++key) {
-        if (NULL == key_destructors_[key]) {
-            key_destructors_[key] =
-                    (destructor ? destructor : KEY_DESTRUCTOR_NULL);
-            val = key;
-             break;
-        }
-    }
-    pthread_rwlock_unlock(&key_lock_);
-    return val;
-}
-
-
-static pthread_key_t
-thread_key_delete(pthread_key_t key)
-{
-    if (key > PTHREAD_MAX_KEYS)
-        return EINVAL;
-
-    pthread_rwlock_wrlock(&key_lock_);
-    key_destructors_[key] = NULL;
-    pthread_rwlock_unlock(&key_lock_);
-    return 0;
-}
-
-
-static void
-thread_key_cleanup(instance_t *instance)
-{  
-    unsigned i, key;
-
-    /* Both pthread_getspecific() and pthread_setspecific() may be called from a thread-specific 
-       data destructor function. A call to pthread_getspecific() for the thread-specific data key being
-       destroyed shall return the value NULL, unless the value is changed (after the destructor starts)
-       by a call to pthread_setspecific().  Calling pthread_setspecific() from a thread-specific data
-       destructor routine may result either in lost storage (after at least PTHREAD_DESTRUCTOR_ITERATIONS
-       attempts at destruction) or in an infinite loop.
-    */
-    for (i = 0; i < PTHREAD_DESTRUCTOR_ITERATIONS; ++i) {
-        unsigned count = 0;
-
-        for (key = 0; key < PTHREAD_MAX_KEYS; ++key) {
-            void *val = instance->keys[key];
-
-            if (val) {
-                destructor_t destructor;
-
-                pthread_rwlock_rdlock(&key_lock_);
-                destructor = key_destructors_[key];
-                if (destructor) { //assigned
-                    instance->keys[key] = NULL;
-                    if (KEY_DESTRUCTOR_NULL != destructor)
-                        destructor(val);
-                    ++count;
-                }
-                pthread_rwlock_unlock(&key_lock_);
-            }
-        }
-
-        if (0 == count) return;
-    }   
-}
-#endif  /*PTHREAD_MAX_KEYS*/
-
-
 static unsigned _stdcall
 windows_thread(void *arg)
 {
-    instance_t *instance = (instance_t *)arg;
+    pthread_instance_t *instance = (pthread_instance_t *)arg;
 
     assert(THREAD_MAGIC == instance->magic);
     TlsSetValue(thread_tls_, instance);
     instance->ret = instance->routine(instance->arg);
+    _pthread_tls_cleanup(instance);
     if (0 == instance->handle) {                    /* detached? */
         if (0 == satomic_read(&instance->joining)) { /* join in process? */
             TlsSetValue(thread_tls_, (void *)-1);
@@ -216,18 +135,19 @@ pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_rout
     if (thread && start_routine) {
         pthread_once(&thread_once_, thread_tls_once);
         if (TLS_OUT_OF_INDEXES != thread_tls_) {
-            instance_t *instance = instance_new(1);
+            pthread_instance_t *instance = instance_new();
 
             if (instance) {
                 instance->routine = start_routine;
                 instance->arg = arg;
 
                 {   unsigned id = 0, stacksize = 0;
+                    uintptr_t handle;
                     if (attr) {                     /* optional stacksize? */
                         assert(0xBABEFACE == attr->attributes[ATTRIBUTE_MAGIC]);
                         stacksize = (unsigned)attr->attributes[ATTRIBUTE_STACKSIZE];
                     }
-                    uintptr_t handle = _beginthreadex(NULL, stacksize, windows_thread, instance, 0, &instance->id);
+                    handle = _beginthreadex(NULL, stacksize, windows_thread, instance, 0, &instance->id);
                     if (handle != (uintptr_t)-1) {
                         instance->handle = (HANDLE) handle;
                         if (attr) {                 /* detached? */
@@ -253,7 +173,7 @@ int
 pthread_detach(pthread_t thread)
 {
     if (thread) {
-        instance_t *instance = (instance_t *) thread;
+        pthread_instance_t *instance = (pthread_instance_t *) thread;
 
         assert(THREAD_MAGIC == instance->magic);
         if (THREAD_MAGIC == instance->magic) {
@@ -273,7 +193,7 @@ pthread_detach(pthread_t thread)
 void
 pthread_exit(void *value_ptr)
 {
-    instance_t *instance = pthread_self();
+    pthread_instance_t *instance = pthread_self();
 
     if (instance) {
         if (satomic_read(&instance->joining) || /* join in process? */
@@ -283,6 +203,7 @@ pthread_exit(void *value_ptr)
             TlsSetValue(thread_tls_, (void *)-1);
             instance_free(instance);
         }
+        _pthread_tls_cleanup(instance);
     }
     _endthreadex(0);                            /* does not explicity close the handle */
 }
@@ -292,7 +213,7 @@ int
 pthread_join(pthread_t thread, void **value_ptr)
 {
     if (thread) {
-        instance_t *instance = (instance_t *) thread;
+        pthread_instance_t *instance = (pthread_instance_t *) thread;
 
         assert(THREAD_MAGIC == instance->magic);
         if (THREAD_MAGIC != instance->magic) {
@@ -337,10 +258,10 @@ pthread_join(pthread_t thread, void **value_ptr)
 pthread_t
 pthread_self(void)
 {
-    instance_t *instance = thread_instance(0);
+    pthread_instance_t *instance = _pthread_instance(0);
 
     if (NULL == instance) {                     /* main thread */
-        if (NULL != (instance = thread_instance(1))) {
+        if (NULL != (instance = _pthread_instance(1))) {
             instance->handle = GetCurrentThread();
             instance->id = GetCurrentThreadId();
         }

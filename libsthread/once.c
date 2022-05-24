@@ -67,7 +67,8 @@
 typedef void (*init_routine_t)(void);
 
 static BOOL CALLBACK
-InitHandleFunction(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *lpContext) {
+InitHandleFunction(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *lpContext)
+{
     init_routine_t init_routine = (init_routine_t) Parameter;
     init_routine();
     return TRUE;

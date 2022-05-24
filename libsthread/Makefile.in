@@ -35,6 +35,7 @@ top_builddir=	@top_builddir@
 
 C=		.c
 O=		.o
+E=
 H=		.h
 A=		.a
 LP=		lib
