@@ -1,4 +1,4 @@
-# $Id: makeconfig.pm,v 1.2 2022/03/28 03:16:54 cvsuser Exp $
+# $Id: makeconfig.pm,v 1.3 2022/05/21 15:58:48 cvsuser Exp $
 # Makefile generation under Win32.
 # -*- perl; tabs: 8; indent-width: 4; -*-
 # Automake emulation for non-unix environments.
@@ -65,6 +65,7 @@ our @OPTLIBRARIES   = ();                       # optional libraries
 my  $CC = '';
 my  $CXX = '';
 my  $RTLIBRARY = '';
+my  $WINSDKLIB = '';
 
 my  %DEFS = ();
 my  %CDEFS = ();
@@ -98,7 +99,8 @@ my  @__target_configurations = (ALL, RELEASE, DEBUG);
 
 # Function:
 #   Constructor
-sub New() {
+sub New()
+{
     my ($class) = shift;
     my $self = {};
     bless $self, $class;
@@ -112,7 +114,8 @@ sub New() {
 # Returns:
 #   nothing
 #
-sub LoadProfile($$) {
+sub LoadProfile($$)
+{
     my ($self, $makelib) = @_;
 
     print "loading:  ${makelib}\n";
@@ -129,7 +132,8 @@ sub LoadProfile($$) {
 # Returns:
 #   nothing
 #
-sub LoadConfigure($$$$$) {
+sub LoadConfigure($$$$$)
+{
     my ($self, $makelib, $type_, $env_, $tokens_, $verbose_) = @_;
 
     $x_env = $env_;
@@ -158,7 +162,8 @@ sub LoadConfigure($$$$$) {
 }
 
 
-sub __ImportConfigurations {
+sub __ImportConfigurations
+{
     my ($self, $makelib) = @_;
 
     $TOOLCHAIN = $$x_tokens{TOOLCHAIN};
@@ -172,6 +177,9 @@ sub __ImportConfigurations {
 
     $RTLIBRARY = $$x_tokens{RTLIBRARY}                              # Default Run-Time library.
         if (defined $$x_tokens{RTLIBRARY});
+
+    $WINSDKLIB = $$x_tokens{WINSDKLIB}                              # SDK library path.
+        if (defined $$x_tokens{WINSDKLIB});
 
     push @{$DEFS{ALL}},         split(/ /, $$x_tokens{DEFS})        # Common definitions
         if (defined $$x_tokens{DEFS});
@@ -265,7 +273,8 @@ sub __ImportConfigurations {
 }
 
 
-sub __ExportConfigurations {
+sub __ExportConfigurations
+{
     my ($self) = shift;
 
     if ($o_verbose >= 3) {
@@ -309,6 +318,7 @@ sub __ExportConfigurations {
     $$x_tokens{CC}          = $CC;
     $$x_tokens{CXX}         = $CXX;
     $$x_tokens{RTLIBRARY}   = $RTLIBRARY;
+    $$x_tokens{WINSDKLIB}   = $WINSDKLIB;
 
     $$x_tokens{INCLUDE}     = __PrintArrayX('', ';', \@INCLUDE);
     $$x_tokens{XINCLUDE}    = __PrintArrayX('', ';', \@XINCLUDE);
@@ -345,6 +355,7 @@ sub __ExportConfigurations {
             print "\n";
             print "          DEFS   $$x_tokens{DEFS}\n";
             print "     RTLIBRARY   ${RTLIBRARY}\n" if ($RTLIBRARY);
+            print "     WINSDKLIB   ${WINSDKLIB}\n" if ($WINSDKLIB);
             print "        CFLAGS   $$x_tokens{CFLAGS}\n";
             print "      CRELEASE   $$x_tokens{CRELEASE}\n";
             print "        CDEBUG   $$x_tokens{CDEBUG}\n";
@@ -366,7 +377,8 @@ sub __ExportConfigurations {
 }
 
 
-sub __PrintArray {
+sub __PrintArray
+{
     my $s = '';
     for (my $i = 0; $i < scalar @_; ++$i) {
         my $value = $_[$i];
@@ -432,7 +444,8 @@ sub __PrintArrayX {
 #           into the .obj file so that the linker will use LIBCMTD.lib to resolve external symbols.
 #
 sub
-set_msvc_runtime($;$) {
+set_msvc_runtime($;$)
+{
     my ($type, $suffix) = @_;
 
     $suffix = '$(BUILD_TYPE)'
@@ -490,6 +503,24 @@ set_msvc_runtime($;$) {
 
 
 # Function:
+#   set_winsdk - Windows SDK configuration.
+# Parameters:
+#   lib - library path.
+# Returns:
+#   nothing
+sub
+set_winsdk($;$)
+{
+    my ($lib, $inc) = @_;
+
+    $WINSDKLIB = $lib
+        if (defined $lib);
+
+    verbose("set_winsdk: <${WINSDKLIB}>");
+}
+
+
+# Function:
 #   remove_define - Remove the matching definition.
 # Parameters:
 #   def - Definition.
@@ -497,7 +528,8 @@ set_msvc_runtime($;$) {
 #   1 if matched, otherwise 0.
 #
 sub
-remove_define($;$) {
+remove_define($;$)
+{
     my ($def, $type) = @_;
     my ($var, $val) = split(/=/, $def);
 
@@ -525,7 +557,8 @@ remove_define($;$) {
 #   nothing
 #
 sub
-add_define($;$) {
+add_define($;$)
+{
     my ($def, $type) = @_;
     my ($var, $val) = split(/=/, $def);
 
@@ -550,7 +583,8 @@ add_define($;$) {
 
 
 sub
-add_cdefine($;$) {
+add_cdefine($;$)
+{
     my ($def, $type) = @_;
     my ($var, $val) = split(/=/, $def);
 
@@ -574,7 +608,8 @@ add_cdefine($;$) {
 
 
 sub
-add_cxxdefine($;$) {
+add_cxxdefine($;$)
+{
     my ($def, $type) = @_;
     my ($var, $val) = split(/=/, $def);
 
@@ -606,7 +641,8 @@ add_cxxdefine($;$) {
 #   nothing
 #
 sub
-add_cflag($;$) {
+add_cflag($;$)
+{
     my ($flag,$type) = @_;
     $type = ALL if (! $type);
     verbose("add_cflag:\t <${flag},${type}>");
@@ -623,7 +659,8 @@ add_cflag($;$) {
 #   nothing
 #
 sub
-add_cxxflag($;$) {
+add_cxxflag($;$)
+{
     my ($flag,$type) = @_;
     $type = ALL if (! $type);
     verbose("add_cxxflag:\t <${flag},${type}>");
@@ -640,7 +677,8 @@ add_cxxflag($;$) {
 #   nothing
 #
 sub
-add_ldflag($;$) {
+add_ldflag($;$)
+{
     my ($flag,$type) = @_;
     $type = ALL if (! $type);
     verbose("add_ldflag:\t <${flag},${type}>");
@@ -656,7 +694,8 @@ add_ldflag($;$) {
 #   nothing
 #
 sub
-add_include($) {
+add_include($)
+{
     my ($inc) = shift;
 
     verbose("add_include:\t <${inc}>");
@@ -665,7 +704,8 @@ add_include($) {
 
 
 sub
-add_cinclude($) {
+add_cinclude($)
+{
     my ($inc) = shift;
 
     verbose("add_cinclude:\t <${inc}>");
@@ -674,7 +714,8 @@ add_cinclude($) {
 
 
 sub
-add_xinclude($) {
+add_xinclude($)
+{
     my ($inc) = shift;
 
     verbose("add_xinclude:\t <${inc}>");
@@ -684,7 +725,8 @@ add_xinclude($) {
 
 
 sub
-add_cxxinclude($) {
+add_cxxinclude($)
+{
     my ($inc) = shift;
 
     verbose("add_cxxinclude:\t <${inc}>");
@@ -700,7 +742,8 @@ add_cxxinclude($) {
 #   nothing
 #
 sub
-add_application_library($) {
+add_application_library($)
+{
     my ($lib) = shift;
 
     verbose("add_application_library:\t <${lib}>");
@@ -716,7 +759,8 @@ add_application_library($) {
 #   nothing
 #
 sub
-add_system_library($) {
+add_system_library($)
+{
     my ($lib) = shift;
 
     verbose("add_system_library:\t <${lib}>");
