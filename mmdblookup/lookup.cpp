@@ -2,14 +2,15 @@
 //  MMDB lookup/test tool.
 //
 
-#ifndef _CRT_SECURE_NO_WARNINGS
+#if !defined(_CRT_SECURE_NO_WARNINGS)
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstdarg>
-#include <ctime>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <time.h>
+
 #include <fstream>
 #include <vector>
 
@@ -29,6 +30,32 @@
 
 #include "../libinetd/ServiceGetOpt.h"
 
+#include <netdb.h>
+
+#if defined(__WATCOMC__) && (__WATCOMC__ <= 1300)
+#include <string>
+#include <istream>
+namespace std {
+	std::istream&
+	getline(std::istream& input, std::string& str, char delim = '\n')
+	{
+		std::string t_str;
+		char c;
+
+		str.clear();
+		t_str.reserve(str.capacity() > 1024 ? str.capacity(): 1024);
+		if (input.get(c)) {
+			t_str.push_back(c);
+			while (input.get(c) && c != delim)
+				t_str.push_back(c);
+			if (!input.bad())
+				str = t_str;
+		}
+		return input;
+	}
+}
+#endif  //__WATCOMC__
+
 #if defined(HAVE_LIBMAXMINDDB)
 static bool	mmdbopen(const char *filename, MMDB_s *mmdb);
 static void	mmdbmeta(MMDB_s *mmdb);
@@ -38,14 +65,17 @@ static void	usage(const inetd::Getopt &options, const char *fmt, ...); /*no-retu
 
 static const char *short_options = "f:i:q:v";
 static struct inetd::Getopt::Option long_options[] = {
-	{ "db", 	inetd::Getopt::argument_required,   NULL,   'd'  },
-	{ "ip", 	inetd::Getopt::argument_required,   NULL,   'i'  },
-	{ "file",	inetd::Getopt::argument_required,   NULL,   'f'  },
-	{ "quiet",	inetd::Getopt::argument_none,	    NULL,   'q'  },
-	{ "verbose",	inetd::Getopt::argument_none,	    NULL,   'v'  },
-	{ "usage",	inetd::Getopt::argument_none,	    NULL,   1100 },
+	{ "db",         inetd::Getopt::argument_required, NULL,   'd'  },
+	{ "ip",         inetd::Getopt::argument_required, NULL,   'i'  },
+	{ "file",       inetd::Getopt::argument_required, NULL,   'f'  },
+	{ "quiet",      inetd::Getopt::argument_none,     NULL,   'q'  },
+	{ "verbose",    inetd::Getopt::argument_none,     NULL,   'v'  },
+	{ "usage",      inetd::Getopt::argument_none,     NULL,   1100 },
 	{ NULL }
 	};
+
+static bool verbose = false;
+static bool quiet = false;
 
 namespace {
 // left trim
@@ -73,7 +103,7 @@ trim(std::string &s, const char *c = " \t\n\r")
 
 // parse input file, allowing simple comment structure.
 template<typename Pred>
-bool parse_file(const inetd::Getopt &options, const char *filename, Pred &pred)
+unsigned parse_file(const inetd::Getopt &options, const char *filename, MMDB_s &mmdb, Pred &pred)
 {
 	std::ifstream stream(filename);
 	if (stream.fail()) {
@@ -82,6 +112,8 @@ bool parse_file(const inetd::Getopt &options, const char *filename, Pred &pred)
 
 	std::string line;
 	line.reserve(1024);
+	unsigned count = 0;
+
 	while (std::getline(stream, line)) {
 		const size_t bang = line.find_first_of('#');
 		if (bang != std::string::npos) {
@@ -89,24 +121,38 @@ bool parse_file(const inetd::Getopt &options, const char *filename, Pred &pred)
 		}
 		trim(line);
 		if (! line.empty()) {
-			if (! pred(line)) {
-				return false;
+			if (pred(mmdb, line)) {
+				++count;
 			}
 		}
 	}
+	return count;
+}
+
+bool
+mmdb_lookup(MMDB_s &mmdb, const std::string &line)
+{
+	const size_t comma = line.find_first_of(',');
+	if (comma != std::string::npos) { // first element
+		std::string ip(line, 0, comma);
+		mmdblookup(&mmdb, ip.c_str(), quiet);
+	} else { // whole element
+		mmdblookup(&mmdb, line.c_str(), quiet);
+	}
 	return true;
 }
-};
 
+}; // anon namespace
+
+typedef std::vector<const char *> Vector;
 
 int
 main(int argc, const char **argv)
 {
 	inetd::Getopt options(short_options, long_options);
-	std::vector<const char *> ips, files;
+	Vector ips, files;
 	std::string errmsg;
-	const char *database = nullptr;
-	bool verbose = false, quiet = false;
+	const char *database = NULL;
 
 	while (-1 != options.shift(argc, argv, errmsg)) {
 		switch (options.optret()) {
@@ -134,13 +180,13 @@ main(int argc, const char **argv)
 			break;
 		case 1100:	// usage
 		case '?':
-			usage(options, nullptr);
+			usage(options, NULL);
 		default:	// error
 			usage(options, "%s", errmsg.c_str());
 		}
 	}
 
-	if (nullptr == database) {
+	if (NULL == database) {
 		usage(options, "database missing");
 	}
 
@@ -155,22 +201,13 @@ main(int argc, const char **argv)
 		return 3;
 	if (verbose)
 		mmdbmeta(&mmdb);
-	for (auto ip : ips)
-		mmdblookup(&mmdb, ip, false);
-	for (auto file : files) {
+
+	for (Vector::const_iterator it(ips.begin()), end(ips.end()); it != end; ++it)
+		mmdblookup(&mmdb, *it, false);
+
+	for (Vector::const_iterator it(files.begin()), end(files.end()); it != end; ++it) {
 		clock_t const clock_start = clock();
-		unsigned count = 0;
-		parse_file<>(options, file, [&](std::string &line) {
-				const size_t comma = line.find_first_of(',');
-				if (comma != std::string::npos) { // first element
-					std::string ip(line, 0, comma);
-					mmdblookup(&mmdb, ip.c_str(), quiet);
-				} else { // whole element
-					mmdblookup(&mmdb, line.c_str(), quiet);
-				}
-				++count;
-				return true;
-				});
+		unsigned count = parse_file<>(options, *it, mmdb, mmdb_lookup);
 
 		if (verbose) {
 			clock_t const clock_diff = clock() - clock_start;
@@ -234,17 +271,17 @@ static void
 mmdbmeta(MMDB_s *mmdb)
 {
 	const char *meta_dump =
-	        "\n"
-	        "  Metadata:\n"
-	        "    Node count:    %i\n"
-	        "    Record size:   %i bits\n"
-	        "    IP version:    IPv%i\n"
-	        "    Binary format: %i.%i\n"
-	        "    Build epoch:   %llu (%s)\n"
-	        "    Type:          %s\n"
-	        "  Languages:       ";
+		"\n"
+		"  Metadata:\n"
+		"    Node count:    %i\n"
+		"    Record size:   %i bits\n"
+		"    IP version:    IPv%i\n"
+		"    Binary format: %i.%i\n"
+		"    Build epoch:   %llu (%s)\n"
+		"    Type:          %s\n"
+		"  Languages:       ";
 	const char *description =
-	        "  Description:\n";
+		"  Description:\n";
 
 	char date[40];
 	const time_t epoch = (const time_t)mmdb->metadata.build_epoch;

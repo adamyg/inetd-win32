@@ -1,3 +1,4 @@
+#pragma once
 #ifndef LIBCOMPACT_H_INCLUDED
 #define LIBCOMPACT_H_INCLUDED
 //
@@ -6,9 +7,16 @@
 
 #include "w32config.h"
 
+#if defined(LIBCOMPAT_SOURCE)
+#if !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+#endif
+
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 __BEGIN_DECLS
 
@@ -196,7 +204,7 @@ extern int /*ssize_t*/ getline(char **buf, size_t *bufsiz, FILE *fp);
 #define HAVE_GETLINE
 #endif
 #endif
-     
+
 __END_DECLS
 
 #endif /*LIBCOMPACT_H_INCLUDED*/

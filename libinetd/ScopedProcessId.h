@@ -26,14 +26,16 @@
  * ==end==
  */
 
+#include "inetd_namespace.h"
+
 #include <cassert>
 
 #include "WindowStd.h"
 
 namespace inetd {
 class ScopedProcessId {
-	ScopedProcessId(const ScopedProcessId &) = delete;
-	ScopedProcessId& operator=(const ScopedProcessId &) = delete;
+	INETD_DELETED_FUNCTION(ScopedProcessId(const ScopedProcessId &))
+	INETD_DELETED_FUNCTION(ScopedProcessId& operator=(const ScopedProcessId &))
 
 private:
 	static bool dup_emplace(HANDLE &handle)
@@ -58,11 +60,19 @@ public:
 		Close();
 	}
 
+#if defined(_MSC_VER)
 	ScopedProcessId& operator=(ScopedProcessId&& other)
 	{
 		Set(other.Take());
 		return *this;
 	}
+#else
+	ScopedProcessId& move_operator(ScopedProcessId& other)
+	{
+		Set(other.Take());
+		return *this;
+	}
+#endif
 
 	void Set(const PROCESS_INFORMATION &other)
 	{

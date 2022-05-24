@@ -239,7 +239,7 @@ typedef int (* SYSLOGPROXYCB)(void *data, int op, int pri, const char *msg, size
 extern void openlog (const char *ident, int option, int facility);
 extern void closelog (void);
 extern void setlogproxy (SYSLOGPROXYCB fnProxy, void *data);
-extern int  setlogmask (int mask);
+extern int  setlogmask (int nmask);
 extern int  getlogmask (void);
 extern int  setlogoption (int option);
 extern int  getlogoption (void);
@@ -255,3 +255,4 @@ extern void vxsyslog (int pri, const char *fmt, va_list ap, const char *err); //
 #endif  //SYSLOG_H_INCLUDED
 
 //end
+

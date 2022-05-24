@@ -43,7 +43,9 @@
 
 #include <sys/cdefs.h>
 #include <sys/utypes.h>
+#include <stdio.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 #if (0)
 #ifndef _GID_T_DECLARED

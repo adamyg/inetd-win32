@@ -234,7 +234,7 @@
 #endif
 
 static void	terminate(int value);
-static int	body(int argc, char **argv);
+static int	body(int argc, char * const *argv);
 static void	getservicesprog(char *servicesprog, size_t buflen);
 static int	do_accept(PeerInfo &remote);
 static void	setalarm(unsigned seconds);
@@ -350,7 +350,7 @@ whichaf(struct request_info *req)
 #endif
 
 extern "C" int
-inetd_main(int argc, char **argv)
+inetd_main(int argc, char * const *argv)
 {
 	int ret = 99;
 
@@ -383,7 +383,7 @@ terminate(int value)
 }
 
 static int
-body(int argc, char **argv)
+body(int argc, char * const *argv)
 {
 	int ch;
 #ifdef LOGIN_CAP

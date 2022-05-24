@@ -67,11 +67,13 @@ public:
 		assign(other.buffer_, other.length());
 	}
 
+#if defined(__MSC_VER)
 	String(String &&other)
 	{
 		buffer_ = other.buffer_;
 		other.buffer_ = nullptr;
 	}
+#endif        
 
 	~String()
 	{
@@ -86,6 +88,7 @@ public:
 		return *this;
 	}
 
+#if defined(__MSC_VER)
 	String& operator=(String&& other)
 	{
 		if (this != &other) {
@@ -95,6 +98,7 @@ public:
 		}
 		return *this;
 	}
+#endif
 
 	String& operator=(const char *other)
 	{
@@ -270,3 +274,4 @@ public:
 #endif
 
 } //namespace inetd
+

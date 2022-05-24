@@ -29,16 +29,26 @@
  *  daytime client - RFC 867
  */
 
-#define  _WINSOCK_DEPRECATED_NO_WARNINGS        /* gethostbyname */
+#if !defined(_WINSOCK_DEPRECATED_NO_WARNINGS)
+#define _WINSOCK_DEPRECATED_NO_WARNINGS         /* gethostbyname */
+#endif
+#if !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
+#if !defined(WINDOWS_MEAN_AND_LEAN)
 #define  WINDOWS_MEAN_AND_LEAN
 #include <Winsock2.h>
+#include <ws2tcpip.h>                           // getaddrinfo
 #include <Windows.h>
+#endif
 
 #pragma comment(lib, "Ws2_32.lib")
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>                             /* for fgets */
+#include <errno.h>
 #include <io.h>
 
 #include "client.h"

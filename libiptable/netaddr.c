@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -37,8 +38,9 @@ int
 getnetaddrx(const char *addr, struct netaddr *res, int family, unsigned flags, char *errmsg, unsigned errlen)
 {
 	const char *p = addr;
-	char t_addr[128], *t = t_addr;
+	char t_addr[128], *t = t_addr, *tend;
 	struct addrinfo hints, *ai;
+	int64_t prefix = 0;
 	int ret_ga;
 
 	if (NULL == addr || !*addr || NULL == res || (errmsg && errlen < 64)) {
@@ -57,7 +59,7 @@ getnetaddrx(const char *addr, struct netaddr *res, int family, unsigned flags, c
 		hints.ai_flags = AI_NUMERICHOST;
 	//hints.ai_flags |= AI_V4MAPPED;
 
-	for (char *tend = t + (sizeof(t_addr)-1); t < tend;) {
+	for (tend = t + (sizeof(t_addr)-1); t < tend;) {
 		const char ch = *p++;
 		if (0 == ch)  { 		/* EOS */
 			p = NULL;
@@ -128,7 +130,6 @@ getnetaddrx(const char *addr, struct netaddr *res, int family, unsigned flags, c
 	}
 
 	// netmask
-	int64_t prefix = 0;
 	if (NULL == p) {
 		if (0 == (NETADDR_IMPLIEDMASK & flags)) {
 			memset(&res->mask, 0xff, res->length);

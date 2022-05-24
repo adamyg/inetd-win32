@@ -39,6 +39,10 @@
 #include <errno.h>
 #include <string.h>
 
+#if !defined(ssize_t)
+#define ssize_t int
+#endif
+
 int /*ssize_t*/
 getdelim(char **buf, size_t *bufsiz, int delimiter, FILE *fp)
 {

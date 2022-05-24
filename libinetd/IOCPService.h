@@ -26,10 +26,11 @@
  * ==end==
  */
 
-#undef   bind           // sys/socket.h, WIN32
-#include <functional>
 #include <memory>
 #include <cassert>
+
+#undef bind             // sys/socket.h, WIN32
+#include <functional>
 
 #include "WindowStd.h"
 #include <process.h>    // _beginthread, _endthread

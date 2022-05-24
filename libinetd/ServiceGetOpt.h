@@ -46,18 +46,25 @@
  *          %s: ambiguous option -- %s"
  */
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include "inetd_namespace.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <cassert>
 
 #include <iostream>
 #include <string>
 
+#if defined(__WATCOMC__) && (__WATCOMC__ <= 1300) 
+// not visible under __cplusplus
+extern "C" _WCRTLINK extern int sprintf_s( char * __s, size_t __n, const char * __format, ... );
+#endif
+
 namespace inetd {
 class Getopt {
-	Getopt(const class Getopt &) = delete;
-	Getopt& operator=(const Getopt &) = delete;
+	INETD_DELETED_FUNCTION(Getopt(const class Getopt &))
+	INETD_DELETED_FUNCTION(Getopt& operator=(const Getopt &))
 
 public:
 	enum argument_flag {
@@ -155,7 +162,7 @@ public:
 
 	int shift(int nargc, const char * const *nargv)
 	{
-		return (optret_ = pop_argument(nargc, nargv, nullptr));
+		return (optret_ = pop_argument(nargc, nargv, NULL));
 	}
 
 	int shift(int nargc, const char * const *nargv, std::string &msg)
@@ -184,12 +191,12 @@ private:
 		int ret = short_argument(nargc, nargv);
 		if (-100 == ret) {
 			if (! long_options_) {
-				msg_ = nullptr;
+				msg_ = NULL;
 				return EOF;	// "--", we are done
 			}
 			ret = long_argument(nargc, nargv);
 		}
-		msg_ = nullptr;
+		msg_ = NULL;
 		return ret;
 	}
 
@@ -339,12 +346,7 @@ private:
 		if (!opterr_) return;
 
 		char buffer[1024];
-#if defined(_MSC_VER)
 		(void) sprintf_s(buffer, sizeof(buffer), "%s: %s -- %c", progname(), msg, optopt_);
-#else
-		(void) snprintf(buffer, sizeof(buffer), "%s: %s -- %c", progname(), msg, optopt_);
-		buffer[sizeof(buffer) - 1] = 0;
-#endif
 		error_report(code, buffer);
 	}
 
@@ -355,12 +357,7 @@ private:
 
 		char buffer[1024];
 		if (arglen < 0) arglen = (int)strlen(arg);
-#if defined(_MSC_VER)
 		(void) sprintf_s(buffer, sizeof(buffer), "%s: %s -- %.*s", progname(), msg, arglen, arg);
-#else
-		(void) snprintf(buffer, sizeof(buffer), "%s: %s -- %.*s", progname(), msg, arglen, arg);
-		buffer[sizeof(buffer) - 1] = 0;
-#endif
 		error_report(code, buffer);
 	}
 
