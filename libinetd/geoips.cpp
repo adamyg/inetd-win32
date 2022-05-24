@@ -470,7 +470,7 @@ void
 geoips::sysdump() const
 {
 	for (const auto &rule : rules_) {
-		syslog(LOG_DEBUG, "%c: %s/%d (%s)", rule.op, rule.spec.c_str());
+		syslog(LOG_DEBUG, "%c: %d/%s/%d (%s)", (int)rule.type, rule.op, rule.spec.c_str());
 	}
 }
 
