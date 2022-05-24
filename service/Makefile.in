@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.7 2022/05/18 03:06:52 cvsuser Exp $
+# $Id: Makefile.in,v 1.8 2022/05/24 05:19:14 cvsuser Exp $
 # inetd_service Makefile
 #
 #
@@ -80,7 +80,7 @@ CWARN=		@CWARN@
 CDEBUG=		@CDEBUG@
 CRELEASE=	@CRELEASE@
 CXXFLAGS=	@CXXFLAGS@
-CXXDEBUG=	@CXXDEBUG@
+CXXDEBUG=	$(filter-out -d2i, @CXXDEBUG@)
 ifeq ("$(CXXDEBUG)","")
 CXXDEBUG=	$(CDEBUG)
 endif
@@ -139,7 +139,7 @@ OBJS+=		$(addprefix $(D_OBJ)/,$(subst .cpp,$(O),$(CPPSOURCES)))
 OBJS+=		$(addprefix $(D_OBJ)/,$(subst .c,$(O),$(CSOURCES)))
 OBJS+=		$(addprefix $(D_OBJ)/,$(subst .rc,.res,$(RESOURCES)))
 
-XCLEAN=		service_license.h bsd_license.h
+XCLEAN=		service_license.h bsd_license.h inetd_usage.h
 
 
 #########################################################################################
@@ -153,13 +153,16 @@ release:
 debug:
 		$(MAKE) BUILD_TYPE=debug $(filter-out debug, $(MAKECMDGOALS))
 
-resources:		service_license.h bsd_license.h
+resources:		service_license.h bsd_license.h inetd_usage.h
 
 service_license.h:	../LICENSE mklicense.pl
 		@$(PERL) mklicense.pl $< $@ service_license
 
 bsd_license.h:		bsd_license.txt mklicense.pl
 		@$(PERL) mklicense.pl $< $@ bsd_license
+		
+inetd_usage.h:		../libinetd/inetd.txt mklicense.pl
+		@$(PERL) mklicense.pl $< $@ inetd_usage
 
 $(D_BIN)/$(TARGET):	MAPFILE=$(basename $@).map
 $(D_BIN)/$(TARGET):	LINKLIBS=-linetd -liptable -lsthread -lsyslog -lutil -lcompat
