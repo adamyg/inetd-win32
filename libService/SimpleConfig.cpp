@@ -1,3 +1,4 @@
+/* -*- mode: c; indent-width: 8; -*- */
 /*
  * Simple config
  *
@@ -23,11 +24,37 @@
  * ==end==
  */
 
+#if !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <iostream>
 #include <fstream>
 #include <assert.h>
 
 #include "SimpleConfig.h"
+
+#if defined(__WATCOMC__) && (__WATCOMC__ <= 1300)
+#include <istream>
+namespace std {
+        inline std::istream&
+        getline(std::istream& input, std::string& str, char delim = '\n') {
+            std::string t_str;
+            char c;
+
+            str.clear();
+            t_str.reserve(str.capacity() > 1024 ? str.capacity(): 1024);
+            if (input.get(c)) {
+                t_str.push_back(c);
+                while (input.get(c) && c != delim)
+                    t_str.push_back(c);
+                if (!input.bad())
+                    str = t_str;
+            }
+            return input;
+        }
+}
+#endif  //__WATCOMC__
 
 namespace {
         // left trim
@@ -66,8 +93,11 @@ SimpleConfig::~SimpleConfig()
 bool
 SimpleConfig::Load(const std::string &file, std::string &errmsg)
 {
-        std::ifstream input(file);
-        if (! input) return false;
+        std::ifstream input(file.c_str());
+        if (! input) {
+                errmsg = strerror(errno);
+                return false;
+        }
 
         try {
                 values_t *values = FetchSection("");
@@ -111,7 +141,6 @@ SimpleConfig::Load(const std::string &file, std::string &errmsg)
                         }
                 }
                 input.close();
-                return true;
 
         } catch (std::runtime_error &e) {
                 errmsg = e.what();

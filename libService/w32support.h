@@ -54,24 +54,28 @@
 
 #if defined(__WATCOMC__) && (__WATCOMC__ <= 1300)
 #if defined(__cplusplus)                        /* std::nothrow() emulation */
-    #include <cstddef>
-    #include <cstdlib>
+#include <stdarg.h>
+#include <cstddef>
+#include <cstdlib>
 #pragma warning (push)
-#pragma warning 14 9  // no reference to symbol 'operator new'
+#pragma warning 14 9 // no reference to symbol 'operator new'
     namespace std {
         struct nothrow_t { };
         static nothrow_t const nothrow;
     }
     static void* operator new (size_t _Size, std::nothrow_t const&) {
-        return malloc(_Size);                  /* see: opnew.cpp/rtlibrary */
+        return std::malloc(_Size);              /* see: opnew.cpp/rtlibrary */
             // Note: OpenWatcom (1.9 or 2.0) wont throw std::bad_alloc.
     }
     static void* operator new [] (size_t _Size, std::nothrow_t const&) {
-        return malloc(_Size);
+        return std::malloc(_Size);
     }
 #pragma warning (pop)
-#endif
-#endif  //__WATCOMC__
+
+extern "C" _WCRTLINK extern int sprintf_s( char * __s, size_t __n, const char * __format, ... );
+extern "C" _WCRTLINK extern int vsprintf_s( char * __s, size_t __n, const char * __format, va_list __arg );
+#endif  // __cplusplus
+#endif  // __WATCOMC__
 
 #endif  //WSSUPPORT_H_INCLUDED
 

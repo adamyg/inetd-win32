@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(NTService_cpp, "$Id: NTService.cpp,v 1.5 2022/03/25 17:02:36 cvsuser Exp $")
+__CIDENT_RCSID(NTService_cpp, "$Id: NTService.cpp,v 1.6 2022/05/24 03:41:11 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -39,7 +39,8 @@ __CIDENT_RCSID(NTService_cpp, "$Id: NTService.cpp,v 1.5 2022/03/25 17:02:36 cvsu
 #include <time.h>
 #include <assert.h>
 
-#if defined(__WATCOMC__) && (__WATCOMC < 1300)  // not visible under __cplusplus
+#if defined(__WATCOMC__) && (__WATCOMC__ <= 1300) 
+// not visible under __cplusplus
 extern "C" _WCRTLINK extern int asctime_s(char *__s, size_t __maxsize, const struct tm *__timeptr);
 #endif
 

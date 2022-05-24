@@ -3,7 +3,7 @@
 #define LOGGERSYSLOG_H_INCLUDED
 /* -*- mode: c; indent-width: 8; -*- */
 /*
- * Logger syslog adapter
+ *  Logger syslog adapter.
  *
  * Copyright (c) 2020 - 2022, Adam Young.
  * All rights reserved.
@@ -32,25 +32,25 @@
 class Logger;
 
 struct LoggerSyslog {
-    static int
-    syslog_hook(void *self, int op, int pri, const char *msg, size_t msglen) 
-    {
-        Logger &logger = *((Logger *)self);
-        logger.push(msg, msglen);
-        return 1;
-    }
+        static int
+        syslog_hook(void *self, int op, int pri, const char *msg, size_t msglen)
+        {
+                Logger &logger = *((Logger *)self);
+                logger.push(msg, msglen);
+                return 1;
+        }
 
-    static void
-    attach(Logger &logger) 
-    {
-        setlogproxy(&LoggerSyslog::syslog_hook, (void *) &logger);
-    }
+        static void
+        attach(Logger &logger)
+        {
+                setlogproxy(&LoggerSyslog::syslog_hook, (void *) &logger);
+        }
 
-    static void
-    detach() 
-    {
-        setlogproxy(NULL, NULL);
-    }
+        static void
+        detach()
+        {
+                setlogproxy(NULL, NULL);
+        }
 };
 
 #endif  //LOGGERSYSLOG_H_INCLUDED

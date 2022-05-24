@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(NTServiceControl_cpp, "$Id: NTServiceControl.cpp,v 1.5 2022/03/25 17:02:36 cvsuser Exp $")
+__CIDENT_RCSID(NTServiceControl_cpp, "$Id: NTServiceControl.cpp,v 1.6 2022/05/24 03:41:11 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -85,7 +85,7 @@ int CNTServiceControl::ExecuteCommand(int argc, const char * const *argv, unsign
                         return NTSERVICE_CMD_UNEXPECTED_ARG;
                 }
                 Start();
-            return 1;
+                return 1;
 
         } else if (0 == (filter & 0x002) && 0 == _stricmp(cmd, "stop")) {
                 if (argc > 1) {
