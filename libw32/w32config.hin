@@ -1,7 +1,7 @@
 #ifndef WIN32_CONFIG_H_INCLUDED
 #define WIN32_CONFIG_H_INCLUDED
 /* -*- mode: c; set-indent: 4; -*- */
-/* $Id: w32config.hin,v 1.2 2022/03/24 12:42:45 cvsuser Exp $
+/* $Id: w32config.hin,v 1.4 2022/05/24 03:59:11 cvsuser Exp $
  * Machine configuration.
  *
  * System dependent <config.h> configuration template,
@@ -46,13 +46,8 @@
 #pragma warning (disable : 4706)                // assignment within conditional expression
 #pragma warning (disable : 4996)
 
-#if !defined(__cplusplus)
-    /*
-     *  <system_error> is incompatible with _CRT_NO_POSIX_ERROR_CODES.
-     */
-#if !defined(_CRT_NO_POSIX_ERROR_CODES)
-#define _CRT_NO_POSIX_ERROR_CODES               // disable POSIX error number, see <errno.h>
-#endif
+#if defined(_CRT_NO_POSIX_ERROR_CODES)
+#pragma message <system_error> is incompatible with _CRT_NO_POSIX_ERROR_CODES.
 #endif
 
 #elif defined(__WATCOMC__)
@@ -460,9 +455,11 @@
 #undef HAVE_STRCASECMP
 #undef HAVE_STRNCASECMP
 #undef HAVE___STRCASECMP
+#undef HAVE___STRNCASECMP
 #undef HAVE_STRCHR
 #undef HAVE_STRERROR
 #undef HAVE_STRICMP
+#undef HAVE_STRNICMP
 #undef HAVE_STRRCHR
 #undef HAVE_STRDUP
 #undef HAVE_STRFTIME
@@ -482,6 +479,7 @@
 #undef HAVE_STRCASESTR
 #undef HAVE_STRCASESTR_L
 #undef HAVE_STRTONUM
+#undef HAVE_STRTOK_R
 
 #undef HAVE_ISASCII
 #undef HAVE___ISASCII
@@ -763,7 +761,6 @@
 #undef GNUWIN32_LIBARCHIVE
 #undef HAVE_ARCHIVE_H
 #undef HAVE_ARCHIVE_ENTRY_H
-
 
 #endif  /*WIN32_CONFIG_H_INCLUDED*/
 

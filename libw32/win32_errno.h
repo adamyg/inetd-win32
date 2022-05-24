@@ -1,7 +1,7 @@
 #ifndef LIBW32_WIN32_ERRNO_H_INCLUDED
 #define LIBW32_WIN32_ERRNO_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_win32_errno_h,"$Id: win32_errno.h,v 1.2 2022/03/24 12:42:45 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_win32_errno_h,"$Id: win32_errno.h,v 1.3 2022/05/24 04:00:44 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
@@ -31,19 +31,18 @@ __CPRAGMA_ONCE
  * ==end==
  */
 
-    /*
-     *  Verify that MSVC POSIX errno number are not active; if the case warn and undef clashing constants
-     *  Generally <sys/socket.h> is included before <errno.h> as such the following should not occur.
-     */
+/*
+ *  Verify that MSVC POSIX errno number are not active; if the case warn and undef clashing constants
+ *  Generally <sys/socket.h> is included before <errno.h> as such the following should not occur.
+ */
 #if !defined(__MAKEDEPEND__)
 #if defined(EADDRINUSE) && (EADDRINUSE != 10048)
 #if defined(_MSC_VER)
 #if (EADDRINUSE == 100)
-#if !defined(_CRT_NO_POSIX_ERROR_CODES)
-#pragma message("_CRT_NO_POSIX_ERROR_CODES should be defined: EADDRINUSE (and others) are inconsistent with WinSock aliases; redefining")
-#else
-#pragma message("_CRT_NO_POSIX_ERROR_CODES is defined: yet EADDRINUSE (and others) are inconsistent with WinSock aliases as <errno.h> include order is incorrect; redefining")
+#if defined(_CRT_NO_POSIX_ERROR_CODES)
+#pragma message <system_error> is incompatible with _CRT_NO_POSIX_ERROR_CODES.
 #endif
+#include "msvc_errno.h"                         /* undef error codes */
 #else
 #error unexpected EADDRINUSE value
 #endif
@@ -51,26 +50,15 @@ __CPRAGMA_ONCE
 #endif //EADDRINUSE != 10048
 #endif //__MAKEDEPEND__
 
-	/* Check for (MSVC && !WATCOMC), at times we masquerade WC as MSVC */
-#if (defined(_MSC_VER) && !defined(__WATCOMC__)) || \
-	defined(__MAKEDEPEND__)
-#include "msvc_errno.h"
-#endif //EADDRINUSE
-
 /*
- *  System <errno.h>
+ *  import <errno.h>
  */
-#if defined(_MSC_VER) && (_MSC_VER > 1600) && \
-        !defined(_CRT_NO_POSIX_ERROR_CODES)
-#define _CRT_NO_POSIX_ERROR_CODES               /* disable POSIX error number, see <errno.h> (MSVC 2010+) */
-#endif //_MSC_VER
-
+#if !defined(_CRT_NO_POSIX_ERROR_CODES)
+#define  _CRT_NO_POSIX_ERROR_CODES              /* disable extended POSIX errno's */
 #include <errno.h>
-
-#if defined(EWOULDBLOCK)                        /* _CRT_NO_POSIX_ERROR_CODES not available */
-#if (_MSC_VER == 1600) && !defined(__WATCOMC__)
-#include "msvc_errno.h"
-#endif
+#undef   _CRT_NO_POSIX_ERROR_CODES
+#else
+#include <errno.h>
 #endif
 
 /*
@@ -81,8 +69,8 @@ __CPRAGMA_ONCE
      *  General use error codes,
      *      which utilise their defined value under MSVC POSIX definition, see <errno.h>
      *
-     *  MSVC: Their definitions are disabled using _CRT_NO_POSIX_ERROR_CODES,
-     *      as many conflict with the WinSock aliases below,
+     *  MSVC: Their definitions can be disabled using _CRT_NO_POSIX_ERROR_CODES, as many conflict with the 
+     *      WinSock aliases below, but this generates complication errors within C++ code elements.
      */
 #define EBADMSG         104                     /* Bad message. */
 #define ECANCELED       105                     /* Operation canceled. */

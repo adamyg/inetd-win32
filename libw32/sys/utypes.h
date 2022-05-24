@@ -1,7 +1,7 @@
 #ifndef LIBW32_SYS_UTYPES_H_INCLUDED
 #define LIBW32_SYS_UTYPES_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_sys_utypes_h,"$Id: utypes.h,v 1.2 2022/03/24 12:42:46 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_sys_utypes_h,"$Id: utypes.h,v 1.3 2022/05/24 04:02:49 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
@@ -133,7 +133,7 @@ typedef int pid_t;                              /* process identifier */
 #else
 #define ssize_t long
 #endif
-#define HAVE_SSIZE_T
+#define HAVE_SSIZE_T 1
 #endif
 
 #ifdef _WIN64

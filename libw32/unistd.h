@@ -1,7 +1,7 @@
 #ifndef LIBW32_UNISTD_H_INCLUDED
 #define LIBW32_UNISTD_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_unistd_h,"$Id: unistd.h,v 1.3 2022/03/24 12:42:43 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_unistd_h,"$Id: unistd.h,v 1.4 2022/05/24 04:01:38 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
@@ -453,15 +453,15 @@ LIBW32_API int          getsubopt (char **optionp, char * const *tokens, char **
 //  #if defined(_MSC_VER) || defined(__WATCOMC__)
 //  LIBW32_API int          strcasecmp(const char *s1, const char *s2);
 //  LIBW32_API int          strncasecmp(const char *s1, const char *s2, size_t len);
-//  #endif /*_MSC_VER*/
+//  #endif
 //
-//  #if (defined(_MSC_VER) && (_MSC_VER < 1400)) || \
+//  #if (defined(_MSC_VER) && (_MSC_VER < 1400)) || \   // cont
 //            defined(__MINGW32__) || defined(__WATCOMC__)
-//  #define NEED_STRNLEN                            /*see: w32_string.c*/
+//  #define NEED_STRNLEN                                // see: w32_string.c
 //  #endif
 //  #if defined(NEED_STRNLEN)
 //  LIBW32_API size_t       strnlen(const char *s, size_t maxlen);
-//  #endif /*NEED_STRNLEN*/
+//  #endif
 
 /* <unistd.h> */
 LIBW32_API int          w32_gettimeofday (struct timeval *tv, void /*struct timezone*/ *tz);

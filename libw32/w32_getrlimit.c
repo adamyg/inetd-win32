@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_getrlimit_c,"$Id: w32_getrlimit.c,v 1.1 2020/10/17 18:35:21 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_getrlimit_c,"$Id: w32_getrlimit.c,v 1.2 2022/05/21 15:54:56 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -137,6 +137,7 @@ ERRORS
     [EINVAL]
         The limit specified cannot be lowered because current usage is already higher than the limit.
 */
+
 int
 getrlimit(int resource, struct rlimit *rlp)
 {
@@ -145,11 +146,16 @@ getrlimit(int resource, struct rlimit *rlp)
     } else {
         switch (resource) {
         case RLIMIT_NOFILE:
+#if defined(__WATCOMC__)
+            rlp->rlim_cur = _grow_handles(_NFILES);
+            rlp->rlim_max = 2048; /*assumed limit*/
+#else
             rlp->rlim_cur = _getmaxstdio();
 #if defined(_MSC_VER) && (_MSC_VER >= 1920)
             rlp->rlim_max = 8192; /*2019, documented limit*/
 #else
             rlp->rlim_max = 2048; /*documented limit*/
+#endif
 #endif
             if (rlp->rlim_cur > rlp->rlim_max) {
                 rlp->rlim_max = rlp->rlim_cur;

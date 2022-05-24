@@ -1,7 +1,7 @@
 #ifndef LIBW32_WIN32_INCLUDE_H_INCLUDED
 #define LIBW32_WIN32_INCLUDE_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_include_h,"$Id: win32_include.h,v 1.3 2022/03/24 12:42:45 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_include_h,"$Id: win32_include.h,v 1.4 2022/05/24 03:59:33 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
@@ -36,16 +36,19 @@ __CPRAGMA_ONCE
 #define _CRT_SECURE_NO_DEPRECATE                /* disable deprecate warnings */
 #endif
 
-#if !defined(_CRT_NO_POSIX_ERROR_CODES)
-#define _CRT_NO_POSIX_ERROR_CODES               /* disable POSIX error number, see <errno.h> */
-#endif
-
 #if !defined(HAVE_WINSOCK2_H_INCLUDED)
 #define HAVE_WINSOCK2_H_INCLUDED
 #undef gethostname                              /* unistd.h name mangling */
 #if defined(u_char)
 #undef u_char                                   /* namespace issues (_BSD_SOURCE) */
 #endif
+
+#if defined(__WATCOMC__) && (__WATCOMC__ <= 1300)
+#if !defined(NTDDI_VERSION)
+#define NTDDI_VERSION 0x06000000                /* iphlpapi.h requirement, inet_ntop .. */
+#endif
+#endif
+
 #include <winsock2.h>
 #include <ws2tcpip.h>                           /* getaddrinfo() */
 #include <mswsock.h>                            /* IOCP */
