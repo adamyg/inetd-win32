@@ -67,13 +67,13 @@ public:
 		assign(other.buffer_, other.length());
 	}
 
-#if defined(__MSC_VER)
+#if defined(__MSC_VER) || defined(__MINGW64_VERSION_MAJOR)
 	String(String &&other)
 	{
 		buffer_ = other.buffer_;
 		other.buffer_ = nullptr;
 	}
-#endif        
+#endif
 
 	~String()
 	{
@@ -88,7 +88,7 @@ public:
 		return *this;
 	}
 
-#if defined(__MSC_VER)
+#if defined(__MSC_VER) || defined(__MINGW64_VERSION_MAJOR)
 	String& operator=(String&& other)
 	{
 		if (this != &other) {
@@ -118,7 +118,7 @@ public:
 		return *this;
 	}
 
-	friend String& operator+(String a, const String &b)
+	friend String operator+(String a, const String &b)
 	{
 		a += b;
 		return a;

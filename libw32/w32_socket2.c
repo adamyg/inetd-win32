@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_socket2_c,"$Id: w32_socket2.c,v 1.5 2022/03/24 12:42:44 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_socket2_c,"$Id: w32_socket2.c,v 1.6 2022/06/05 11:08:42 cvsuser Exp $")
 
 /*
  * win32 socket () system calls
@@ -80,7 +80,7 @@ nativehandle(int fd)
 LIBW32_API int
 w32_socket_native(int af, int type, int protocol)
 {
-    int done = 0, ret;
+    int done = 0;
     SOCKET s;
 
 #undef socket
@@ -92,7 +92,6 @@ retry:;
             }
         }
         w32_sockerror();
-        ret = -1;
     } else {
         SetHandleInformation((HANDLE)s, HANDLE_FLAG_INHERIT, 0);
         assert((int)s < 0x7fffffff);
@@ -345,7 +344,7 @@ w32_sendmsg_native(int fd, const struct msghdr *message, int flags)
     int ret = -1;
 
     if (NULL == message || NULL == message->msg_iov ||
-            message->msg_iovlen < 0 || message->msg_iovlen > IOV_MAX) {
+            /*message->msg_iovlen < 0 ||*/ message->msg_iovlen > IOV_MAX) {
         errno = EINVAL;                         /* invalid argument */
 
     } else if (0 == message->msg_iovlen) {

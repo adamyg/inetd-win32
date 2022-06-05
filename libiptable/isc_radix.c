@@ -310,13 +310,13 @@ isc_radix_process(isc_radix_tree_t *radix, isc_radix_processfunc_t func)
 
 /*
  *  ACLs use a “first-match” logic rather than “best-match”: if an address prefix matches an ACL element,
- *  then that ACL is considered to have matched even if a later element would have matched more specifically. 
+ *  then that ACL is considered to have matched even if a later element would have matched more specifically.
  *  For example, the ACL { 10/8; !10.0.0.1; } would actually match a query from 10.0.0.1, because the first
  *  element indicates that the query should be accepted, and the second element is ignored.
  */
 
 isc_result_t
-isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix) 
+isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix)
 {
 	isc_radix_node_t *node;
 	isc_radix_node_t *stack[RADIX_MAXBITS + 1];
@@ -387,7 +387,7 @@ isc_radix_search(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_p
 
 
 isc_result_t
-isc_radix_search_best(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix) 
+isc_radix_search_best(isc_radix_tree_t *radix, isc_radix_node_t **target, const isc_prefix_t *prefix)
 {
 	isc_radix_node_t *node;
 	isc_radix_node_t *stack[RADIX_MAXBITS + 1];

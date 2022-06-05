@@ -35,7 +35,7 @@ extern char *strndup(const char *str, size_t maxlen);
 #endif /*HAVE_STRNDUP*/
 
 #if !defined(HAVE_STRCATN)
-extern char *strcatn(register char *s1, register char *s2, register int n);
+extern char *strcatn(char *s1, char *s2, int n);
 #if !defined(LIBCOMPAT_SOURCE)
 #define HAVE_STRCATN
 #endif
@@ -194,6 +194,15 @@ extern int vasprintf(char **str, const char *fmt, va_list ap);
 #define HAVE_VASPRINTF
 #endif
 #endif /*HAVE_VASPRINTF*/
+
+
+#if !defined(HAVE_TIMEGM)       /*unistd.h*/
+struct tm;
+extern time_t timegm(struct tm *tm);
+#if !defined(LIBCOMPAT_SOURCE)
+#define HAVE_TIMEGM
+#endif
+#endif /*HAVE_TIMEGM*/
 
 extern char *xmktemp(char *path, char *result, size_t length);
 

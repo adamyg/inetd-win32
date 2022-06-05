@@ -35,12 +35,14 @@
 #include <assert.h>
 #include <unistd.h>
 
+#if !defined(HAVE_PTHREAD_H)
+
 typedef void(*destructor_t)(void *);
 
 typedef struct tlsatom {
     unsigned active;
     destructor_t destructor;
-    DWORD key;  
+    DWORD key;
 } tlskeys_t[PTHREAD_MAX_KEYS];
 
 static tlskeys_t tlskeys = {0};
@@ -52,7 +54,7 @@ pthread_key_create(pthread_key_t *key, void (*destructor)(void *))
     int idx, tls_idx = -1;
     DWORD t_key;
 
-    if (! key) 
+    if (! key)
             return EINVAL;
 
     satomic_lock(&tlslock);
@@ -166,4 +168,7 @@ pthread_getspecific(pthread_key_t key)
     return NULL;
 }
 
+#endif /*HAVE_PTHREAD_H*/
+
 /*end*/
+

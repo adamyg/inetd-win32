@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.7 2022/05/02 09:07:28 cvsuser Exp $
+# $Id: Makefile.in,v 1.8 2022/06/05 11:08:39 cvsuser Exp $
 # example services Makefile
 #
 #
@@ -54,6 +54,7 @@ RMDIR=		@RMDIR@
 CP=		@CP@
 RC=		@RC@
 PERL=		@PERL@
+LIBTOOL=	@LIBTOOL@
 
 # Configuration
 
@@ -77,6 +78,10 @@ D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
 XFLAGS=
 CFLAGS=		@CFLAGS@
 CWARN=		@CWARN@
+ifeq (gcc,$(findstring gcc,$(CC)))
+CXXWARN+=	-Wno-unused-result -Wno-unused-parameter -Wno-unused-variable -Wno-unused-but-set-variable
+CXXWARN+=	-Wno-deprecated-declarations -Wno-deprecated -Wno-sign-compare
+endif
 CDEBUG=		@CDEBUG@
 CRELEASE=	@CRELEASE@
 CXXFLAGS=	@CXXFLAGS@
@@ -101,6 +106,7 @@ CEXTRA+=	-DHAVE_LIBCERTSTORE
 CINCLUDE+=	-I../libcertstore
 endif
 
+ifeq (vc,$(findstring vc,"@TOOLCHAIN@"))
 ifeq ("$(OPENSSL)","")
 OPENSSL		=../vcpkg_installed/x86-windows
 ifeq ("$(wildcard $(OPENSSL)/*)","")
@@ -110,7 +116,6 @@ OPENSSL		=
 endif
 endif
 endif
-
 ifneq ("$(OPENSSL)","")
 CEXTRA+=	-DHAVE_OPENSSL
 CINCLUDE+=	-I$(OPENSSL)/include
@@ -124,17 +129,18 @@ endif
 OPENSSL_DLLS=	$(notdir $(wildcard $(OPENSSL_BIN)/*.dll))
 LINKLIBS+=	/LIBPATH:$(OPENSSL_LIB)
 endif
+endif	#TOOLCHAIN
 
 CINCLUDE+=	-I../references/Simple-WebSocket-Server
 CINCLUDE+=	-I../references/asio-standalone/asio/include
 
 ifeq ("$(BUILD_TYPE)","release")
 CFLAGS+=	$(CRELEASE) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
-CXXFLAGS+=	$(CXXRELEASE) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
+CXXFLAGS+=	$(CXXRELEASE) $(CXXWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
 LDFLAGS=	$(LDRELEASE) @LDFLAGS@
 else
 CFLAGS+=	$(CDEBUG) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
-CXXFLAGS+=	$(CXXDEBUG) $(CWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
+CXXFLAGS+=	$(CXXDEBUG) $(CXXWARN) $(CINCLUDE) @CXXINCLUDE@ $(CEXTRA) $(XFLAGS)
 LDFLAGS=	$(LDDEBUG) @LDFLAGS@
 endif
 LDLIBS=		-L$(D_LIB) $(LINKLIBS) @LIBS@ @EXTRALIBS@
@@ -195,7 +201,7 @@ vclean:		clean
 $(D_BIN)/%$(E):			MAPFILE=$(basename $@).map
 $(D_BIN)/%$(E):			LINKLIBS+=-linetd -lsthread -lcompat
 $(D_BIN)/%$(E):			$(D_OBJ)/%$(O)
-		$(CC) $(LDFLAGS) -o $@ $< $(LDLIBS) @LDMAPFILE@
+		$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o $@ $< $(LDLIBS) @LDMAPFILE@
 
 
 #########################################################################################
@@ -206,9 +212,6 @@ $(D_OBJ)/%$(O):		%$(C)
 
 $(D_OBJ)/%$(O):		%.cpp
 		$(CXX) $(CXXFLAGS) -o $@ -c $<
-
-$(D_OBJ)/%.res:		%.rc
-		$(RC) -nologo -Fo$@ -I../include -I../libNTService $<
 
 ifneq ("$(OPENSSL_DLLS)","")
 $(D_BIN)/%.dll:		$(OPENSSL_BIN)/%.dll

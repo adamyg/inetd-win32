@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_reparse_c,"$Id: w32_reparse.c,v 1.2 2022/03/24 12:42:44 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_reparse_c,"$Id: w32_reparse.c,v 1.3 2022/06/05 11:08:42 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -41,6 +41,7 @@ __CIDENT_RCSID(gr_w32_reparse_c,"$Id: w32_reparse.c,v 1.2 2022/03/24 12:42:44 cv
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #ifdef HAVE_WCHAR_H
 #include <wchar.h>
 #endif

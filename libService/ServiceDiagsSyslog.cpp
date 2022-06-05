@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiagsSyslog.cpp,v 1.3 2022/05/18 16:23:40 cvsuser Exp $")
+__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiagsSyslog.cpp,v 1.4 2022/06/05 11:08:40 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -42,14 +42,14 @@ int
 ServiceDiags::Syslog::hook(void *self, int op, int pri, const char *msg, size_t msglen)
 {
         static enum Adapter::loglevel levels[] = {
-                { Adapter::LLERROR   },  // 0 - LOG_EMERG
-                { Adapter::LLERROR   },  // 1 - LOG_ALERT
-                { Adapter::LLERROR   },  // 2 - LOG_CRIT
-                { Adapter::LLERROR   },  // 3 - LOG_ERR
-                { Adapter::LLWARNING },  // 4 - LOG_WARNING
-                { Adapter::LLWARNING },  // 5 - LOG_NOTICE
-                { Adapter::LLINFO,   },  // 6 - LOG_INFO
-                { Adapter::LLDEBUG   }   // 7 - LOG_DEBUG
+                Adapter::LLERROR,    // 0 - LOG_EMERG
+                Adapter::LLERROR,    // 1 - LOG_ALERT
+                Adapter::LLERROR,    // 2 - LOG_CRIT
+                Adapter::LLERROR,    // 3 - LOG_ERR
+                Adapter::LLWARNING,  // 4 - LOG_WARNING
+                Adapter::LLWARNING,  // 5 - LOG_NOTICE
+                Adapter::LLINFO,     // 6 - LOG_INFO
+                Adapter::LLDEBUG     // 7 - LOG_DEBUG
                 };
 
         Logger &logger = *((Logger *)self);

@@ -32,6 +32,8 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <assert.h>
+#undef bind
 
 #include "../libNTService/NTServiceConfig.h"    // CNTServiceConfig
 #include "../libNTService/NTServiceControl.h"   // CNTServiceControl
@@ -208,12 +210,12 @@ main(int argc, const char **argv)
 			int ret = NTSERVICE_CMD_UNKNOWN;
 
 			if (0 == _stricmp(verb, "config")) {
-				CNTServiceConfig service(service_name, service.GetCompany(), diags);
-				ret = service.ExecuteCommand(argc - 1, argv + 1);
+				CNTServiceConfig cfgservice(service_name, service.GetCompany(), diags);
+				ret = cfgservice.ExecuteCommand(argc - 1, argv + 1);
 
 			} else if (0 == _stricmp(verb, "control")) {
-				CNTServiceControl service(service_name, diags);
-				ret = service.ExecuteCommand(argc - 1, argv + 1);
+				CNTServiceControl ctrlservice(service_name, diags);
+				ret = ctrlservice.ExecuteCommand(argc - 1, argv + 1);
 
 			} else {		// primary verbs
 				ret = service.ExecuteCommand(argc, argv);

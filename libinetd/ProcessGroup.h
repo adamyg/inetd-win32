@@ -30,6 +30,7 @@
 #include <cassert>
 #include <memory>
 #include <unordered_map>
+#include <list>
 #include <set>
 
 #include "WindowStd.h"
@@ -38,13 +39,13 @@
 
 namespace inetd {
 
-class ProcessGroup 
+class ProcessGroup
 {
 	ProcessGroup(const ProcessGroup &) = delete;
 	ProcessGroup& operator=(const ProcessGroup &) = delete;
 
 private:
-	struct Process 
+	struct Process
 	{
 		Process(const Process &) = delete;
 		Process& operator=(const Process &) = delete;

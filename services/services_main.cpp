@@ -38,8 +38,8 @@
 static void	usage(const char *prog, const char *msg = NULL, ...);
 static void	license(void);
 
-extern int	options = 0;
-extern int	debug = 0;
+int options = 0;
+int debug = 0;
 
 int
 main(int argc, const char **argv)
@@ -212,3 +212,4 @@ check_loop(const struct sockaddr *sa, const struct servtab *sep)
 }
 
 //end
+

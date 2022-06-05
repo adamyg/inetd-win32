@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_gethostname_c,"$Id: w32_gethostname.c,v 1.3 2022/05/21 15:54:56 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_gethostname_c,"$Id: w32_gethostname.c,v 1.4 2022/06/05 11:08:41 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -48,7 +48,7 @@ __CIDENT_RCSID(gr_w32_gethostname_c,"$Id: w32_gethostname.c,v 1.3 2022/05/21 15:
 #endif
 #include <windows.h>
 
-#if (0)
+#if defined(__WATCOMC__) && (__WATCOMC__ <= 1900)
 typedef enum _COMPUTER_NAME_FORMAT {
     ComputerNameNetBIOS,
     ComputerNameDnsHostname,

@@ -27,9 +27,10 @@
  * ==end==
  */
 
-#include <vector>
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
 
 class Arguments {
 public:
@@ -91,10 +92,21 @@ public:
         static void
         split(std::vector<std::string> &argv, const char *cmd, bool escapes = true)
         {
-                if (char *t_cmd = ::_strdup(cmd)) {
+                if (char *t_cmd = my_strdup(cmd)) {
                         emplace_split(argv, t_cmd, escapes);
                         ::free(t_cmd);
                 }
+        }
+
+        static char *my_strdup(const char *cmd)
+        {
+                const size_t len = (cmd ? strlen(cmd) : 0);
+                if (char *t_str = static_cast<char *>(::malloc(len + 1 /*nul*/))) {
+                        memcpy(t_str, cmd, len);
+                        t_str[len] = 0;
+                        return t_str;
+                }
+                return NULL;
         }
 
     static void

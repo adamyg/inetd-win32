@@ -50,7 +50,19 @@ typedef long satomic_lock_t;
 extern __inline void ReadWriteBarrier(void);
 #pragma aux ReadWriteBarrier = "" parm [] modify exact [];
 #define SATOMIC_FENCE ReadWriteBarrier();
+
+#elif defined(__MINGW32__)
+typedef long satomic_lock_t;
+#if defined(__MINGW64_VERSION_MAJOR) /*MingGW-w64/32*/
+#include <intrin.h>
+#define SATOMIC_INTERLOCK_EXCHANGE _InterlockedExchange
+#define SATOMIC_FENCE _ReadWriteBarrier();
+#else
+#define SATOMIC_INTERLOCK_EXCHANGE InterlockedExchange
+#define SATOMIC_FENCE  asm volatile("": : :"memory");
 #endif
+#endif
+
 
 static __inline int
 satomic_try_lock(volatile satomic_lock_t *lock)

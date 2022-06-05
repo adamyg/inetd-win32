@@ -1,7 +1,7 @@
 #pragma once
 #ifndef WS_SERVICE_H_INCLUDED
 #define WS_SERVICE_H_INCLUDED
-//
+//  -*- mode: c; indent-width: 8; -*-
 //  WS Service,
 //  extended https://gitlab.com/eidheim/Simple-WebSocket-Server
 //
@@ -30,66 +30,67 @@
 
 class ws_service : public SimpleWeb::SocketServer<SimpleWeb::WS> {
 public:
-    using Transport = SimpleWeb::WS;
+        using Transport = SimpleWeb::WS;
 
 public:
-    ws_service() : SimpleWeb::SocketServer<SimpleWeb::WS>()
-    {
-    }
-
-    // Alternative client
-    void client(asio::detail::socket_type socket, bool wait = false, const std::function<void(unsigned short /*port*/)> &callback = nullptr)
-    {
-        std::unique_lock<std::mutex> lock(start_stop_mutex);
-
-        if(!io_service) {
-            io_service = std::make_shared<asio::io_context>();
-            internal_io_service = true;
+        ws_service() : SimpleWeb::SocketServer<SimpleWeb::WS>()
+        {
         }
 
-        after_bind();
-        accept(socket);
+        // Alternative client
+        void client(asio::detail::socket_type socket, bool wait = false, const std::function<void(unsigned short /*port*/)> &callback = nullptr)
+        {
+                std::unique_lock<std::mutex> lock(start_stop_mutex);
 
-        if(internal_io_service && io_service->stopped())
-            SimpleWeb::restart(*io_service);
+                if(!io_service) {
+                        io_service = std::make_shared<asio::io_context>();
+                        internal_io_service = true;
+                }
 
-        if(callback)
-            post(*io_service, [callback] {
-                callback(0);
-            });
+                after_bind();
+                accept(socket);
 
-        if(internal_io_service) {
-            // If thread_pool_size>1, start m_io_service.run() in (thread_pool_size-1) threads for thread-pooling
-            threads.clear();
-            for(std::size_t c = 1; c < config.thread_pool_size; c++) {
-                threads.emplace_back([this]() {
-                    this->io_service->run();
-                });
-            }
+                if(internal_io_service && io_service->stopped())
+                        SimpleWeb::restart(*io_service);
 
-            lock.unlock();
+                if(callback)
+                        post(*io_service, [callback] {
+                            callback(0);
+                        });
 
-            // Main thread
-            if(wait || config.thread_pool_size > 0)
-                io_service->run();
+                if(internal_io_service) {
+                        // If thread_pool_size>1, start m_io_service.run() in (thread_pool_size-1) threads for thread-pooling
+                        threads.clear();
+                        for(std::size_t c = 1; c < config.thread_pool_size; c++) {
+                                threads.emplace_back([this]() {
+                                        this->io_service->run();
+                                });
+                        }
 
-            lock.lock();
+                        lock.unlock();
 
-            // Wait for the rest of the threads, if any, to finish as well
-            for(auto &t : threads)
-                t.join();
+                        // Main thread
+                        if(wait || config.thread_pool_size > 0)
+                                io_service->run();
+
+                        lock.lock();
+
+                        // Wait for the rest of the threads, if any, to finish as well
+                        for(auto &t : threads)
+                                t.join();
+                }
         }
-    }
 
-    void stop() noexcept
-    {
-        std::lock_guard<std::mutex> lock(start_stop_mutex);
+        void stop() noexcept
+        {
+                std::lock_guard<std::mutex> lock(start_stop_mutex);
 
-        close_connections();
+                close_connections();
 
-        if(internal_io_service)
-            io_service->stop();
-    }
+                if(internal_io_service)
+                        io_service->stop();
+        }
 };
 
 #endif //WS_SERVICE_H_INCLUDED
+

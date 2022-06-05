@@ -142,7 +142,7 @@ public:
                 }
         };
 
-#if defined(__WATCOMC__)
+#if defined(__WATCOMC__) || defined(__MINGW32__)
         typedef std::map<std::string, std::string, iless> collection_impl;
         struct collection_t : public collection_impl {
                 const_iterator find(const std::string &value) const {
@@ -173,7 +173,7 @@ private:
                 }
         };
 
-#if defined(__WATCOMC__)
+#if defined(__WATCOMC__) || defined(__MINGW32__)
         typedef std::map<std::string, values_t *, iless> sections_impl;
         struct sections_t : public sections_impl {
                 const_iterator find(const std::string &value) const {

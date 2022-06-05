@@ -702,7 +702,7 @@ class  Parser {
 	~Parser();
 
 	struct servconfig *next(const struct configparams *param);
-	const char *default(const char *key, char &op, unsigned idx) const;
+	const char *defaults(const char *key, char &op, unsigned idx) const;
 	const char *status(int &error_code) const;
 	bool good() const;
 

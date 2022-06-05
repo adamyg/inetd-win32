@@ -28,11 +28,13 @@
  */
 
 #include "sthread.h"
-#include "satomic.h"
 
 #include <errno.h>
 #include <assert.h>
 
+#if !defined(HAVE_PTHREAD_H)
+
+#include "satomic.h"
 
 /*  The pthread_spin_init() function allocates any resources required for the
  *  use of the spin lock referred to by lock and initializes the lock to be in
@@ -143,5 +145,7 @@ pthread_spin_unlock(pthread_spinlock_t *lock)
     satomic_unlock(&lock->spin);
     return 0;
 }
+
+#endif /*HAVE_PTHREAD_H*/
 
 /*end*/

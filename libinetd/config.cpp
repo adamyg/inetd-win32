@@ -68,7 +68,7 @@
 #define MAX(X,Y)	((X) > (Y) ? (X) : (Y))
 #endif
 
-struct servconfig *nextconfigent(const struct configparams *params);
+static struct servconfig *nextconfigent(const struct configparams *params);
 static int	matchservent(const char *, const char *, const char *);
 static char	*skip(char **);
 static char	*sskip(char **);

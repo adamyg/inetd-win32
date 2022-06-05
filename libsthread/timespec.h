@@ -33,7 +33,7 @@
 #define HAVE_TIMESPEC_GET
 #endif
 #endif //HAVE_TIMESPEC_GET
-                       
+
 #include <time.h>
 
 #if defined(_MSC_VER)

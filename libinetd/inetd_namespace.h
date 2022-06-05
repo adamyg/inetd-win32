@@ -24,7 +24,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * license for more details.
  * ==
- */    
+ */
 
 /*
  *  Permit client-side interfaces within older compilers:
@@ -34,7 +34,7 @@
  *      ScopedHandle.h
  *      ScopedProcessId.h
  */
- 
+
 #ifndef INETD_DELETED_FUNCTION                  /* toolchain C+11 tweaks; emulate Boost */
 #if defined(__WATCOMC__)
 #define INETD_DELETED_FUNCTION(_f) _f;

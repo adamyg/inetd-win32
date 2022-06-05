@@ -77,6 +77,8 @@ static struct inetd::Getopt::Option long_options[] = {
 static bool verbose = false;
 static bool quiet = false;
 
+
+#if defined(HAVE_LIBMAXMINDDB)
 namespace {
 // left trim
 static inline std::string&
@@ -143,6 +145,7 @@ mmdb_lookup(MMDB_s &mmdb, const std::string &line)
 }
 
 }; // anon namespace
+#endif  //HAVE_LIBMAXMINDDB
 
 typedef std::vector<const char *> Vector;
 
@@ -181,6 +184,7 @@ main(int argc, const char **argv)
 		case 1100:	// usage
 		case '?':
 			usage(options, NULL);
+			break;
 		default:	// error
 			usage(options, "%s", errmsg.c_str());
 		}
@@ -219,8 +223,9 @@ main(int argc, const char **argv)
 	MMDB_close(&mmdb);
 
 #else
-	usage("libmaxminddb support not enabled");
+	usage(options, "libmaxminddb support not enabled");
 #endif
+
     return 0;
 }
 

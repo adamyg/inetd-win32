@@ -47,8 +47,9 @@ XCLEAN=
 
 CC=		@CC@
 AR=		@AR@
-RANLIB= 	@RANLIB@
+RANLIB=		@RANLIB@
 RM=		@RM@
+LIBTOOL=	@LIBTOOL@
 
 # Configuration
 
@@ -72,6 +73,9 @@ D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
 XFLAGS=
 CFLAGS=		@CFLAGS@
 CWARN=		@CWARN@
+ifeq (gcc,$(findstring gcc,$(CC)))
+CWARN+=		-Wno-unused-result -Wno-unused-parameter -Wno-dangling-else
+endif
 CDEBUG=		@CDEBUG@
 CRELEASE=	@CRELEASE@
 LDDEBUG=	@LDDEBUG@
@@ -123,6 +127,7 @@ LIBCSOURCES=\
 		strsep.c		\
 		strtok_r.c		\
 		strtonum.c		\
+		timegm.c		\
 		vasprintf.c
 
 CFLAGS+=	-DLIBCOMPAT_SOURCE=1
@@ -155,12 +160,12 @@ $(LIBRARY):		$(LIBOBJS)
 $(D_BIN)/dirname$(E):	MAPFILE=$(basename $@).map
 $(D_BIN)/dirname$(E):	LINKLIBS=lcompat
 $(D_BIN)/dirname$(E):	$(D_OBJ)/dirname_main$(O)
-		$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) @LDMAPFILE@
+		$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) @LDMAPFILE@
 
 $(D_BIN)/basename$(E):	MAPFILE=$(basename $@).map
 $(D_BIN)/basename$(E):	LINKLIBS=lcompat
 $(D_BIN)/basename$(E):	$(D_OBJ)/basename_main$(O)
-		$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) @LDMAPFILE@
+		$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) @LDMAPFILE@
 
 .PHONY:		installinc
 installinc:		../include/.created

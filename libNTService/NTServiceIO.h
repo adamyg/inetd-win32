@@ -28,9 +28,8 @@
  * ==end==
  */
 
-#include <cstdio>
-#include <cstdarg>
-#include <cassert>
+#include <stdio.h>
+#include <stdarg.h>
 
 #include "NTServiceIIO.h"
 

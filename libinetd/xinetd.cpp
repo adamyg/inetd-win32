@@ -292,7 +292,7 @@ static const ParserImpl::KeyValue service_attributes[] = {
 
 namespace {
 template<typename Pred>
-bool parse_file(ParserImpl &parser, const xinetd::Attribute *attr, Pred &pred)
+bool parse_file(ParserImpl &parser, const xinetd::Attribute *attr, Pred pred)
 {
 	if (attr->values.size() < 2) {
 		parser.serverr("FILE option, missing filename");
@@ -364,7 +364,7 @@ xinetd::Parser::status(int &error_code) const
 
 
 const char *
-xinetd::Parser::default(const char *key, char &op, unsigned idx) const
+xinetd::Parser::defaults(const char *key, char &op, unsigned idx) const
 {
 	if (impl_) {
 		const auto &defaults = impl_->defaults();

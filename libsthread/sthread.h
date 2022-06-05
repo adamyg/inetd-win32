@@ -36,16 +36,25 @@
  *  ==end==
  */
 
+#if defined(HAVE_CONFIG_H)
+#include "w32config.h"
+#endif
+
 #if defined(_WIN32)
 #if defined(LIBSTHREAD_SOURCE) && !defined(_WIN32_WINNT)
 #define _WIN32_WINNT 0x0600
-#endif /*LIBSTHREAD_SOURCE*/
+#endif
 #include <win32_include.h>
 #endif
 
 #include <sys/utypes.h>
 #include <sys/uio.h>
 #include <time.h>
+
+#if defined(HAVE_PTHREAD_H)
+#include <pthread.h>
+
+#else /*!HAVE_PTHREAD_H*/
 
 #if defined(LIBSTHREAD_SOURCE) && (0)
 #define ENOTSUP ENOSYS
@@ -149,7 +158,7 @@ int pthread_cond_timedwait_relative_np(pthread_cond_t *cond, pthread_mutex_t *mu
  *  read-write locks
  */
 
- typedef struct pthread_rwlock_tag {
+typedef struct pthread_rwlock_tag {
     SRWLOCK srw;
     DWORD owner;
 } pthread_rwlock_t;
@@ -176,6 +185,17 @@ int pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
 /*
  *  once
  */
+#if defined(__MINGW32__) && !defined(INIT_ONCE_STATIC_INIT)
+#define RTL_RUN_ONCE_INIT {0}
+typedef union _RTL_RUN_ONCE {
+    PVOID Ptr;
+} RTL_RUN_ONCE, *PRTL_RUN_ONCE;
+#define INIT_ONCE_STATIC_INIT RTL_RUN_ONCE_INIT
+typedef RTL_RUN_ONCE *PINIT_ONCE;
+typedef RTL_RUN_ONCE INIT_ONCE;
+typedef WINBOOL (WINAPI *PINIT_ONCE_FN) (PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context);
+WINBASEAPI WINBOOL WINAPI InitOnceExecuteOnce (PINIT_ONCE InitOnce, PINIT_ONCE_FN InitFn, PVOID Parameter, LPVOID *Context);
+#endif
 
 typedef struct pthread_once_tag {
     INIT_ONCE init_once;
@@ -230,6 +250,7 @@ int pthread_spin_unlock(pthread_spinlock_t *lock);
  *  support
  */
 
+#if !defined(__MINGW32__)
 #if !defined(CLOCK_REALTIME)
 #define CLOCK_REALTIME 0
     //System-wide realtime clock. Setting this clock requires appropriate privileges.
@@ -237,11 +258,18 @@ int pthread_spin_unlock(pthread_spinlock_t *lock);
     //Clock that cannot be set and represents monotonic time since some unspecified starting point.
 extern int clock_gettime(int clockid, struct timespec *time_spec);
 #endif
-
-#if !defined(USECONDS_T) && (0)
-#define USECONDS_T
-typedef long useconds_t;
 #endif
+
+#if !defined(__MINGW32__)
+#if !defined(USECONDS_T)
+#define USECONDS_T 1
+#ifdef _WIN64
+typedef unsigned long long useconds_t;
+#else
+typedef unsigned long useconds_t;
+#endif
+#endif /*USECONDS_T*/
+#endif /*__MINGW32__*/
 
 int usleep(useconds_t useconds);
 unsigned sleep(unsigned seconds);
@@ -249,7 +277,7 @@ unsigned sleep(unsigned seconds);
 #ifdef __cplusplus
 }
 #endif
-
-#endif  /*STHREAD_H_INCLUDED*/
+#endif /*!HAVE_PTHREAD_H*/
+#endif /*STHREAD_H_INCLUDED*/
 
 /*end*/

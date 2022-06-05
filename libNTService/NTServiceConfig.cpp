@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(NTServiceConfig_cpp, "$Id: NTServiceConfig.cpp,v 1.5 2022/03/25 17:02:36 cvsuser Exp $")
+__CIDENT_RCSID(NTServiceConfig_cpp, "$Id: NTServiceConfig.cpp,v 1.6 2022/06/05 11:08:40 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -31,14 +31,20 @@ __CIDENT_RCSID(NTServiceConfig_cpp, "$Id: NTServiceConfig.cpp,v 1.5 2022/03/25 1
 
 #include <Windows.h>
 #include <tchar.h>
-#include <strsafe.h>
-
-#pragma comment(lib, "advapi32.lib")
 
 #include "NTServiceConfig.h"                    // public header
 #include "NTServiceGetOpt.h"                    // argument parsing
 #include "NTServiceReg.h"                       // registry
 #include "NTService.h"                          // NTSERVICE_CMD_xxx
+
+#if defined(__MINGW32__)
+#include <strings.h>
+#define _strnicmp(__a,__b,__c) strncasecmp(__a,__b,__c)
+#define _stricmp(__a,__b) strcasecmp(__a,__b)
+#else
+#include <strsafe.h>
+#pragma comment(lib, "advapi32.lib")
+#endif
 
 
 //

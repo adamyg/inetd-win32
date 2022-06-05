@@ -21,6 +21,8 @@ int  isc_netaddr_masktoprefixlen(const isc_netaddr_t *s, unsigned int *lenp);
 void isc_netaddr_fromin(isc_netaddr_t *netaddr, const struct in_addr *ina);
 void isc_netaddr_fromin6(isc_netaddr_t *netaddr, const struct in6_addr *ina6);
 int  isc_netaddr_frompath(isc_netaddr_t *netaddr, const char *path);
+void isc_netaddr_setzone(isc_netaddr_t *netaddr, uint32_t zone);
+uint32_t isc_netaddr_getzone(const isc_netaddr_t *netaddr);
 void isc_netaddr_any(isc_netaddr_t *netaddr);
 void isc_netaddr_any6(isc_netaddr_t *netaddr);
 void isc_netaddr_unspec(isc_netaddr_t *netaddr);

@@ -60,7 +60,8 @@ namespace inetd {
 /////////////////////////////////////////////////////////////////////////////////////////
 //	List collection
 
-#if defined(_DEBUG)
+#if defined(_DEBUG) || \
+	(defined(__GNUC__) && !defined(NDEBUG))
 #define assert_value(...) __VA_ARGS__
 #else
 #define assert_value(...)
@@ -307,7 +308,6 @@ public:
 	friend class Guard;
 
 public:
-	typedef typename Hook::Collection Collection;
 	typedef Hook MemberHook;
 
 	struct iterator {
@@ -334,8 +334,7 @@ public:
 		iterator& operator++()
 		{
 			if (pointer ptr = ptr_) {
-				MemberHook *hook =
-					ListContainer::member_hook_assigned(ptr);
+				MemberHook *hook = member_hook_assigned(ptr);
 				ptr = nullptr;
 				if (nullptr != (hook = hook->collection_->next(hook))) {
 					ptr = hook_member(hook);
@@ -394,7 +393,11 @@ public:
 	static inline Member *
 	hook_member(MemberHook *hook)
 	{
-		size_t hook_offset = offsetof(Member, *PtrToMemberHook);
+#if defined(__GNUC__)
+		const size_t hook_offset = size_t(&(((Member *)nullptr)->*PtrToMemberHook));
+#else
+		const size_t hook_offset = offsetof(Member, *PtrToMemberHook);
+#endif
 		assert(hook);
 		assert(hook->member_ == (void *)((const char *)hook - hook_offset));
 		return (Member *)((const char *)hook - hook_offset);
@@ -500,16 +503,17 @@ public:
 	}
 
 	unsigned remove(Member *member)
-        {
+	{
 #if defined(_DEBUG) && !defined(NDEBUG)
 		assert(exists(member));
 #endif
 		return collection_.remove(member_hook_assigned(member));
 	}
 
-	static void remove_self_r(Member *member) {
+	static void remove_self_r(Member *member)
+	{
 		MemberHook *hook = member_hook_assigned(member);
-		Hook::Collection *collection = hook->collection_;
+		typename Hook::Collection *collection = hook->collection_;
 		Guard guard(*collection);
 		collection->remove(hook);
 	}
@@ -517,17 +521,17 @@ public:
 	static void remove_self(Member *member)
 	{
 		MemberHook *hook = member_hook_assigned(member);
-		Hook::Collection *collection = hook->collection_;
+		typename Hook::Collection *collection = hook->collection_;
 		collection->remove(hook);
 	}
 
 	void reset_r()
 	{
 		Guard guard(collection_);
-		reset(member);
+		reset();
 	}
 
-	void reset() 
+	void reset()
 	{
 		collection_.reset();
 	}
@@ -536,20 +540,20 @@ public:
 	int foreach_r(Functor functor, TParameter... params)
 	{
 		Guard guard(collection_);
-		return collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...);
+		return collection_.foreach(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach(Functor functor, TParameter... params)
 	{
-		return collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...);
+		return collection_.foreach(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_term_r(Functor functor, TParameter... params)
 	{
 		Guard guard(collection_);
-		if (int ret = collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...)) {
+		if (int ret = collection_.foreach(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
 		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
@@ -558,7 +562,7 @@ public:
 	template<class Functor, class... TParameter>
 	int foreach_term(Functor functor, TParameter... params)
 	{
-		if (int ret = collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...)) {
+		if (int ret = collection_.foreach(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
 		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
@@ -568,20 +572,20 @@ public:
 	int foreach_safe_r(Functor functor, TParameter... params)
 	{
 		Guard guard(collection_);
-		return collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...);
+		return collection_.foreach_safe(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_safe(Functor functor, TParameter... params)
 	{
-		return collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...);
+		return collection_.foreach_safe(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_term_safe_r(Functor functor, TParameter... params)
 	{
 		Guard guard(collection_);
-		if (int ret = collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...)) {
+		if (int ret = collection_.foreach_safe(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
 		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
@@ -590,7 +594,7 @@ public:
 	template<class Functor, class... TParameter>
 	int foreach_term_safe(Functor functor, TParameter... params)
 	{
-		if (int ret = collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...)) {
+		if (int ret = collection_.foreach_safe(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
 		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
@@ -638,12 +642,12 @@ public:
 		return iterator(member);
 	}
 
-	void erase(iterator &it) 
+	void erase(iterator &it)
 	{
 		assert(it.ptr_);
 		assert(it.ptr_->collection_ == &collection_);
 		if (Member *member = it.ptr_) {
-			member->collection_->remove(ListContainer::member_hook_assigned(member));
+			member->collection_->remove(member_hook_assigned(member));
 			it.ptr_ = nullptr;
 		}
 	}
@@ -654,6 +658,6 @@ private:
 
 #undef  assert_value
 
-}   //namespace inetd
+} //namespace inetd
 
 //end

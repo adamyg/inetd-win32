@@ -2,11 +2,24 @@ name: build
 on: [push]
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest]
+        config:
+        - {
+            name: "Windows Latest MSVC",
+            os: windows-latest,
+            toolchain: vc2022,
+            toolversion: vs170
+          }
+        - {
+           name: "Windows Latest MinGW",
+           os: windows-latest,
+           toolchain: mingw64,
+           toolversion: mingw64
+          }
     steps:
 
     - name: Checkout repository
@@ -16,11 +29,21 @@ jobs:
       run: |
         git submodule update --init --recursive
 
-    - uses: ilammy/msvc-dev-cmd@v1
+    - name: MSVC setup
+      uses: ilammy/msvc-dev-cmd@v1
+      if: startsWith(matrix.config.name, 'Windows Latest MSVC')
       with:
         arch: x86
 
-    - name: Generate vcpkgs
+    - name: MinGW-w64 setup
+      if: startsWith(matrix.config.name, 'Windows Latest MinGW')
+      shell: cmd
+      run: |
+        c:\msys64\usr\bin\pacman --noconfirm -S base-devel
+        c:\msys64\usr\bin\pacman --noconfirm -S mingw-w64-x86_64-gcc
+
+    - name: vcpkgs
+      if: startsWith(matrix.config.name, 'Windows Latest MSVC')
       shell: cmd
       run: |
         git clone https://github.com/microsoft/vcpkg ../vcpkg
@@ -29,20 +52,26 @@ jobs:
         ..\vcpkg\vcpkg integrate install
         dir /S .\vcpkg_installed
 
-    - name: Generating Makefiles
+    - name: Generate
+      if: startsWith(matrix.config.name, 'Windows Latest')
       shell: cmd
       run: |
+        @if "${{ matrix.config.toolchain }}"=="mingw64" set PATH=c:\msys64\mingw64\bin;%PATH%
+        @if NOT "${{ matrix.config.toolchain }}"=="mingw64" c:\msys64\usr\bin\pacman --noconfirm -S bison
         @set PERL=c:/Strawberry/perl/bin/perl
-        c:/Strawberry/perl/bin/perl makelib.pl --perlpath=c:/Strawberry/perl/bin --busybox=./win32/busybox --wget=./win32/wget vc2022
+        c:/Strawberry/perl/bin/perl makelib.pl --perlpath=c:/Strawberry/perl/bin --busybox=./win32/busybox --wget=./win32/wget --bison=c:/msys64/usr/bin/bison --flex=./bin/flex --verbose "${{ matrix.config.toolchain }}"
 
-    - name: Compiling
+    - name: Compile
+      if: startsWith(matrix.config.name, 'Windows Latest')
       shell: cmd
       run: |
+        @if "${{ matrix.config.toolchain }}"=="mingw64" set PATH=c:\msys64\mingw64\bin;%PATH%
         @set PERL=c:/Strawberry/perl/bin/perl
         .\win32\gmake-42 release
 
     - name: Package
       uses: actions/upload-artifact@v2
       with:
-        name: package-win32
-        path: ./bin.vs170/release/*
+        name: package-${{ matrix.config.toolchain }}
+        path: ./bin.${{ matrix.config.toolversion }}/release/*
+

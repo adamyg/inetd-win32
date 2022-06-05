@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.8 2022/05/24 03:44:37 cvsuser Exp $")
+__CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.9 2022/06/05 11:08:40 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -41,6 +41,7 @@ __CIDENT_RCSID(Logger_cpp, "$Id: Logger.cpp,v 1.8 2022/05/24 03:44:37 cvsuser Ex
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <climits>
 #include <cassert>
 #include <cctype>
@@ -135,7 +136,7 @@ class FileStream {
 
 public:
         FileStream(const char *path = 0) :
-                fp_(0), lasterror_(0), created_(std::time(NULL)), size_(0), blocks_(0)
+                fp_(0), created_(std::time(NULL)), size_(0), blocks_(0), lasterror_(0)
         {
                 if (path) open(path);
         }
@@ -242,7 +243,8 @@ public:
                         strncpy(t_directoryname, (len ? t_fullpathname : basename.c_str()), sizeof(t_directoryname));
                         t_directoryname[sizeof(t_directoryname) - 1] = 0;
 
-                        char *p1 = strrchr(t_directoryname, '/'), *p2 = strrchr(t_directoryname, '\\');
+                        char *p1 = strrchr(t_directoryname, '/');
+                        char *p2 = strrchr(t_directoryname, '\\');
                         if (p1 || p2) {         // remove trailing name.
                                 (p2 > p1 ? p2 : p1)[1] = 0;
 
@@ -322,11 +324,7 @@ public:
                 tm.tm_year -= 1900;             // Year (current year minus 1900).
                 tm.tm_mon -= 1;                 // Month (0 - 11; January = 0).
 
-#if defined(_WIN32)
-                return _mkgmtime(&tm);
-#else
                 return timegm(&tm);
-#endif
         }
 
         static int purge_logs(const std::string &basename, const time_t now, unsigned period)
@@ -379,7 +377,7 @@ public:
 private:
         int write(const char *buffer, size_t buflen)
         {
-#if defined(__WATCOMC__)
+#if defined(__WATCOMC__) || defined(__MINGW32__)
                 return std::fwrite(buffer, 1, buflen, fp_);
 #else
                 return _fwrite_nolock(buffer, 1, buflen, fp_);
@@ -591,7 +589,7 @@ public:
                 }
         }
 
-        Logger::BufferCursor *LoggerImpl::allocate(size_t buflen)
+        Logger::BufferCursor *allocate(size_t buflen)
         {
                 BufferCursor *cursor;
 

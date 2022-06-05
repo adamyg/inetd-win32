@@ -120,6 +120,9 @@ typedef struct isc_radix_tree {
 	uint32_t	maxbits;		/* for IP, 32 bit addresses */
 	int		num_active_node;	/* for debugging purposes */
 	int		num_added_node; 	/* total number of nodes */
+#if defined(__MINGW64__)
+	char		filters_[8];		/* alt sizeof() */
+#endif
 } isc_radix_tree_t;
 
 isc_result_t

@@ -34,7 +34,8 @@
 #include "sthread.h"
 
 #if defined(__WATCOMC__) || \
-        (defined(_MSC_VER) && (_MSC_VER <= 1800)) /*2013**/
+        (defined(_MSC_VER) && (_MSC_VER <= 1800)) /*2013**/ || \
+        defined(__MINGW32__)
 #include <process.h>
 #define  WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -51,6 +52,8 @@
 #include <assert.h>
 #include <unistd.h>
 
+#if !defined(HAVE_PTHREAD_H)
+
 #include "satomic.h"
 #include "thread_instance.h"
 
@@ -63,12 +66,12 @@
 
 static pthread_instance_t *instance_new(void);
 
-static pthread_once_t thread_once_ = RTL_RUN_ONCE_INIT; 
+static pthread_once_t thread_once_ = RTL_RUN_ONCE_INIT;
 static DWORD thread_tls_ = 0;
 
 static pthread_instance_t *
 instance_new(void)
-{      
+{
     pthread_instance_t *instance;
     if (NULL != (instance = (pthread_instance_t *)calloc(sizeof(pthread_instance_t), 1))) {
         instance->magic = THREAD_MAGIC;
@@ -79,7 +82,7 @@ instance_new(void)
 
 static void
 instance_free(pthread_instance_t *instance)
-{      
+{
     assert(THREAD_MAGIC == instance->magic);
     instance->magic = 0;
     free(instance);
@@ -100,7 +103,7 @@ _pthread_instance(int create)
 
     pthread_once(&thread_once_, thread_tls_once);
     if (NULL == (instance = (pthread_instance_t *) TlsGetValue(thread_tls_))) {
-        if (create) {           
+        if (create) {
             if (NULL != (instance = instance_new())) {
                 TlsSetValue(thread_tls_, (void *)instance);
             }
@@ -141,7 +144,7 @@ pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_rout
                 instance->routine = start_routine;
                 instance->arg = arg;
 
-                {   unsigned id = 0, stacksize = 0;
+                {   unsigned stacksize = 0;
                     uintptr_t handle;
                     if (attr) {                     /* optional stacksize? */
                         assert(0xBABEFACE == attr->attributes[ATTRIBUTE_MAGIC]);
@@ -229,7 +232,7 @@ pthread_join(pthread_t thread, void **value_ptr)
 
         if (! satomic_try_lock(&instance->joining)) {
             return EINVAL;                      /* another thread is already waiting */
-                /* If multiple threads simultaneously try to join with the same thread, 
+                /* If multiple threads simultaneously try to join with the same thread,
                    the results are undefined. */
         }
 
@@ -377,5 +380,7 @@ pthread_attr_getstackaddr(const pthread_attr_t *attr, void **stackaddr)
     assert(0xBABEFACE == attr->attributes[ATTRIBUTE_MAGIC]);
     return ENOSYS;
 }
+
+#endif /*HAVE_PTHREAD_H*/
 
 /*end*/

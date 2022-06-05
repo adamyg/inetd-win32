@@ -1,7 +1,7 @@
 #ifndef LIBW32_WIN32_ERRNO_H_INCLUDED
 #define LIBW32_WIN32_ERRNO_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_win32_errno_h,"$Id: win32_errno.h,v 1.3 2022/05/24 04:00:44 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_win32_errno_h,"$Id: win32_errno.h,v 1.4 2022/06/05 11:08:42 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
@@ -37,16 +37,26 @@ __CPRAGMA_ONCE
  */
 #if !defined(__MAKEDEPEND__)
 #if defined(EADDRINUSE) && (EADDRINUSE != 10048)
-#if defined(_MSC_VER)
+
+#if defined(_MSC_VER) || \
+        (defined(__MINGW32__) && defined(__MINGW64_VERSION_MAJOR))
 #if (EADDRINUSE == 100)
 #if defined(_CRT_NO_POSIX_ERROR_CODES)
 #pragma message <system_error> is incompatible with _CRT_NO_POSIX_ERROR_CODES.
 #endif
+    /*
+     *  RETHINK, as the following are assumed by the native pthread package:
+     *
+     *      #define ETIMEDOUT   138
+     *      #define ENOTSUP     129
+     *      #define EWOULDBLOCK 140
+     */
 #include "msvc_errno.h"                         /* undef error codes */
 #else
 #error unexpected EADDRINUSE value
 #endif
 #endif //_MSC_VER
+
 #endif //EADDRINUSE != 10048
 #endif //__MAKEDEPEND__
 
@@ -100,7 +110,7 @@ __CPRAGMA_ONCE
      *  WinSock errors are aliased to their BSD/POSIX counter part.
      *
      *  Note: This works for *most* errors, yet the following result in conflicts and are
-     *      explicity remapped during i/o operations.
+     *      explicity remapped during i/o operations: see w32_neterrno_map()
      *
 #define EINTR           WSAEINTR                // 10004 "Interrupted system call"
 #define EBADF           WSAEBADF                // 10009 "Bad file number"

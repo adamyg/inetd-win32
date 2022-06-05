@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_io_c,"$Id: w32_io.c,v 1.2 2022/03/24 12:42:43 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_io_c,"$Id: w32_io.c,v 1.3 2022/06/05 11:08:41 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -39,7 +39,11 @@ __CIDENT_RCSID(gr_w32_io_c,"$Id: w32_io.c,v 1.2 2022/03/24 12:42:43 cvsuser Exp 
  */
 
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT        0x0501              /* enable xp+ features */
+#define _WIN32_WINNT 0x0501                     /* enable xp+ features */
+#endif
+#if defined(__MINGW32__)
+#undef  _WIN32_VER
+#define _WIN32_VER _WIN32_WINNT
 #endif
 
 #include <assert.h>
@@ -2945,7 +2949,9 @@ StatW(const wchar_t *name, struct stat *sb)
 {
     wchar_t fullname[WIN32_PATH_MAX] = {0}, *pfname = NULL;
     int flength, ret = -1;
+#if defined(DO_FILEMAGIC)
     BOOL domagic = 0;
+#endif
 
     if (name == NULL || sb == NULL) {
         ret = -EFAULT;                          /* basic checks */

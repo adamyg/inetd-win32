@@ -1,7 +1,7 @@
 #ifndef LIBW32_UNISTD_H_INCLUDED
 #define LIBW32_UNISTD_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_unistd_h,"$Id: unistd.h,v 1.5 2022/05/24 07:50:35 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_unistd_h,"$Id: unistd.h,v 1.6 2022/06/05 11:08:41 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
@@ -42,7 +42,7 @@ __CPRAGMA_ONCE
 #if (_MSC_VER <  1910 || _MSC_VER > 1916)       /* MSVC 2017: 19.10 .. 16 */
 #if (_MSC_VER > 1929)                           /* MSVC 2019: 19.20 .. 29 */
 #if (_MSC_VER > 1932)                           /* MSVC 2022: 19.30 .. 32 */
-#error unistd.h: untested MSVC Version (2005 -- 2019.31)
+#error unistd.h: untested MSVC Version (2005 -- 2019.32)
 	//see: https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
 #endif //2022
 #endif //2019
@@ -107,15 +107,21 @@ __CPRAGMA_ONCE
  *      which among others includes <ctype.h>
  */
 #include <win32_errno.h>
+#include <win32_time.h>
 
 #include <sys/cdefs.h>                          /* __BEGIN_DECLS, __PDECL */
 #include <sys/utypes.h>
 #include <sys/stat.h>
-//  #include <sys/statfs.h>
+#if defined(HAVE_SYS_STATFS_H)
+#include <sys/statfs.h>
+#endif
 #include <time.h>                               /* required to replace strfime() */
-//  #include <utime.h>
 #include <stddef.h>                             /* offsetof() */
+#if defined(USE_NATIVE_DIRECT)
+#include <direct.h>
+#else
 #include <dirent.h>                             /* MAXPATHLENGTH, MAXNAMELENGTH */
+#endif
 #include <limits.h>                             /* _MAX_PATH */
 #include <process.h>                            /* getpid, _beginthread */
 
@@ -450,25 +456,24 @@ LIBW32_API extern char *suboptarg;
 LIBW32_API int          getsubopt (char **optionp, char * const *tokens, char **valuep);
 
 /* <string.h> */
-//  #if defined(_MSC_VER) || defined(__WATCOMC__)
-//  LIBW32_API int          strcasecmp(const char *s1, const char *s2);
-//  LIBW32_API int          strncasecmp(const char *s1, const char *s2, size_t len);
-//  #endif
-//
-//  #if (defined(_MSC_VER) && (_MSC_VER < 1400)) || \   // cont
-//            defined(__MINGW32__) || defined(__WATCOMC__)
-//  #define NEED_STRNLEN                                // see: w32_string.c
-//  #endif
-//  #if defined(NEED_STRNLEN)
-//  LIBW32_API size_t       strnlen(const char *s, size_t maxlen);
-//  #endif
+#if (0) //libcompat
+#if defined(_MSC_VER) || defined(__WATCOMC__)
+#define NEED_STRCASECMP                         /*see: w32_string.c*/
+#endif
+#if defined(NEED_STRCASECMP)
+LIBW32_API int          strcasecmp(const char *s1, const char *s2);
+LIBW32_API int          strncasecmp(const char *s1, const char *s2, size_t len);
+#endif /*NEED_STRCASECMP*/
 
-/* <unistd.h> */
-LIBW32_API int          w32_gettimeofday (struct timeval *tv, void /*struct timezone*/ *tz);
-
-LIBW32_API int          w32_utime (const char *path, const struct utimbuf *times);
-LIBW32_API int          w32_utimeA (const char *path, const struct utimbuf *times);
-LIBW32_API int          w32_utimeW (const wchar_t *path, const struct utimbuf *times);
+#if (defined(_MSC_VER) && (_MSC_VER < 1400)) || \
+            defined(__WATCOMC__) || \
+            defined(__MINGW32__)
+#define NEED_STRNLEN                            /*see: w32_string.c*/
+#endif
+#if defined(NEED_STRNLEN)
+LIBW32_API size_t       strnlen(const char *s, size_t maxlen);
+#endif /*NEED_STRNLEN*/
+#endif //libcompat
 
 #if defined(WIN32_UNISTD_MAP)
 #if !defined(_WINSOCKAPI_) && !defined(_WINSOCK2API_)
@@ -491,9 +496,6 @@ LIBW32_API const char * getprogname (void);
 LIBW32_API const char * getprognameA (void);
 LIBW32_API const wchar_t * getprognameW (void);
 
-LIBW32_API void         setproctitle (const char *fmt, ...);
-LIBW32_API void         setproctitle_fast (const char *fmt, ...);
-
 LIBW32_API int          issetugid (void);
 
 LIBW32_API int          w32_getuid (void);
@@ -514,7 +516,7 @@ LIBW32_API int          getgroups (int gidsetsize, gid_t grouplist[]);
 LIBW32_API int          setgroups (size_t size, const gid_t *gidset);
 
 /* time.h */
-//  LIBW32_API unsigned int sleep (unsigned int secs);
+LIBW32_API unsigned int sleep (unsigned int secs);
 LIBW32_API unsigned int w32_sleep (unsigned int secs);
 LIBW32_API size_t       w32_strftime (char *buf, size_t buflen, const char *fmt, const struct tm *tm);
 
@@ -685,9 +687,9 @@ LIBW32_API int          mknod (const char *path, int mode, int dev);
 LIBW32_API int          mknodA (const char *path, int mode, int dev);
 LIBW32_API int          mknodW (const wchar_t *path, int mode, int dev);
 
-#if !defined(F_GETFL)
-#define F_GETFL                         1
-#define F_SETFL                         2
+#if !defined(F_GETFL)   /* match linux definitions */
+#define F_GETFL         3       /* get file status flags */
+#define F_SETFL         4       /* set file status flags */
 #endif
 
 #if !defined(fcntl)
@@ -697,15 +699,28 @@ LIBW32_API int          w32_fcntl (int fd, int ctrl, int);
 LIBW32_API int          w32_fsync (int fildes);
 
 /*string.h*/
-//  LIBW32_API char *       strsep (char **stringp, const char *delim);
-#if defined(_MSC_VER)
-//  LIBW32_API size_t       strlcat (char *dst, const char *src, size_t siz);
-//  LIBW32_API size_t       strlcpy (char *dst, const char *src, size_t siz);
+#if (0) //libcompat
+LIBW32_API char *       strsep (char **stringp, const char *delim);
+#if !defined(HAVE_STRSEP)
+#define HAVE_STRSEP     1
+#endif 
+#if defined(_MSC_VER) || defined(__MINGW32__)
+#if !defined(HAVE_STRLCAT)
+#define HAVE_STRLCAT    1
+#define HAVE_STRLCPY    1
+#endif 
+LIBW32_API size_t       strlcat (char *dst, const char *src, size_t siz);
+LIBW32_API size_t       strlcpy (char *dst, const char *src, size_t siz);
+#endif //libcompat
+
 #if (_MSC_VER <= 1600)
 LIBW32_API unsigned long long strtoull (const char * nptr, char ** endptr, int base);
-LIBW32_API long long    strtoll(const char * nptr, char ** endptr, int base);
+LIBW32_API long long    strtoll (const char * nptr, char ** endptr, int base);
 #endif
 #endif /*_MSC_VER*/
+
+LIBW32_API void         setproctitle(const char *fmt, ...);
+LIBW32_API void         setproctitle_fast(const char *fmt, ...);
 
 __END_DECLS
 

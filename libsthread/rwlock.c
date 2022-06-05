@@ -32,6 +32,13 @@
 #include <errno.h>
 #include <assert.h>
 
+#if !defined(HAVE_PTHREAD_H)
+
+#if defined(__MINGW32__)
+WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockExclusive (PSRWLOCK SRWLock);
+WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockShared (PSRWLOCK SRWLock);
+#endif
+
 
 int
 pthread_rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr)
@@ -117,5 +124,7 @@ pthread_rwlock_unlock(pthread_rwlock_t *rwlock)
     }
     return 0;
 }
+
+#endif /*HAVE_PTHREAD_H*/
 
 /*end*/

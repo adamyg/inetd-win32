@@ -1,10 +1,12 @@
 #pragma once
-/* -*- mode: c; indent-width: 8; -*- */
+
 /*
- * windows inetd service - ACL.
+ * <sys/fd_set.h>
  *
  * Copyright (c) 2022, Adam Young.
  * All rights reserved.
+ *
+ * This file is part of inetd-win32.
  *
  * The applications are free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License as
@@ -25,32 +27,6 @@
  * ==end==
  */
 
-#include "inetd.h"
+#include <sys/socket.h>
 
-#include "../libiptable/isc_radix.h"
-#include "../libiptable/isc_netaddr.h"
-
-class AccessIP {
-public:
-	AccessIP(const netaddrs &netaddrs, int match_default = 0 /*<0=none,>0=ALL*/);
-	~AccessIP();
-
-	bool allowed(const netaddr &addr) const;
-	bool allowed(const struct sockaddr_storage *addr) const;
-
-private:
-	void acl_create(const netaddrs &netaddrs, int match_default);
-	bool acl_active() const;
-	bool acl_add(const netaddr *addr, bool pos);
-	bool acl_add(isc_prefix_t *pfx, bool pos);
-	bool acl_match(const netaddr *addr, int &match) const;
-	bool acl_match(const struct sockaddr_storage *addr, int &match) const;
-	bool acl_match(const isc_prefix_t *pfx, int &match) const;
-	void acl_reset();
-
-private:
-	isc_mem_t at_mct;
-	isc_radix_tree_t *at_acl;
-};
-
-//end
+/*end*/

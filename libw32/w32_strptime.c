@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_strptime_c,"$Id: w32_strptime.c,v 1.2 2022/03/24 15:21:40 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_strptime_c,"$Id: w32_strptime.c,v 1.3 2022/06/05 11:08:42 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -37,7 +37,6 @@ __CIDENT_RCSID(gr_w32_strptime_c,"$Id: w32_strptime.c,v 1.2 2022/03/24 15:21:40 
 #include <sys/utypes.h>
 #include <unistd.h>
 
-//  #include <sys/localedef.h>
 #include <ctype.h>
 #include <locale.h>
 #include <string.h>

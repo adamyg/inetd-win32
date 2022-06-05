@@ -56,7 +56,7 @@
 #include <iostream>
 #include <string>
 
-#if defined(__WATCOMC__) && (__WATCOMC__ <= 1300) 
+#if defined(__WATCOMC__) && (__WATCOMC__ <= 1300)
 // not visible under __cplusplus
 extern "C" _WCRTLINK extern int sprintf_s( char * __s, size_t __n, const char * __format, ... );
 #endif
@@ -173,6 +173,7 @@ public:
 public:
 	virtual void error_report(enum error_code code, const char *message)
 	{
+		(void) code;
 		if (msg_) {
 			msg_->assign(message);
 		} else {
@@ -258,6 +259,8 @@ private:
 	{
 		const char *arg, *has_equal;
 		int ambiguous = 0, match = -1, arglen, i;
+
+		(void) nargc;
 
 		arg = place_ + 1;
 		if (*arg == '\0') {
@@ -379,3 +382,4 @@ private:
 }   //namspace inetd
 
 #endif //LIBINETD_GETOPT_H_INCLUDED
+

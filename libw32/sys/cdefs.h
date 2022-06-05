@@ -1,7 +1,7 @@
 #ifndef LIBW32_SYS_CDEFS_H_INCLUDED
 #define LIBW32_SYS_CDEFS_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_sys_cdefs_h,"$Id: cdefs.h,v 1.3 2022/03/25 17:05:41 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_sys_cdefs_h,"$Id: cdefs.h,v 1.4 2022/06/05 11:08:42 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*-
@@ -290,7 +290,7 @@ __CPRAGMA_ONCE
 #define __dead2                 __attribute__((__noreturn__))
 #define __pure2                 __attribute__((__const__))
 #define __unused
-#elif __GNUC__ == 2 && __GNUC_MINOR__ >= 7
+#elif __GNUC__ >= 2 || (_GNUC__ == 2 && __GNUC_MINOR__ >= 7)
 #define __dead2                 __attribute__((__noreturn__))
 #define __pure2                 __attribute__((__const__))
 #define __unused                __attribute__((__unused__))

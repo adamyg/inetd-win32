@@ -86,7 +86,7 @@ public:
                 return *this;
         }
 
-        friend CString& operator+(CString a, const CString &b)
+        friend CString operator+(CString a, const CString &b)
         {
                 a += b;
                 return a;

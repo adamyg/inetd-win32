@@ -99,7 +99,7 @@ make(const std::vector<inetd::String> &passenv, const std::vector<inetd::String>
 static const char **
 make(const std::vector<inetd::String> &passenv, const std::vector<inetd::String> &setenv)
 {
-	size_t size, elements = 0;
+	unsigned size, elements = 0;
 
 	if (0 == (size = make(passenv, setenv, elements, nullptr, nullptr)))
 		return nullptr; // no content
@@ -120,7 +120,7 @@ make(const std::vector<inetd::String> &passenv, const std::vector<inetd::String>
 static inetd::CriticalSection env_lock;
 
 
-environment::environment() 
+environment::environment()
 	: env_(nullptr)
 {
 }

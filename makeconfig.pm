@@ -1,4 +1,4 @@
-# $Id: makeconfig.pm,v 1.3 2022/05/21 15:58:48 cvsuser Exp $
+# $Id: makeconfig.pm,v 1.4 2022/06/05 11:08:39 cvsuser Exp $
 # Makefile generation under Win32.
 # -*- perl; tabs: 8; indent-width: 4; -*-
 # Automake emulation for non-unix environments.
@@ -60,10 +60,13 @@ our @MAKEFILES      = ();                       # local makefiles; build order
 
 our @LIBRARIES      = ();                       # local libraries -l<xxx> lib<xxx>.lib
 our @LIBRARIES2     = ();                       # local libraries -l<xxx> xxx.lib
+our @TESTLIBRARIES  = ();                       # external libraries, tested whether linkable
 our @OPTLIBRARIES   = ();                       # optional libraries
 
 my  $CC = '';
+my  $CCVER = '';
 my  $CXX = '';
+my  $CXXVER = '';
 my  $RTLIBRARY = '';
 my  $WINSDKLIB = '';
 
@@ -132,13 +135,14 @@ sub LoadProfile($$)
 # Returns:
 #   nothing
 #
-sub LoadConfigure($$$$$)
+sub LoadConfigure($$$$$$)
 {
     my ($self, $makelib, $type_, $env_, $tokens_, $verbose_) = @_;
 
     $x_env = $env_;
     $x_tokens = $tokens_;
     $o_verbose = $verbose_;
+
     $self->__ImportConfigurations($makelib);
 
     print "loading:  ${makelib}, <${TOOLCHAIN}>\n";
@@ -172,8 +176,14 @@ sub __ImportConfigurations
     $CC = $$x_tokens{CC}                                            # Program for compiling C programs.
         if (defined $$x_tokens{CC});
 
+    $CCVER = $$x_tokens{CCVER}                                      # C standard
+        if (defined $$x_tokens{CCVER});
+
     $CXX = $$x_tokens{CXX}                                          # Program for compiling C++ programs.
         if (defined $$x_tokens{CXX});
+
+    $CXXVER = $$x_tokens{CXXVER}                                    # C++ standard
+        if (defined $$x_tokens{CXXVER});
 
     $RTLIBRARY = $$x_tokens{RTLIBRARY}                              # Default Run-Time library.
         if (defined $$x_tokens{RTLIBRARY});
@@ -307,6 +317,7 @@ sub __ExportConfigurations
     $self->{MAKEFILES}      = \@MAKEFILES;
     $self->{LIBRARIES}      = \@LIBRARIES;
     $self->{LIBRARIES2}     = \@LIBRARIES2;
+    $self->{TESTLIBRARIES}  = \@TESTLIBRARIES;
     $self->{OPTLIBRARIES}   = \@OPTLIBRARIES;
 
     $$x_tokens{PACKAGE_VERSION} = $PACKAGE_VERSION;
@@ -316,7 +327,9 @@ sub __ExportConfigurations
     $$x_tokens{PACKAGE_TARNAME} = $PACKAGE_TARNAME;
 
     $$x_tokens{CC}          = $CC;
+    $$x_tokens{CCVER}       = $CCVER;
     $$x_tokens{CXX}         = $CXX;
+    $$x_tokens{CXXVER}      = $CXXVER;
     $$x_tokens{RTLIBRARY}   = $RTLIBRARY;
     $$x_tokens{WINSDKLIB}   = $WINSDKLIB;
 
@@ -395,7 +408,8 @@ sub __PrintArray
 }
 
 
-sub __PrintArrayX {
+sub __PrintArrayX
+{
     my $prefix = shift || '';
     my $suffix = shift || '';
     my $s = '';
@@ -412,6 +426,52 @@ sub __PrintArrayX {
         }
     }
     return $s;
+}
+
+
+# Function:
+#   set_c_standard
+# Parameters:
+#   standard - C standad, 90, 99, 11, 17, 23
+#
+sub
+set_c_standard($)
+{
+    my ($standard) = @_;
+    my $version = int($standard);
+
+    ($version == 98 || $version == 99 || $version == 11 || $version == 17) or
+        die "set_C_standard: invalid standard <${standard}>\n";
+
+    if ('gcc' eq $CC || 'g++' eq $CC) {
+        $CCVER = "-std=c${version}";
+
+    } else {
+        die "set_c_standard: unsupport toolchain <${CC}>\n";
+    }
+}
+
+
+# Function:
+#   set_cxx_standard
+# Parameters:
+#   standard - C++ standad, 98, 11, 14, or 17.
+#
+sub
+set_cxx_standard($)
+{
+    my ($standard) = @_;
+    my $version = int($standard);
+
+    ($version == 98 || $version == 11 || $version == 14 || $version == 17) or
+        die "set_CXX_standard: invalid standard <${standard}>\n";
+
+    if ('gcc' eq $CC || 'g++' eq $CC) {
+        $CXXVER = "-std=c++${version}";
+
+    } else {
+        die "set_cxx_standard: unsupport toolchain <${CC}>\n";
+    }
 }
 
 
@@ -794,3 +854,4 @@ verbose {
 }
 
 1;
+

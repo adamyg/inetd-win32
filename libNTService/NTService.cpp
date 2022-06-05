@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(NTService_cpp, "$Id: NTService.cpp,v 1.6 2022/05/24 03:41:11 cvsuser Exp $")
+__CIDENT_RCSID(NTService_cpp, "$Id: NTService.cpp,v 1.7 2022/06/05 11:08:40 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -36,11 +36,11 @@ __CIDENT_RCSID(NTService_cpp, "$Id: NTService.cpp,v 1.6 2022/05/24 03:41:11 cvsu
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <assert.h>
 
-#if defined(__WATCOMC__) && (__WATCOMC__ <= 1300) 
-// not visible under __cplusplus
+#if defined(__WATCOMC__) && (__WATCOMC < 1300)  // not visible under __cplusplus
 extern "C" _WCRTLINK extern int asctime_s(char *__s, size_t __maxsize, const struct tm *__timeptr);
 #endif
 
@@ -50,8 +50,10 @@ extern "C" _WCRTLINK extern int asctime_s(char *__s, size_t __maxsize, const str
 
 #include "NTServMsg.h"                          // event msg identifiers
 
+#if !defined(__MINGW32__)
 #pragma comment(lib, "Version.lib")             // GetFileVersion
 #pragma comment(lib, "Dbghelp.lib")             // EnumModules
+#endif
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -60,12 +62,27 @@ extern "C" _WCRTLINK extern int asctime_s(char *__s, size_t __maxsize, const str
 
 #if defined(__WATCOMC__)
 #include <imagehlp.h>
+
+#elif defined(__MINGW32__)
+#include <imagehlp.h>
+#include <strings.h>
+#if !defined(_MAX_PATH)
+#define _MAX_PATH MAX_PATH
+#endif
+#if !defined(ERROR_FILE_TOO_LARGE)
+#define ERROR_FILE_TOO_LARGE 223
+#endif
+#pragma GCC diagnostics ignored "-Wmissing-field-initializers"
+#define _strnicmp(__a,__b,__c) strncasecmp(__a,__b,__c)
+#define _stricmp(__a,__b) strcasecmp(__a,__b)
+
 #else
 #pragma warning(disable:4091) // typedef ': ignored on left of '' when no variable is declared)
 #include <dbghelp.h>
 #include <comdef.h>
 #endif
 #include <psapi.h>
+
 
 CNTService* CNTService::__serviceInstance = NULL;
         // Service singleton --
@@ -75,9 +92,9 @@ CNTService::CNTService(const char* szServiceName, NTService::IDiagnostics &diags
                 diags_(&diags), registry_(szServiceName, diags),
                 m_iMajorVersion(1), m_iMinorVersion(0), m_iReleaseVersion(0),
                 m_hStopEvent(NULL), m_hEventSource(NULL),
-                m_hServiceStatus(NULL), m_Status(),
-                m_dwCheckPoint(0),
+                m_hServiceStatus((SERVICE_STATUS_HANDLE)NULL), m_Status(),
                 m_dwControlsAccepted(0),
+                m_dwCheckPoint(0),
                 m_bIsRunning(false),
                 m_bRunAsConsole(false),
                 m_bConsoleTrap(false),
@@ -707,6 +724,26 @@ void CNTService::ConfigClose()
 }
 
 
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+static int
+asctime_s(char *buf, size_t buflen, const struct tm *tm)
+{
+        static const char day[][4] = {
+                "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+                };
+        static const char mon[][4] = {
+                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                };
+
+        snprintf(buf, buflen, "%.3s %.3s%3d %.2d:%.2d:%.2d %d\n", day[tm->tm_wday], mon[tm->tm_mon],
+                tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, 1900 + tm->tm_year);
+        buf[buflen - 1] = 0;
+        return 0;
+}
+#endif  //__MINGW32__
+
+
 //virtual
 bool CNTService::ConfigUpdateProfile()
 {
@@ -725,7 +762,7 @@ bool CNTService::ConfigUpdateProfile()
                 return true;
         }
                                                 // open/create
-        if (::RegCreateKeyExA(registry_.RootKey(), "Statistics", 0, "", 0,
+        if (::RegCreateKeyExA(registry_.RootKey(), "Statistics", 0, NULL, 0,
                         KEY_READ | KEY_WRITE, NULL, &hSubkey, &dwRet) == ERROR_SUCCESS) {
 
                 const time_t curtime = time(NULL);
@@ -976,7 +1013,7 @@ void CNTService::ServiceMain(DWORD dwArgc, LPTSTR* lpszArgv)
         // Register the control request handler
         pService->m_Status.dwCurrentState = SERVICE_START_PENDING;
         pService->m_hServiceStatus = ::RegisterServiceCtrlHandlerA(pService->m_szServiceName, ControlHandler);
-        if (NULL == pService->m_hServiceStatus) {
+        if ((SERVICE_STATUS_HANDLE)NULL == pService->m_hServiceStatus) {
                 pService->LogEvent(EVENTLOG_ERROR_TYPE, EVMSG_CTRLHANDLERNOTINSTALLED);
                 return;
         }
@@ -1591,3 +1628,4 @@ void CNTService::ServiceTrace(const char *fmt, ...)
 }
 
 //end
+

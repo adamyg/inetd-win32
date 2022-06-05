@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.12 2022/05/24 03:44:38 cvsuser Exp $")
+__CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.13 2022/06/05 11:08:40 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -31,14 +31,25 @@ __CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.12 2022/05/24 03:44:38 cvsuser 
 
 #include <sys/cdefs.h>
 #include <sys/param.h>
-#include <sys/socket.h>
 #include <time.h>
+#include <assert.h>
+
 #include <fcntl.h>
 #include <io.h>
 
 #include <vector>
 #include <algorithm>
 #include <cstring>
+
+#if defined(__MINGW32__) && defined(SLIST_ENTRY)
+#pragma push_macro("SLIST_ENTRY")               // <sys/queue.h>
+#undef SLIST_ENTRY
+#include <WinSock2.h>
+#pragma pop_macro("SLIST_ENTRY")
+#else
+#include <WinSock2.h>
+#undef SLIST_ENTRY
+#endif
 
 #include "Service.h"                            // public header
 #include "ServiceDiags.h"
@@ -50,6 +61,10 @@ __CIDENT_RCSID(Service_cpp,"$Id: Service.cpp,v 1.12 2022/05/24 03:44:38 cvsuser 
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //  Pipe endpoint
+
+#if !defined(PIPE_REJECT_REMOTE_CLIENTS)
+#define PIPE_REJECT_REMOTE_CLIENTS  0x00000008
+#endif
 
 #define OPENMODE        PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED
 #define PIPEMODE        PIPE_TYPE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS

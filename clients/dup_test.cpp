@@ -203,7 +203,8 @@ main(int argc, char **argv)
                         }
                 } else {
                         if (server.bind(address, port)) {
-                                server.listen(Acceptor(process_group, progname));
+                                Acceptor acceptor(process_group, progname);
+                                server.listen(acceptor);
                         }
                 }
                 return 0;

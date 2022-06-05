@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_time_c,"$Id: w32_time.c,v 1.2 2022/03/24 12:42:45 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_time_c,"$Id: w32_time.c,v 1.3 2022/06/05 11:08:42 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -110,12 +110,12 @@ __CIDENT_RCSID(gr_w32_time_c,"$Id: w32_time.c,v 1.2 2022/03/24 12:42:45 cvsuser 
 //
 //      No errors are defined.
 */
-//unsigned int
-//sleep (unsigned int secs)
-//{
-//    Sleep((DWORD)secs * 1000);
-//    return (0);
-//}
+unsigned int
+sleep (unsigned int secs)
+{
+    Sleep((DWORD)secs * 1000);
+    return (0);
+}
 
 unsigned int
 w32_sleep (unsigned int secs)
@@ -155,7 +155,7 @@ w32_sleep (unsigned int secs)
 
 LIBW32_API int
 w32_gettimeofday(
-    struct timeval *tv, /*struct timezone*/ void *tz)
+    struct timeval *tv, struct timezone *tz)
 {
     __CUNUSED(tz)
     if (tv) {
@@ -169,7 +169,7 @@ w32_gettimeofday(
 
 #elif defined(__MINGW32__)
 #undef gettimeofday
-        return gettimeofday(tv, tz)
+        return gettimeofday(tv, tz);
 
 #else //DEFAULT
         FILETIME ft;
@@ -185,6 +185,16 @@ w32_gettimeofday(
     errno = EINVAL;
     return -1;
 }
+
+
+#if !defined(__MINGW32__)
+LIBW32_API int
+gettimeofday(
+    struct timeval *tv, struct timezone *tz)
+{
+    return w32_gettimeofday(tv, tz);
+}
+#endif
 
 
 /*
@@ -305,24 +315,14 @@ w32_utime(const char *path, const struct utimbuf *times)
 LIBW32_API int
 w32_utimeA(const char *path, const struct utimbuf *times)
 {
-#if defined(__MINGW32__)
-#undef utime
-    return utime(path, (struct utimbuf *)times);
-#else
     return _utime(path, (struct _utimbuf *)times);
-#endif
 }
 
 
 LIBW32_API int
 w32_utimeW(const wchar_t *path, const struct utimbuf *times)
 {
-#if defined(__MINGW32__)
-#undef utime
-    return wutime(path, (struct utimbuf *)times);
-#else
     return _wutime(path, (struct _utimbuf *)times);
-#endif
 }
 
 /*end*/

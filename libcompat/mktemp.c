@@ -148,7 +148,7 @@ xmktemp(char *path, char *result, size_t length)
 
 		pathlen = strlen(path + 4);	/*include trailing '/'*/
 
-		if (tmplen && (pathlen + tmplen) < sizeof(t_path)) {
+		if (tmplen && (pathlen + tmplen) < (int)sizeof(t_path)) {
 
 			if (t_path[tmplen-1] == '\\') --tmplen;
 			(void) memcpy(t_path + tmplen, path + 4, pathlen + 1 /*nul*/);
