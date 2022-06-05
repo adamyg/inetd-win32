@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.8 2022/06/05 11:08:39 cvsuser Exp $
+# $Id: Makefile.in,v 1.9 2022/06/05 11:28:35 cvsuser Exp $
 # example services Makefile
 #
 #
@@ -106,7 +106,7 @@ CEXTRA+=	-DHAVE_LIBCERTSTORE
 CINCLUDE+=	-I../libcertstore
 endif
 
-ifeq (vc,$(findstring vc,"@TOOLCHAIN@"))
+ifeq (vs,$(findstring vs,"@TOOLCHAIN@"))
 ifeq ("$(OPENSSL)","")
 OPENSSL		=../vcpkg_installed/x86-windows
 ifeq ("$(wildcard $(OPENSSL)/*)","")

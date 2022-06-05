@@ -41,6 +41,7 @@ jobs:
       run: |
         c:\msys64\usr\bin\pacman --noconfirm -S base-devel
         c:\msys64\usr\bin\pacman --noconfirm -S mingw-w64-x86_64-gcc
+        c:\msys64\usr\bin\pacman --noconfirm -S mingw-w64-x86_64-openssl
 
     - name: vcpkgs
       if: startsWith(matrix.config.name, 'Windows Latest MSVC')
