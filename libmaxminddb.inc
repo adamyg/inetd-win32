@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: libmaxminddb.inc,v 1.1 2022/05/08 03:53:50 cvsuser Exp $
+# $Id: libmaxminddb.inc,v 1.2 2022/06/05 11:08:39 cvsuser Exp $
 # libmaxmindb support
 #
 #
@@ -28,6 +28,21 @@
 # ==end==
 #
 
+INCMAXMINDDB=
+DEFMAXMINDDB=
+LIBMAXMINDDB=
+
+################################################################################
+# MingGW
+
+ifeq (mingw,$(findstring mingw,"@TOOLCHAIN@"))
+
+
+################################################################################
+# Visual studio
+
+else ifeq (vs,$(findstring vs,"@TOOLCHAIN@"))
+
 ifeq ("$(MAXMINDDB)","")
 MAXMINDDB	=../vcpkg_installed/x86-windows
 ifeq ("$(wildcard $(MAXMINDDB)/include/maxminddb/*)","")
@@ -38,10 +53,6 @@ endif
 endif
 endif
 
-INCMAXMINDDB=
-DEFMAXMINDDB=
-LIBMAXMINDDB=
-
 ifneq ("$(MAXMINDDB)","")
 INCMAXMINDDB=	-I$(MAXMINDDB)/include
 DEFMAXMINDDB=	-DHAVE_LIBMAXMINDDB
@@ -50,6 +61,8 @@ LIBMAXMINDDB=	$(MAXMINDDB)/lib/libmaxminddb.lib
 else
 LIBMAXMINDDB=	$(MAXMINDDB)/debug/lib/libmaxminddbd.lib
 endif
+endif
+
 endif
 
 #

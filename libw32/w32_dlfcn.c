@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_dlfcn_c,"$Id: w32_dlfcn.c,v 1.1 2022/03/24 12:42:43 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_dlfcn_c,"$Id: w32_dlfcn.c,v 1.2 2022/06/05 11:08:41 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -50,7 +50,11 @@ typedef struct globallib {
     char                        g_name[1];
 } globallib_t;
 
-__declspec(thread) static char  x_dlerror[DLERROR_LEN];
+#if defined(__MINGW32__)
+static __thread char x_dlerror[DLERROR_LEN];
+#else
+__declspec(thread) static char x_dlerror[DLERROR_LEN];
+#endif
 
 static unsigned                 x_dlopen;
 static CRITICAL_SECTION         x_guard;

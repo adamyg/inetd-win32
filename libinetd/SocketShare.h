@@ -26,19 +26,26 @@
  * ==end==
  */
 
-#include <cstdio>
+#include "inetd_namespace.h"
+
+#include <stdio.h>
 #include <cassert>
 
 #include "WindowStd.h"
 #include "ScopedHandle.h"
 #include "ScopedProcessId.h"
 
+#if defined(__WATCOMC__) && (__WATCOMC__ <= 1300) 
+// not visible under __cplusplus
+extern "C" _WCRTLINK extern int sprintf_s( char * __s, size_t __n, const char * __format, ... );
+#endif
+
 #pragma comment(lib, "Rpcrt4.lib")		// UUID
 
 namespace inetd {
 class SocketShare {
-	SocketShare(const SocketShare &) = delete;
-	SocketShare& operator=(const SocketShare &) = delete;
+	INETD_DELETED_FUNCTION(SocketShare(const SocketShare &))
+	INETD_DELETED_FUNCTION(SocketShare& operator=(const SocketShare &))
 
 private:
 	struct ServerProfile {
@@ -59,7 +66,8 @@ private:
 	struct ClientProfile {
 		ClientProfile(const char *name)
 		{
-			strncpy_s(basename, name, sizeof(basename));
+			strncpy(basename, name, sizeof(basename)-1);
+			basename[sizeof(basename)-1]=0;
 		}
 
 		~ClientProfile() { }
@@ -89,18 +97,18 @@ private:
 
 public:
 	class Server {
-		Server(const Server &) = delete;
-		Server& operator=(const Server &) = delete;
+		INETD_DELETED_FUNCTION(Server(const Server &))
+		INETD_DELETED_FUNCTION(Server& operator=(const Server &))
 
 	public:
 		Server(const char *progname, const char *cd, HANDLE job_handle, 
-                            const char **argv = nullptr, const char **envv = nullptr) :
+			    const char **argv = nullptr, const char **envv = nullptr) :
 			profile_(), job_handle_(job_handle), progname_(progname), cd_(cd), argv_(argv), envv_(envv)
 		{
 		}
 
 		Server(const char *progname, const char *cd, 
-                            const char **argv = nullptr, const char **envv = nullptr) :
+			    const char **argv = nullptr, const char **envv = nullptr) :
 			profile_(), job_handle_(nullptr), progname_(progname), cd_(cd), argv_(argv), envv_(envv)
 		{
 		}
@@ -120,7 +128,7 @@ public:
 
 		HANDLE process_handle() const
 		{
-			profile_.child.process_handle();
+			return profile_.child.process_handle();
 		}
 
 		int pid() const
@@ -138,8 +146,8 @@ public:
 	};
 
 	class Client {
-		Client(const Client &) = delete;
-		Client& operator=(const Client &) = delete;
+		INETD_DELETED_FUNCTION(Client(const Client &))
+		INETD_DELETED_FUNCTION(Client& operator=(const Client &))
 
 	public:
 		Client(const char *basename) : profile_(basename) { }

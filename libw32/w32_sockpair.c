@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_sockpair_c,"$Id: w32_sockpair.c,v 1.2 2022/03/24 12:42:44 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_sockpair_c,"$Id: w32_sockpair.c,v 1.3 2022/06/05 11:08:42 cvsuser Exp $")
 
 /*
  * win32 socket file-descriptor support
@@ -221,7 +221,11 @@ w32_socketpair_native(int af, int type, int proto, int sock[2])
         goto error;
 
     memset((void*)&addr1, 0, sizeof(addr1));
+#if defined(__MINGW32__)
+    addr1.sin_family = (short)af;
+#else
     addr1.sin_family = (ADDRESS_FAMILY)af;
+#endif
     addr1.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     addr1.sin_port = 0;
 
@@ -237,7 +241,7 @@ w32_socketpair_native(int af, int type, int proto, int sock[2])
     if (listen(listen_sock, 1))
         goto error;
 
-    if ((sock[0] = socket(af, type, proto)) == INVALID_SOCKET)
+    if ((sock[0] = socket(af, type, proto)) == (int)INVALID_SOCKET)
         goto error;
 
 #undef connect
@@ -245,7 +249,7 @@ w32_socketpair_native(int af, int type, int proto, int sock[2])
         goto error;
 
 #undef accept
-    if ((sock[1] = accept(listen_sock, 0, 0)) == INVALID_SOCKET)
+    if ((sock[1] = accept(listen_sock, 0, 0)) == (int)INVALID_SOCKET)
         goto error;
 
 #undef getpeername
@@ -272,10 +276,10 @@ error:
     if (listen_sock != INVALID_SOCKET)
         closesocket(listen_sock);
 
-    if (sock[0] != INVALID_SOCKET)
+    if (sock[0] != (int)INVALID_SOCKET)
         closesocket(sock[0]);
 
-    if (sock[1] != INVALID_SOCKET)
+    if (sock[1] != (int)INVALID_SOCKET)
         closesocket(sock[1]);
 
     WSASetLastError(nerr);

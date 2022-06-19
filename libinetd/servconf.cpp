@@ -144,6 +144,7 @@ syslogconfig(const char *label, const struct servconfig *sep)
 		);
 
 	sep->se_access_times.sysdump();
+	sep->se_geoips.sysdump();
 	sep->se_addresses.sysdump();
 }
 

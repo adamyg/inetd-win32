@@ -1,6 +1,6 @@
-/* -*- mode: c; indent-width: 4; -*- */
+/* -*- mode: c; indent-width: 8; -*- */
 /*
- * Example client
+ * Example client - MSVC/WATCOMC
  * windows inetd service.
  *
  * Copyright (c) 2020 - 2022, Adam Young.
@@ -32,8 +32,8 @@
 
 static const char *short_options = "i:";
 static struct inetd::Getopt::Option long_options[] = {
-    { "usage", inetd::Getopt::argument_none, NULL, 1000 },
-    { NULL }
+        { "usage", inetd::Getopt::argument_none, NULL, 1000 },
+        { NULL }
 };
 
 extern void usage(const char *fmt = NULL, ...); /*no-return*/
@@ -42,37 +42,37 @@ extern int  process(SOCKET socket);
 int
 main(int argc, const char **argv)
 {
-    inetd::Getopt options(short_options, long_options, argv[0]);
-    const char *basename = NULL;
-    std::string msg;
+        inetd::Getopt options(short_options, long_options, argv[0]);
+        const char *basename = NULL;
+        std::string msg;
 
-    while (-1 != options.shift(argc, argv, msg)) {
-        switch (options.optret()) {
-        case 'i':   // interface
-            basename = options.optarg();
-            break;
-        case 1000:  // usage
-            usage();
-        default:    // error
-            usage("%s", msg.c_str());
+        while (-1 != options.shift(argc, argv, msg)) {
+                switch (options.optret()) {
+                case 'i':   // interface
+                        basename = options.optarg();
+                        break;
+                case 1000:  // usage
+                        usage();
+                default:    // error
+                        usage("%s", msg.c_str());
+                }
         }
-    }
 
-    if (NULL == basename) {
-        usage("missing interface specification");
-    }
+        if (NULL == basename) {
+                usage("missing interface specification");
+        }
 
-    argv += options.optind();
-    if (0 != (argc -= options.optind())) {
-        usage("unexpected arguments");
-    }
+        argv += options.optind();
+        if (0 != (argc -= options.optind())) {
+                usage("unexpected arguments");
+        }
 
-    SOCKET socket = inetd::SocketShare::GetSocket(basename);
-    if (INVALID_SOCKET != socket) {
-        return process(socket);
-    }
-    std::abort();
-    /*NOTREACHED*/
+        SOCKET socket = inetd::SocketShare::GetSocket(basename);
+        if (INVALID_SOCKET != socket) {
+                return process(socket);
+        }
+        std::abort();
+        /*NOTREACHED*/
 }
 
 void
@@ -82,30 +82,30 @@ usage(const char *fmt, ...)
 #define PROGNAME "example"
 #endif
 
-    if (fmt) {
-        va_list ap;
-        va_start(ap, fmt);
-        vfprintf(stderr, fmt, ap), fputs("\n\n", stderr);
-        va_end(ap);
-    }
+        if (fmt) {
+                va_list ap;
+                va_start(ap, fmt);
+                vfprintf(stderr, fmt, ap), fputs("\n\n", stderr);
+                va_end(ap);
+        }
 
-    fprintf(stderr,
-        "Usage: %s [-i interface]]\n\n", PROGNAME);
-    fprintf(stderr,
-        "options:\n"
-        "   -i <interface>  Parent interface.\n");
-    exit(3);
+        fprintf(stderr,
+                "Usage: %s [-i interface]]\n\n", PROGNAME);
+        fprintf(stderr,
+                "options:\n"
+                "   -i <interface>  Parent interface.\n");
+        exit(3);
 }
 
 
 int
 process(SOCKET socket)
 {
-    const char text[] = "hello world\n";
+        const char text[] = "hello world\n";
 
-    send(socket, text, sizeof(text)-1, 0);
-    shutdown(socket, SD_SEND);
-    return 0;
+        send(socket, text, sizeof(text)-1, 0);
+        shutdown(socket, SD_SEND);
+        return 0;
 }
 
 /*end*/

@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_child_c,"$Id: w32_child.c,v 1.3 2022/03/26 04:55:39 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_child_c,"$Id: w32_child.c,v 1.4 2022/06/05 11:08:41 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -512,9 +512,9 @@ EnumWindowsProc(HWND hwnd, LPARAM lParam)
 
     (void) GetWindowThreadProcessId(hwnd, &pid);
     return pid != info->dwProcessId
-            || GetExitCodeProcess(info->hProcess, &status)
-                && status == STILL_ACTIVE       // value = 259
-                && PostMessage(hwnd, WM_CLOSE, 0, 0);
+            || (GetExitCodeProcess(info->hProcess, &status)
+                 && status == STILL_ACTIVE       // value = 259
+                 && PostMessage(hwnd, WM_CLOSE, 0, 0));
 }
 
 
@@ -1056,7 +1056,7 @@ BuildArgA(const char *cmd, const char **argv)
             /**/;
     }
 
-    if (len > (32 * 1024 * sizeof(char))) {
+    if (len > (int)(32 * 1024 * sizeof(char))) {
         errno = E2BIG;                          // command line too long >32k.
         return NULL;
     }
@@ -1199,7 +1199,7 @@ BuildArgW(const wchar_t *cmd, const wchar_t **argv)
             /**/;
     }
 
-    if (len > (32 * 1024 * sizeof(wchar_t))) {
+    if (len > (int)(32 * 1024 * sizeof(wchar_t))) {
         errno = E2BIG;                          // command line too long >32k.
         return NULL;
     }

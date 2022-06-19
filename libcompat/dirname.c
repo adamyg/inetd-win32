@@ -31,10 +31,6 @@
 
 #include "libcompat.h"
 
-    //#ifdef HAVE_CONFIG_H
-    //#include <config.h>
-    //#endif
-
 #if !defined(HAVE_DIRNAME)
 
 #include <sys/cdefs.h>
@@ -43,9 +39,6 @@
     //#endif /* !LIBC_SCCS && !lint */
 
 #include <sys/param.h>
-#ifdef HAVE_LIBGEN_H
-#include <libgen.h>
-#endif
 #ifdef HAVE_LIMITS_H
 #include <limits.h>
 #endif
@@ -141,7 +134,7 @@ int
 main(int argc, char *argv[])
 {
 	printf("%s\n", dirname(argv[1]));
-	exit(0);
+	return 0;
 }
 
 #endif

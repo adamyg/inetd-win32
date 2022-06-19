@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_string_c,"$Id: w32_string.c,v 1.1 2022/03/24 12:42:45 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_string_c,"$Id: w32_string.c,v 1.2 2022/06/05 11:08:42 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -37,11 +37,13 @@ __CIDENT_RCSID(gr_w32_string_c,"$Id: w32_string.c,v 1.1 2022/03/24 12:42:45 cvsu
  */
 
 #include "win32_internal.h"
+
 #include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 
 
+#if defined(NEED_STRCASECMP)
 LIBW32_API int
 strcasecmp(const char *s1, const char *s2)
 {
@@ -51,9 +53,10 @@ strcasecmp(const char *s1, const char *s2)
     return stricmp(s1, s2);
 #endif
 }
+#endif
 
 
-
+#if defined(NEED_STRCASECMP)
 LIBW32_API int
 strncasecmp(const char *s1, const char *s2, size_t len)
 {
@@ -63,6 +66,7 @@ strncasecmp(const char *s1, const char *s2, size_t len)
     return strnicmp(s1, s2, len);
 #endif
 }
+#endif
 
 
 #if defined(NEED_STRNLEN)

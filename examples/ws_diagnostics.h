@@ -33,140 +33,148 @@
 namespace ws {
 
 class Diagnostics {
-  public:
-    static const unsigned BUFFERSZ = 1024;
+public:
+        static const unsigned BUFFERSZ = 1024;
 
-    class StreamInstance {
-    private:
-        struct Stream {
-            Stream(int level = 0) : text_(message_, sizeof(message_) - 2 /*nl+nul*/)
-            {
-            }
+        class StreamInstance {
+        private:
+                struct Stream {
+                        Stream(unsigned level)
+                                : level_(level), text_(message_, sizeof(message_) - 2 /*nl+nul*/)
+                        {
+                        }
 
-            ~Stream()
-            {
-                flush_impl();
-            }
+                        ~Stream()
+                        {
+                                flush_impl();
+                        }
 
-            std::ostream &get()
-            {
-                return text_;
-            }
+                        std::ostream &get()
+                        {
+                                return text_;
+                        }
 
-            void flush()
-            {
-                if (!flush_impl()) return;
-                text_.clear();
-                text_.seekp(0, std::ios::beg);
-            }
+                        void flush()
+                        {
+                                if (!flush_impl()) return;
+                                text_.clear();
+                                text_.seekp(0, std::ios::beg);
+                        }
+
+                private:
+                        bool flush_impl()
+                        {
+                                size_t length = (size_t)text_.tellp();
+                                if (0 == length) return false;
+
+                                char *msg = message_;
+                                if ('\n' != msg[length - 1])
+                                    msg[length++] = '\n';
+                                msg[length] = 0;
+
+                                Diagnostics::message(msg);
+                                return true;
+                        }
+
+                private:
+                        const unsigned level_;
+                        std::ostrstream text_;
+                        char message_[BUFFERSZ];
+                };
 
         private:
-            bool flush_impl()
-            {
-                size_t length = (size_t)text_.tellp();
-                if (0 == length) return false;
+                StreamInstance(const StreamInstance &rhs) = delete;
+                StreamInstance& operator=(const StreamInstance &rhs) = delete;
 
-                char *msg = message_;
-                if ('\n' != msg[length - 1])
-                    msg[length++] = '\n';
-                msg[length] = 0;
+        public:
+                StreamInstance(unsigned level)
+                        : stream_(new Stream(level)) {
+                }
 
-                Diagnostics::message(msg);
-                return true;
-            }
+                StreamInstance(StreamInstance &&rhs) {
+                        stream_ = rhs.stream_, rhs.stream_ = nullptr;
+                }
+
+                ~StreamInstance() {
+                       delete(stream_);
+                }
+
+                template <typename T>
+                friend std::ostream& operator<<(const StreamInstance &rhs, const T &value) {
+                        assert(rhs.stream_);
+                        return rhs.stream_->get() << value;
+                }
+
+                friend std::ostream& operator<<(const StreamInstance &rhs, const char *value) {
+                        assert(rhs.stream_);
+                        return rhs.stream_->get() << value;
+                }
 
         private:
-            std::ostrstream text_;
-            char message_[BUFFERSZ];
+                mutable Stream *stream_;
         };
 
-    private:
-        StreamInstance(const StreamInstance &rhs) = delete;
-        StreamInstance& operator=(const StreamInstance &rhs) = delete;
+        friend struct Stream;
 
-    public:
-        StreamInstance(int level) : stream_(new Stream(level)) {
+        StreamInstance stream(unsigned level = 0)
+        {
+                return StreamInstance(level);
         }
 
-        StreamInstance(StreamInstance &&rhs) {
-            stream_ = rhs.stream_, rhs.stream_ = nullptr;
+        void ferror(const char *fmt, ...)
+        {
+                va_list ap;
+                va_start(ap, fmt);
+                vmessage(fmt, ap);
+                va_end(ap);
         }
 
-        ~StreamInstance() {
-            delete(stream_);
+        void fwarning(const char *fmt, ...)
+        {
+                va_list ap;
+                va_start(ap, fmt);
+                vmessage(fmt, ap);
+                va_end(ap);
         }
 
-        template <typename T>
-        friend std::ostream& operator<<(StreamInstance &rhs, const T &value) {
-            assert(rhs.stream_);
-            return rhs.stream_->get() << value;
+        void finfo(const char *fmt, ...)
+        {
+                va_list ap;
+                va_start(ap, fmt);
+                vmessage(fmt, ap);
+                va_end(ap);
         }
 
-    private:
-        Stream *stream_;
-    };
+        void fdebug(const char *fmt, ...)
+        {
+                va_list ap;
+                va_start(ap, fmt);
+                vmessage(fmt, ap);
+                va_end(ap);
+        }
 
-    friend struct Stream;
+        void vmessage(const char *fmt, va_list ap)
+        {
+                char msg[BUFFERSZ];
+                int length;
 
-    StreamInstance stream(int level = 0)
-    {
-        return StreamInstance(level);
-    }
+                if ((length = vsnprintf(msg, sizeof(msg) - 2, fmt, ap)) < 0 || length > (sizeof(msg) - 2))
+                        length = sizeof(msg) - 2;
 
-    void ferror(const char *fmt, ...)
-    {
-        va_list ap;
-        va_start(ap, fmt);
-        vmessage(fmt, ap);
-        va_end(ap);
-    }
+                if ('\n' != msg[length - 1])
+                        msg[length++] = '\n';
+                msg[length] = 0;
 
-    void fwarning(const char *fmt, ...)
-    {
-        va_list ap;
-        va_start(ap, fmt);
-        vmessage(fmt, ap);
-        va_end(ap);
-    }
+                message(msg);
+        }
 
-    void finfo(const char *fmt, ...)
-    {
-        va_list ap;
-        va_start(ap, fmt);
-        vmessage(fmt, ap);
-        va_end(ap);
-    }
-
-    void fdebug(const char *fmt, ...)
-    {
-        va_list ap;
-        va_start(ap, fmt);
-        vmessage(fmt, ap);
-        va_end(ap);
-    }
-
-    void vmessage(const char *fmt, va_list ap)
-    {
-        char msg[BUFFERSZ];
-        int length;
-
-        if ((length = vsnprintf(msg, sizeof(msg) - 2, fmt, ap)) < 0 || length > (sizeof(msg) - 2))
-            length = sizeof(msg) - 2;
-
-        if ('\n' != msg[length - 1])
-            msg[length++] = '\n';
-        msg[length] = 0;
-
-        message(msg);
-    }
-
-    static void message(const char *msg)
-    {
-        std::cout << msg;
+        static void message(const char *msg)
+        {
+                std::cout << msg;
 #if defined(_DEBUG)
-        ::OutputDebugStringA(msg);
+                ::OutputDebugStringA(msg);
 #endif
-    }
+        }
 };
 
 };  //namespace ws

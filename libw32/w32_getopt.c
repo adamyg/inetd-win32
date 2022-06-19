@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_getopt_c,"$Id: w32_getopt.c,v 1.1 2020/10/17 18:35:21 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_getopt_c,"$Id: w32_getopt.c,v 1.2 2022/06/05 11:08:41 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -31,11 +31,15 @@ __CIDENT_RCSID(gr_w32_getopt_c,"$Id: w32_getopt.c,v 1.1 2020/10/17 18:35:21 cvsu
  * SUCH DAMAGE.
  */
 
+//  #if !defined(__MINGW32__)
+
 #include <sys/cdefs.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "getopt.h"
 
 LIBW32_API int      opterr = 1,                 /* if error message should be printed */
                     optind = 1,                 /* index into parent argv vector */
@@ -122,4 +126,7 @@ getopt(int nargc, char * const *nargv, const char *ostr)
 	return (optopt);			/* dump back option letter */
 }
 
+//  #endif  /*!__MINGW32__*/
+
 /*end*/
+

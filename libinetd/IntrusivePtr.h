@@ -77,7 +77,7 @@ struct PtrMemberHook {
 		}
 	}
 
-	static auto intrusive_ptr_count(const element_type *px) {
+	static unsigned intrusive_ptr_count(const element_type *px) {
 		return px->intrusive_ptr_references_;
 	}
 
@@ -172,7 +172,7 @@ public:
 		return (1 == intrusive_ptr_count(px_));
 	}
 
-	auto use_count() const {
+	unsigned use_count() const {
 		return intrusive_ptr_count(px_);
 	}
 

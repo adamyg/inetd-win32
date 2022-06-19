@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_check_c,"$Id: w32_check.c,v 1.1 2022/03/24 12:42:43 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_check_c,"$Id: w32_check.c,v 1.2 2022/06/05 11:08:41 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -50,7 +50,7 @@ __CIDENT_RCSID(gr_w32_check_c,"$Id: w32_check.c,v 1.1 2022/03/24 12:42:43 cvsuse
 #include <sys/endian.h>
 #include <sys/rwlock.h>
 
-#if defined(HAVE_SYS_SOCKET_H) || defined(__MINGW32__)
+#if defined(HAVE_SYS_SOCKET_H)
 #include <sys/socket.h>
 #else
 #error missing <sys/socket.h>
@@ -78,6 +78,7 @@ __CIDENT_RCSID(gr_w32_check_c,"$Id: w32_check.c,v 1.1 2022/03/24 12:42:43 cvsuse
 #include <sys/time.h>
 #else
 #error missing <sys/time.h>
+    // TODO: sizeof(useconds_t) == sizeof(suseconds_t)
 #endif
 
 #ifdef HAVE_PWD_H
@@ -96,19 +97,19 @@ __CIDENT_RCSID(gr_w32_check_c,"$Id: w32_check.c,v 1.1 2022/03/24 12:42:43 cvsuse
 #include <stdlib.h>
 #include <time.h>
 
-#if defined(HAVE_INTTYPES_H) || defined(__MINGW32__)
+#if defined(HAVE_INTTYPES_H)
 #include <inttypes.h>
 #else
 #error missing <inttypes.h>
 #endif
-#if defined(HAVE_STDINT_H) || defined(__MINGW32__)
+#if defined(HAVE_STDINT_H)
 #include <stdint.h>
 #else
 #include missing <stdint.h>
 #endif
 #include <stdbool.h>
 
-#ifdef HAVE_UNISTD_H
+#if defined(HAVE_UNISTD_H)
 #include <unistd.h>
 #else
 #error missing <unistd.h>

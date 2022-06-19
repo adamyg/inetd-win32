@@ -1,7 +1,7 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiagsSysLog.cpp,v 1.1 2022/03/29 13:55:51 cvsuser Exp $")
+__CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiagsSyslog.cpp,v 1.4 2022/06/05 11:08:40 cvsuser Exp $")
 
-/* -*- mode: c; indent-width: 4; -*- */
+/* -*- mode: c; indent-width: 8; -*- */
 /*
  * Service diagnositics adapter -- syslog
  *
@@ -41,29 +41,29 @@ __CIDENT_RCSID(ServiceDiags_cpp,"$Id: ServiceDiagsSysLog.cpp,v 1.1 2022/03/29 13
 int
 ServiceDiags::Syslog::hook(void *self, int op, int pri, const char *msg, size_t msglen)
 {
-    static enum Adapter::loglevel levels[] = {
-        { Adapter::LLERROR   },  // 0 - LOG_EMERG
-        { Adapter::LLERROR   },  // 1 - LOG_ALERT
-        { Adapter::LLERROR   },  // 2 - LOG_CRIT
-        { Adapter::LLERROR   },  // 3 - LOG_ERR
-        { Adapter::LLWARNING },  // 4 - LOG_WARNING
-        { Adapter::LLWARNING },  // 5 - LOG_NOTICE
-        { Adapter::LLINFO,   },  // 6 - LOG_INFO
-        { Adapter::LLDEBUG   }   // 7 - LOG_DEBUG
-        };
+        static enum Adapter::loglevel levels[] = {
+                Adapter::LLERROR,    // 0 - LOG_EMERG
+                Adapter::LLERROR,    // 1 - LOG_ALERT
+                Adapter::LLERROR,    // 2 - LOG_CRIT
+                Adapter::LLERROR,    // 3 - LOG_ERR
+                Adapter::LLWARNING,  // 4 - LOG_WARNING
+                Adapter::LLWARNING,  // 5 - LOG_NOTICE
+                Adapter::LLINFO,     // 6 - LOG_INFO
+                Adapter::LLDEBUG     // 7 - LOG_DEBUG
+                };
 
-    Logger &logger = *((Logger *)self);
-    Adapter::push(logger, levels[LOG_PRI(pri)], msg, msglen);
-    return 1;
+        Logger &logger = *((Logger *)self);
+        Adapter::push(logger, levels[LOG_PRI(pri)], msg, msglen);
+        return 1;
 }
 
 
 //static
 void
-ServiceDiags::Syslog::attach(Logger &logger) 
+ServiceDiags::Syslog::attach(Logger &logger)
 {
-    setlogproxy(&ServiceDiags::Syslog::hook, (void *) &logger);
-    setlogoption(LOG_NOHEADER | (getlogoption() & ~LOG_PERROR));
+        setlogproxy(&ServiceDiags::Syslog::hook, (void *) &logger);
+        setlogoption(LOG_NOHEADER | (getlogoption() & ~LOG_PERROR));
 }
 
 
@@ -71,7 +71,7 @@ ServiceDiags::Syslog::attach(Logger &logger)
 void
 ServiceDiags::Syslog::detach()
 {
-    setlogproxy(NULL, NULL);
+        setlogproxy(NULL, NULL);
 }
 
 /*end*/

@@ -35,6 +35,7 @@ top_builddir=	@top_builddir@
 
 C=		.c
 O=		.o
+E=
 H=		.h
 A=		.a
 LP=		lib
@@ -71,6 +72,9 @@ D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
 XFLAGS=
 CFLAGS=		@CFLAGS@
 CWARN=		@CWARN@
+ifeq (gcc,$(findstring gcc,$(CC)))
+CWARN+=		-Wno-unused-result -Wno-unused-parameter -Wno-deprecated-declarations
+endif
 CDEBUG=		@CDEBUG@
 CRELEASE=	@CRELEASE@
 LDDEBUG=	@LDDEBUG@
@@ -145,9 +149,9 @@ directories:	$(D_OBJ)/.created
 clean:
 		@echo $(BUILD_TYPE) clean
 		-@$(RM) $(RMFLAGS) $(BAK) $(LIBRARY) $(LIBOBJS) $(CLEAN) $(XCLEAN) >/dev/null 2>&1
-		-@$(RM) $(RMFLAGS) ../include/a_out.h >/dev/null 2>&1
+		-@$(RM) $(RMFLAGS) ../include/sthread.h >/dev/null 2>&1
 
-$(D_OBJ)/%$(O): 	%$(C)
+$(D_OBJ)/%$(O):		%$(C)
 		$(CC) $(CFLAGS) -o $@ -c $<
 
 #end

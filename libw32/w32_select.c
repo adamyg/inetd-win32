@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_select_c,"$Id: w32_select.c,v 1.1 2022/03/24 12:42:44 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_select_c,"$Id: w32_select.c,v 1.2 2022/06/05 11:08:42 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -42,7 +42,7 @@ __CIDENT_RCSID(gr_w32_select_c,"$Id: w32_select.c,v 1.1 2022/03/24 12:42:44 cvsu
 #include <sys/types.h>
 #include <sys/param.h>
 #define  WIN32_SOCKET_H_CLEAN                   // disable mapping
-#ifdef HAVE_SYS_SOCKET_H
+#ifdef   HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
 #include <stdio.h>
@@ -86,7 +86,7 @@ static void         sel_unknown( Select_t *selfd );
 /*
  *  select() system call
  */
-int
+LIBW32_API int
 w32_select(
     int nfs, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, const struct timeval *tm)
 {
@@ -208,12 +208,11 @@ sel_build(
 
 
 static int
-sel_wait( u_int cnt, Select_t *selfds, DWORD timeout )
+sel_wait(u_int cnt, Select_t *selfds, DWORD timeout)
 {
-    DWORD stick;
+    DWORD  stick, ret;
     HANDLE waitfor[MAXIMUM_WAIT_OBJECTS];       // system limit
     u_int i = 0;
-    int ret;
 
     if (cnt > sizeof(waitfor)/sizeof(waitfor[0]))
         return -EINVAL;
@@ -223,20 +222,22 @@ sel_wait( u_int cnt, Select_t *selfds, DWORD timeout )
         i++;
     }
 
+    assert(0 == WAIT_OBJECT_0);
     stick = GetTickCount();                     // start tick
+
     for (;;) {
-        // Wait for event/timeout
+        // wait for event/timeout
         if ((ret = WaitForMultipleObjects (cnt, waitfor, FALSE, timeout)) == WAIT_FAILED) {
             return -EIO;
         }
 
-        // Timeout
+        // timeout
         if (ret == WAIT_TIMEOUT) {
             break;
         }
 
-        // Who caused this ??
-        if (ret >= WAIT_OBJECT_0 && ret <= (int)(WAIT_OBJECT_0 + cnt + 1)) {
+        // event
+        if (ret <= (DWORD)(WAIT_OBJECT_0 + cnt + 1)) {
             i = ret - WAIT_OBJECT_0;
             assert(waitfor[i] == selfds[i].s_handle);
             (selfds[i].s_poll)( selfds+i );
@@ -244,14 +245,14 @@ sel_wait( u_int cnt, Select_t *selfds, DWORD timeout )
                 return i+1;
         }
 
-        // Calculate next timeout frame...
-        if (timeout != INFINITE)
-        {
+        // calculate next timeout frame...
+        if (timeout != INFINITE) {
             DWORD ctick, ttick;                 // current and total ticks
 
             ctick = GetTickCount();
-            if ((ttick = sel_ticks( stick, ctick )) > timeout)
+            if ((ttick = sel_ticks( stick, ctick )) > timeout) {
                 break;
+            }
             timeout -= ttick;
             stick = ctick;
         }

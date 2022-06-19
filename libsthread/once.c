@@ -34,6 +34,7 @@
 #include <assert.h>
 #include <unistd.h>
 
+#if !defined(HAVE_PTHREAD_H)
 
 /*
  NAME
@@ -67,7 +68,8 @@
 typedef void (*init_routine_t)(void);
 
 static BOOL CALLBACK
-InitHandleFunction(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *lpContext) {
+InitHandleFunction(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *lpContext)
+{
     init_routine_t init_routine = (init_routine_t) Parameter;
     init_routine();
     return TRUE;
@@ -86,5 +88,7 @@ pthread_once(pthread_once_t *once_control, void (*init_routine)(void))
     (void) InitOnceExecuteOnce(&once_control->init_once, InitHandleFunction, (PVOID) init_routine, &lpContext);
     return 0;
 }
+
+#endif /*!HAVE_PTHREAD_H*/
 
 /*end*/

@@ -1,12 +1,12 @@
 #pragma once
-#ifndef LOGGERSYSLOG_H_INCLUDED
-#define LOGGERSYSLOG_H_INCLUDED
-/* -*- mode: c; indent-width: 8; -*- */
+
 /*
- * Logger syslog adapter
+ * <sys/fd_set.h>
  *
- * Copyright (c) 2020 - 2022, Adam Young.
+ * Copyright (c) 2022, Adam Young.
  * All rights reserved.
+ *
+ * This file is part of inetd-win32.
  *
  * The applications are free software: you can redistribute it
  * and/or modify it under the terms of the GNU General Public License as
@@ -27,32 +27,6 @@
  * ==end==
  */
 
-#include "syslog.h"
+#include <sys/socket.h>
 
-class Logger;
-
-struct LoggerSyslog {
-    static int
-    syslog_hook(void *self, int op, int pri, const char *msg, size_t msglen) 
-    {
-        Logger &logger = *((Logger *)self);
-        logger.push(msg, msglen);
-        return 1;
-    }
-
-    static void
-    attach(Logger &logger) 
-    {
-        setlogproxy(&LoggerSyslog::syslog_hook, (void *) &logger);
-    }
-
-    static void
-    detach() 
-    {
-        setlogproxy(NULL, NULL);
-    }
-};
-
-#endif  //LOGGERSYSLOG_H_INCLUDED
-
-//end
+/*end*/

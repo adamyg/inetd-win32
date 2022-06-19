@@ -140,7 +140,7 @@ struct TreeMemberHook
 		int foreach(Parent &parent, Functor functor, TParameter... params)
 		{
 			TreeMemberHook *hook;
-			RB_FOREACH(hook, rb, &head) {
+			RB_FOREACH(hook, rb, &head_) {
 				if (int ret = functor(Parent::hook_member(hook), std::forward<TParameter>(params)...)) {
 					return ret;
 				}
@@ -308,7 +308,11 @@ public:
 	static inline Member *
 	hook_member(MemberHook *hook)
 	{
-		size_t hook_offset = offsetof(Member, *PtrToMemberHook);
+#if defined(__GNUC__)
+		const size_t hook_offset = size_t(&(((Member *)nullptr)->*PtrToMemberHook));
+#else
+		const size_t hook_offset = offsetof(Member, *PtrToMemberHook);
+#endif
 		assert(hook);
 		assert(hook->member_ == (void *)((const char *)hook - hook_offset));
 		return (Member *)((const char *)hook - hook_offset);
@@ -317,7 +321,11 @@ public:
 	static inline const Member *
 	hook_member_unassigned(const MemberHook *hook)
 	{
-		size_t hook_offset = offsetof(Member, *PtrToMemberHook);
+#if defined(__GNUC__)
+		const size_t hook_offset = size_t(&(((Member *)nullptr)->*PtrToMemberHook));
+#else
+		const size_t hook_offset = offsetof(Member, *PtrToMemberHook);
+#endif
 		return (const Member *)((const char *)hook - hook_offset);
 	}
 
@@ -415,7 +423,7 @@ public:
 	static void remove_self_r(Member *member)
 	{
 		MemberHook *hook = member_hook_assigned(member);
-		Hook::Collection *collection = hook->collection_;
+		Collection *collection = hook->collection_;
 		Guard guard(*collection);
 		collection->remove(hook);
 	}
@@ -423,14 +431,14 @@ public:
 	static void remove_self(Member *member)
 	{
 		MemberHook *hook = member_hook_assigned(member);
-		Hook::Collection *collection = hook->collection_;
+		Collection *collection = hook->collection_;
 		collection->remove(hook);
 	}
 
 	inline void reset_r()
 	{
 		Guard guard(collection_);
-		reset(member);
+		reset();
 	}
 
 	inline void reset()
@@ -442,20 +450,20 @@ public:
 	int foreach_r(Functor functor, TParameter... params)
 	{
 		Guard guard(collection_);
-		return collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...);
+		return collection_.foreach(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach(Functor functor, TParameter... params)
 	{
-		return collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...);
+		return collection_.foreach(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_term_r(Functor functor, TParameter... params)
 	{
 		Guard guard(collection_);
-		if (int ret = collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...)) {
+		if (int ret = collection_.foreach(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
 		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
@@ -464,7 +472,7 @@ public:
 	template<class Functor, class... TParameter>
 	int foreach_term(Functor functor, TParameter... params)
 	{
-		if (int ret = collection_.foreach<>(*this, functor, std::forward<TParameter>(params)...)) {
+		if (int ret = collection_.foreach(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
 		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
@@ -474,20 +482,20 @@ public:
 	int foreach_safe_r(Functor functor, TParameter... params)
 	{
 		Guard guard(collection_);
-		return collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...);
+		return collection_.foreach_safe(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_safe(Functor functor, TParameter... params)
 	{
-		return collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...);
+		return collection_.foreach_safe(*this, functor, std::forward<TParameter>(params)...);
 	}
 
 	template<class Functor, class... TParameter>
 	int foreach_term_safe_r(Functor functor, TParameter... params)
 	{
 		Guard guard(collection_);
-		if (int ret = collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...)) {
+		if (int ret = collection_.foreach_safe(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
 		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);
@@ -496,7 +504,7 @@ public:
 	template<class Functor, class... TParameter>
 	int foreach_term_safe(Functor functor, TParameter... params)
 	{
-		if (int ret = collection_.foreach_safe<>(*this, functor, std::forward<TParameter>(params)...)) {
+		if (int ret = collection_.foreach_safe(*this, functor, std::forward<TParameter>(params)...)) {
 			return ret;
 		}
 		return functor(static_cast<Member *>(nullptr), std::forward<TParameter>(params)...);

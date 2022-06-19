@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_pwd_c,"$Id: w32_pwd.c,v 1.2 2022/03/24 12:42:44 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_pwd_c,"$Id: w32_pwd.c,v 1.3 2022/06/05 11:08:41 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -50,6 +50,8 @@ __CIDENT_RCSID(gr_w32_pwd_c,"$Id: w32_pwd.c,v 1.2 2022/03/24 12:42:44 cvsuser Ex
 #include <Lm.h>
 
 #pragma comment(lib, "Netapi32.lib")
+
+struct WellKnownSID;
 
 static void                 fill_passwds(void);
 static int                  fill_builtin(const struct WellKnownSID *wksid, struct passwd *pwd, char *name, size_t namlen);
@@ -457,6 +459,12 @@ static struct WellKnownSID {
     DWORD SubAuth[2];
 
 } well_known_sids[] = {
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+#define SECURITY_THIS_ORGANIZATION_RID 15
+#define SECURITY_LOCAL_SERVICE_RID 19
+#define SECURITY_NETWORK_SERVICE_RID 20
+#endif
+
     // See: "wmic sysaccount get name,sid"
     {"S-1-5-1", SECURITY_NT_AUTHORITY, 1, {SECURITY_DIALUP_RID}},
     {"S-1 5-2", SECURITY_NT_AUTHORITY, 1, {SECURITY_NETWORK_RID}},

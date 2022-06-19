@@ -47,8 +47,9 @@ XCLEAN=
 
 CC=		@CC@
 AR=		@AR@
-RANLIB= 	@RANLIB@
+RANLIB=		@RANLIB@
 RM=		@RM@
+LIBTOOL=	@LIBTOOL@
 
 # Configuration
 
@@ -72,6 +73,9 @@ D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
 XFLAGS=
 CFLAGS=		@CFLAGS@
 CWARN=		@CWARN@
+ifeq (gcc,$(findstring gcc,$(CC)))
+CWARN+=		-Wno-unused-result -Wno-unused-parameter -Wno-dangling-else
+endif
 CDEBUG=		@CDEBUG@
 CRELEASE=	@CRELEASE@
 LDDEBUG=	@LDDEBUG@
@@ -100,32 +104,31 @@ RMDFLAGS=	-rf
 LIBROOT=	compat
 
 LIBCSOURCES=\
-		asprintf.c	\
-		basename.c	\
-		bzero.c		\
-		dirname.c	\
-		explicit_bzero.c \
-		getline.c	\
-		getw.c		\
-		index.c		\
-		memmem.c	\
-		putw.c		\
-		reallocarray.c	\
-		recallocarray.c	\
-		rindex.c	\
-		strcasecmp.c	\
-		strcatn.c	\
-		strlcat.c	\
-		strlcpy.c	\
-		strncasecmp.c	\
-		strndup.c	\
-		strnlen.c	\
-		strsep.c	\
-		strtok_r.c	\
-		strtonum.c	\
+		asprintf.c		\
+		basename.c		\
+		bzero.c			\
+		dirname.c		\
+		explicit_bzero.c	\
+		getline.c		\
+		getw.c			\
+		index.c			\
+		memmem.c		\
+		putw.c			\
+		reallocarray.c		\
+		recallocarray.c		\
+		rindex.c		\
+		strcasecmp.c		\
+		strcatn.c		\
+		strlcat.c		\
+		strlcpy.c		\
+		strncasecmp.c		\
+		strndup.c		\
+		strnlen.c		\
+		strsep.c		\
+		strtok_r.c		\
+		strtonum.c		\
+		timegm.c		\
 		vasprintf.c
-
-##		mktemp.c
 
 CFLAGS+=	-DLIBCOMPAT_SOURCE=1
 
@@ -156,13 +159,13 @@ $(LIBRARY):		$(LIBOBJS)
 
 $(D_BIN)/dirname$(E):	MAPFILE=$(basename $@).map
 $(D_BIN)/dirname$(E):	LINKLIBS=lcompat
-$(D_BIN)/dirname$(E):	$(D_OBJ)/.created $(D_OBJ)/dirname_main$(O)
-		$(CC) $(LDFLAGS) -o $@ $(D_OBJ)/dirname_main$(O) $(LDLIBS) @LDMAPFILE@
+$(D_BIN)/dirname$(E):	$(D_OBJ)/dirname_main$(O)
+		$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) @LDMAPFILE@
 
 $(D_BIN)/basename$(E):	MAPFILE=$(basename $@).map
 $(D_BIN)/basename$(E):	LINKLIBS=lcompat
-$(D_BIN)/basename$(E):	$(D_OBJ)/.created $(D_OBJ)/basename_main$(O)
-		$(CC) $(LDFLAGS) -o $@ $(D_OBJ)/basename_main$(O) $(LDLIBS) @LDMAPFILE@
+$(D_BIN)/basename$(E):	$(D_OBJ)/basename_main$(O)
+		$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) @LDMAPFILE@
 
 .PHONY:		installinc
 installinc:		../include/.created

@@ -34,8 +34,9 @@
 #include <assert.h>
 #include <unistd.h>
 
-#include "satomic.h"
+#if !defined(HAVE_PTHREAD_H)
 
+#include "satomic.h"
 
 int
 pthread_mutexattr_init(pthread_mutexattr_t *attr)
@@ -78,7 +79,7 @@ pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
 }
 
 
-static void __inline
+static __inline void
 mutex_init_once(pthread_mutex_t *mutex)
 {
 #if !defined(NDEBUG)
@@ -165,5 +166,7 @@ pthread_mutex_unlock(pthread_mutex_t *mutex)
     LeaveCriticalSection(&mutex->cs);
     return 0;
 }
+
+#endif /*HAVE_PTHREAD_H*/
 
 /*end*/

@@ -30,11 +30,12 @@
 
 namespace inetd {
 
-struct SpinLock
+class SpinLock
 {
 	SpinLock(const SpinLock &) = delete;
 	SpinLock& operator=(const SpinLock &) = delete;
 
+public:
 	struct Guard
 	{
 		Guard(SpinLock &lock) : lock_(lock)
@@ -59,11 +60,12 @@ struct SpinLock
 };
 
 
-struct CriticalSection
+class CriticalSection
 {
 	CriticalSection(const CriticalSection &) = delete;
 	CriticalSection& operator=(const CriticalSection &) = delete;
 
+public:
 	class Guard
 	{
 		Guard(const Guard &) = delete;
@@ -98,3 +100,4 @@ struct CriticalSection
 };
 
 }   //namespace inetd
+

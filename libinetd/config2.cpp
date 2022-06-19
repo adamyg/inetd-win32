@@ -76,7 +76,7 @@ const char *
 getconfigdef2(const char *key, char &op, unsigned idx)
 {
 	if (parser) {
-		return parser->default(key, op, idx);
+		return parser->defaults(key, op, idx);
 	}
 	return nullptr;
 }

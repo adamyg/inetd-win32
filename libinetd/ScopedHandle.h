@@ -26,14 +26,16 @@
  * ==end==
  */
 
+#include "inetd_namespace.h"
+
 #include <cassert>
 
 #include "WindowStd.h"
 
 namespace inetd {
 class ScopedHandle {
-	ScopedHandle(const ScopedHandle &) = delete;
-	ScopedHandle& operator=(const ScopedHandle &) = delete;
+	INETD_DELETED_FUNCTION(ScopedHandle(const ScopedHandle &))
+	INETD_DELETED_FUNCTION(ScopedHandle& operator=(const ScopedHandle &))
 
 public:
 	ScopedHandle(HANDLE handle) : handle_(handle)
@@ -49,11 +51,19 @@ public:
 		Close();
 	}
 
+#if defined(_MSC_VER)
 	ScopedHandle& operator=(ScopedHandle&& other)
 	{
 		Set(other.Take());
 		return *this;
 	}
+#else
+	ScopedHandle& move_operator(ScopedHandle& other)
+	{
+		Set(other.Take());
+		return *this;
+	}
+#endif
 
 	void Set(HANDLE handle)
 	{

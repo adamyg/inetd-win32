@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_setrlimit_c,"$Id: w32_setrlimit.c,v 1.2 2022/03/24 12:42:44 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_setrlimit_c,"$Id: w32_setrlimit.c,v 1.3 2022/05/21 15:55:02 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -42,7 +42,6 @@ __CIDENT_RCSID(gr_w32_setrlimit_c,"$Id: w32_setrlimit.c,v 1.2 2022/03/24 12:42:4
 #include <stdio.h>
 #include <unistd.h>
 
-
 int
 setrlimit(int resource, const struct rlimit *rlp)
 {
@@ -55,7 +54,11 @@ setrlimit(int resource, const struct rlimit *rlp)
         case RLIMIT_NOFILE: {
                 int newmax, ret = 0;
                 if (rlp->rlim_max > WIN32_FILDES_DEF) {
+#if defined(__WATCOMC__)
+                    if (_grow_handles(rlp->rlim_max) < rlp->rlim_max) {
+#else
                     if (-1 == (newmax = _setmaxstdio(rlp->rlim_max))) {
+#endif
                         errno = EINVAL;
                         ret = -1;
                     }

@@ -1,5 +1,5 @@
 # -*- mode: mak; indent-tabs-mode: t; tab-width: 8 -*-
-# $Id: Makefile.in,v 1.1 2022/05/09 05:30:15 cvsuser Exp $
+# $Id: Makefile.in,v 1.2 2022/06/05 11:08:42 cvsuser Exp $
 # mmdblookup Makefile
 #
 #
@@ -52,6 +52,7 @@ endif
 RM=		@RM@
 RC=		@RC@
 PERL=		@PERL@
+LIBTOOL=	@LIBTOOL@
 
 # Configuration
 
@@ -69,7 +70,7 @@ include ../libmaxminddb.inc
 
 D_INC=		$(ROOT)/include
 D_BIN=		$(ROOT)/bin@TOOLCHAINEXT@/$(BUILD_TYPE)
-D_OBJ=		$(ROOT)/objects@TOOLCHAINEXT@/$(BUILD_TYPE)/inetd_service
+D_OBJ=		$(ROOT)/objects@TOOLCHAINEXT@/$(BUILD_TYPE)/mmdblookup
 D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
 
 # Common flags
@@ -135,7 +136,7 @@ directories:	$(D_OBJ)/.created $(TARGETS)
 $(D_BIN)/mmdblookup$(E):	MAPFILE=$(basename $@).map
 $(D_BIN)/mmdblookup$(E):	LINKLIBS=-lcompat
 $(D_BIN)/mmdblookup$(E):	$(D_OBJ)/lookup$(O)
-		$(CC) $(LDFLAGS) -o $@ $< $(LDLIBS) @LDMAPFILE@
+		$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o $@ $< $(LDLIBS) @LDMAPFILE@
 
 $(D_OBJ)/.created:
 		-@mkdir $(D_OBJ)
@@ -151,7 +152,10 @@ $(D_OBJ)/%$(O):		%.cpp
 		$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 $(D_OBJ)/%.res:		%.rc
-		$(RC) -nologo -Fo$@ -I../include -I../libNTService $<
+		$(RC) -I../include -fo $@ $<
+
+$(D_OBJ)/%_res.o:	%.rc
+		$(RC) -I../include -o $@ $<
 
 #end
 

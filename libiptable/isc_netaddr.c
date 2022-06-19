@@ -26,40 +26,40 @@
 #define UNUSED(__x) (void)(__x);
 #endif
 
-#ifndef ISC__IPADDR                     /*% IP address */
+#ifndef ISC__IPADDR			/*% IP address */
 #define ISC__IPADDR(x) ((uint32_t)htonl((uint32_t)(x)))
 #endif
 
-#ifndef ISC_IPADDR_ISMULTICAST          /*% Is IP address multicast? */
+#ifndef ISC_IPADDR_ISMULTICAST		/*% Is IP address multicast? */
 #define ISC_IPADDR_ISMULTICAST(i) \
 	(((uint32_t)(i)&ISC__IPADDR(0xf0000000)) == ISC__IPADDR(0xe0000000))
 #endif
 
-#ifndef ISC_IPADDR_ISEXPERIMENTAL       /*% Is IP address multicast? */
+#ifndef ISC_IPADDR_ISEXPERIMENTAL	/*% Is IP address multicast? */
 #define ISC_IPADDR_ISEXPERIMENTAL(i) \
 	(((uint32_t)(i)&ISC__IPADDR(0xf0000000)) == ISC__IPADDR(0xf0000000))
 #endif
 
-#ifndef IN6_IS_ADDR_MULTICAST           /*% Is IPv6 address multicast? */
+#ifndef IN6_IS_ADDR_MULTICAST		/*% Is IPv6 address multicast? */
 #define IN6_IS_ADDR_MULTICAST(a) ((a)->s6_addr[0] == 0xff)
 #endif
 
-#ifndef IN6_IS_ADDR_LINKLOCAL           /*% Is IPv6 address linklocal? */
+#ifndef IN6_IS_ADDR_LINKLOCAL		/*% Is IPv6 address linklocal? */
 #define IN6_IS_ADDR_LINKLOCAL(a) \
 	(((a)->s6_addr[0] == 0xfe) && (((a)->s6_addr[1] & 0xc0) == 0x80))
 #endif
 
-#ifndef IN6_IS_ADDR_SITELOCAL           /*% is IPv6 address sitelocal? */
+#ifndef IN6_IS_ADDR_SITELOCAL		/*% is IPv6 address sitelocal? */
 #define IN6_IS_ADDR_SITELOCAL(a) \
 	(((a)->s6_addr[0] == 0xfe) && (((a)->s6_addr[1] & 0xc0) == 0xc0))
 #endif
 
-#ifndef IN6_IS_ADDR_LOOPBACK            /*% is IPv6 address loopback? */
+#ifndef IN6_IS_ADDR_LOOPBACK		/*% is IPv6 address loopback? */
 #define IN6_IS_ADDR_LOOPBACK(x) \
 	(memcmp((x)->s6_addr, in6addr_loopback.s6_addr, 16) == 0)
 #endif
 
-#ifndef IN6_IS_ADDR_V4MAPPED            /*% Is IPv6 address V4 mapped? */
+#ifndef IN6_IS_ADDR_V4MAPPED		/*% Is IPv6 address V4 mapped? */
 #define IN6_IS_ADDR_V4MAPPED(x) \
 	(memcmp((x)->s6_addr, in6addr_any.s6_addr, 10) == 0 && (x)->s6_addr[10] == 0xff && (x)->s6_addr[11] == 0xff)
 #endif
@@ -111,8 +111,8 @@ isc_netaddr_eqprefix(const isc_netaddr_t *a, const isc_netaddr_t *b, unsigned in
 {
 	const unsigned char *pa = NULL, *pb = NULL;
 	unsigned int ipabytes = 0;		/* Length of whole IP address in bytes */
-	unsigned int nbytes;	   		/* Number of significant whole bytes */
-	unsigned int nbits;	   		/* Number of significant leftover bits */
+	unsigned int nbytes;			/* Number of significant whole bytes */
+	unsigned int nbits;			/* Number of significant leftover bits */
 
 	assert(a != NULL && b != NULL);
 
@@ -433,6 +433,10 @@ isc_netaddr_any(isc_netaddr_t *netaddr)
 void
 isc_netaddr_any6(isc_netaddr_t *netaddr)
 {
+#if defined(__WATCOMC__)
+	static struct in6_addr in6addr_any = IN6ADDR_ANY_INIT;
+#endif
+
 	memset(netaddr, 0, sizeof(*netaddr));
 	netaddr->family = AF_INET6;
 	netaddr->netaddr_v6addr = in6addr_any;
@@ -541,3 +545,4 @@ isc_netaddr_isloopback(const isc_netaddr_t *na)
 }
 
 //end
+

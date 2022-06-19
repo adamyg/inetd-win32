@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_w32_realpath_c,"$Id: w32_realpath.c,v 1.3 2022/03/24 12:42:44 cvsuser Exp $")
+__CIDENT_RCSID(gr_w32_realpath_c,"$Id: w32_realpath.c,v 1.4 2022/06/05 11:08:41 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 4; -*- */
 /*
@@ -84,7 +84,7 @@ __CIDENT_RCSID(gr_w32_realpath_c,"$Id: w32_realpath.c,v 1.3 2022/03/24 12:42:44 
 //	[ELOOP]
 //	    A loop exists in symbolic links encountered during resolution of the file_name argument.
 //	[ENAMETOOLONG]
-//	    The length of the file_name argument exceeds { PATH_MAX} or a pathname component is longer 
+//	    The length of the file_name argument exceeds { PATH_MAX} or a pathname component is longer
 //	    than {NAME_MAX}.
 //	[ENOENT]
 //	    A component of file_name does not name an existing file or file_name points to an empty string.

@@ -40,6 +40,18 @@
 //      and: https://github.com/P3TERX/GeoLite.mmdb
 //
 
+namespace {
+struct Profile {
+	std::string country;
+	std::string country_name;
+	std::string continent;
+	std::string profile;
+	std::string timezone;
+	std::string city;
+};
+}; //namespace
+
+
 #if defined(HAVE_LIBMAXMINDDB)
 #if defined(ssize_t)
 #undef ssize_t
@@ -53,16 +65,6 @@
 #include <maxminddb/maxminddb.h>
 
 class geoipdb {
-public:
-	struct Profile {
-		std::string country;
-		std::string country_name;
-		std::string continent;
-		std::string profile;
-		std::string timezone;
-		std::string city;
-	};
-
 public:
 	geoipdb() : mmdb_(), is_open_(false)
 	{
@@ -226,10 +228,16 @@ get_geoipdb(const inetd::String &database)
 
 #else	//HAVE_LIBMAXMINDDB
 
-class geoipdb { /*none*/ };
+class geoipdb {
+public:
+	bool profile(const struct sockaddr *sa, Profile &profile)
+	{
+		return false;
+	}
+};
 
 geoipdb *
-get_geoipdb(const inetd::String &database, int match_default)
+get_geoipdb(const inetd::String &database)
 {
 	return nullptr;
 }
@@ -317,7 +325,7 @@ geoips::allowed(const struct sockaddr *addr) const
 		if (nullptr == geoipdb_)
 			geoipdb_ = get_geoipdb(database());
 
-		geoipdb::Profile profile;
+		Profile profile;
 		if (geoipdb_ && geoipdb_->profile(addr, profile)) {
 			for (auto &rule : rules_) {
 				switch (rule.type) {
@@ -470,7 +478,7 @@ void
 geoips::sysdump() const
 {
 	for (const auto &rule : rules_) {
-		syslog(LOG_DEBUG, "%c: %s/%d (%s)", rule.op, rule.spec.c_str());
+		syslog(LOG_DEBUG, "%c: %d/%s/%d (%s)", (int)rule.type, rule.op, rule.spec.c_str());
 	}
 }
 

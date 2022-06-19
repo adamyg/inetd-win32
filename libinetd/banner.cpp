@@ -32,7 +32,7 @@
 namespace {
 
 template<typename Pred>
-bool load(const char *filename, Pred &pred)
+bool load(const char *filename, Pred pred)
 {
 	std::ifstream stream(filename, std::ios::in|std::ios::binary);
 	if (stream.fail()) {
@@ -58,20 +58,18 @@ load_file(PeerInfo &remote, const inetd::String &filename)
 	const struct servtab *sep = remote.getserv();
 	if (sep->se_proto == "tcp") {
 		int fd = remote.fd();
-
-		load<>(filename, [&](const char *buffer, size_t count) {
+		load(filename, [&](const char *buffer, size_t count) {
 					send(fd, buffer, count, 0);
 				});
 
 	} else if (sep->se_proto == "udp") {
 		const struct sockaddr_storage *sa = remote.getaddr();
-		int fd = remote.fd();
+		if (!sa) return;
 
-		if (sa) {
-			load<>(filename, [&](const char *buffer, size_t count) {
-						sendto(fd, buffer, count, 0, (const struct sockaddr *)sa, sizeof(*sa));
-					});
-		}
+		int fd = remote.fd();
+		load(filename, [&](const char *buffer, size_t count) {
+					sendto(fd, buffer, count, 0, (const struct sockaddr *)sa, sizeof(*sa));
+				});
 	}
 }
 

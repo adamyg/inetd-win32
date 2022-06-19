@@ -34,11 +34,16 @@
 #include <assert.h>
 #include <unistd.h>
 
+#if !defined(HAVE_PTHREAD_H)
+
 #include "timespec.h"
 #include "satomic.h"
 
+#if !defined(ETIMEDOUT)
+#define ETIMEDOUT EAGAIN
+#endif
 
-static inline DWORD
+static __inline DWORD
 timespec_to_msec(const struct timespec *a)
 {
     return (DWORD)(a->tv_sec * 1000) + (a->tv_nsec / 1000000);
@@ -76,7 +81,7 @@ pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr)
 }
 
 
-static void __inline
+static __inline void
 condition_init_once(pthread_cond_t *cond)
 {
 #if !defined(NDEBUG)
@@ -214,5 +219,7 @@ pthread_cond_timedwait_relative_np(pthread_cond_t *cond, pthread_mutex_t *mutex,
 {
     return (condition_wait(cond, mutex, reltime, 1));
 }
+
+#endif /*HAVE_PTHREAD_H*/
 
 /*end*/

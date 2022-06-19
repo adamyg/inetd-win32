@@ -1,5 +1,5 @@
 #include <edidentifier.h>
-__CIDENT_RCSID(NTServiceReg_cpp, "$Id: NTServiceReg.cpp,v 1.5 2022/03/25 17:02:36 cvsuser Exp $")
+__CIDENT_RCSID(NTServiceReg_cpp, "$Id: NTServiceReg.cpp,v 1.6 2022/06/05 11:08:40 cvsuser Exp $")
 
 /* -*- mode: c; indent-width: 8; -*- */
 /*
@@ -42,6 +42,9 @@ __CIDENT_RCSID(NTServiceReg_cpp, "$Id: NTServiceReg.cpp,v 1.5 2022/03/25 17:02:3
 #include "NTServiceReg.h"                       // public interface
 #include "NTServiceIO.h"                        // IDiagnostics
 
+#if defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR)
+#define LSTATUS LONG
+#endif
 
 CNTServiceReg::CNTServiceReg(const char* szServiceName, NTService::IDiagnostics &diags, const char *szCompany /*= 0*/) :
                 diags_(&diags), hRootKey_(0)
@@ -227,7 +230,7 @@ CNTServiceReg::Open(HKEY hParent, HKEY &hKey, NTService::IDiagnostics &diags, co
         }
 
         if (create) {                           // optional creation
-                if ((dwRet = ::RegCreateKeyEx(hParent, csKey, 0, "", 0,
+                if ((dwRet = ::RegCreateKeyEx(hParent, csKey, 0, NULL, 0,
                                     KEY_READ | (writable ? KEY_WRITE : 0), NULL, &subKey, &dwRet)) == ERROR_SUCCESS) {
                         hKey = subKey;
                         return true;
@@ -382,7 +385,7 @@ CNTServiceReg::SetValue(HKEY key, NTService::IDiagnostics &diags,
         //  the function sets the type and data for the key's unnamed or default value.
         //
         dwSize = strlen(szValue) + 1 /*nul*/;
-        if ((dwRet = ::RegSetValueExA(key, csKey, NULL,
+        if ((dwRet = ::RegSetValueExA(key, csKey, 0,
                             REG_SZ, (const BYTE *)szValue, dwSize)) != ERROR_SUCCESS) {
                 char errmsg[256];
                 diags.ferror("Unable to update <%s>, error %u (%s)", csKey,
@@ -406,8 +409,11 @@ CNTServiceReg::SetValue(HKEY key, NTService::IDiagnostics &diags,
         if (!csKey) return false;
         assert(NULL == strchr(csKey, '\\'));
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+#endif
         dwSize = sizeof(dwValue);
-        if ((dwRet = ::RegSetValueExA(key, csKey, NULL,
+        if ((dwRet = ::RegSetValueExA(key, csKey, 0,
                             REG_DWORD, (const BYTE *)dwValue, dwSize)) != ERROR_SUCCESS) {
                 char errmsg[256];
                 diags.ferror("Unable to update <%s>, error %u (%s)", csKey,

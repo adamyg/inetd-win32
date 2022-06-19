@@ -1,5 +1,5 @@
 # -*- mode: mak; -*-
-# $Id: Makefile.in,v 1.11 2022/05/09 05:30:15 cvsuser Exp $
+# $Id: Makefile.in,v 1.14 2022/06/05 11:08:39 cvsuser Exp $
 # inetd-win32 makefile.
 #
 #
@@ -118,7 +118,7 @@ XCLEAN=		$(D_BIN)/*.map
 
 # Configuration
 
-ifneq "" "$(filter win32,@build_os@)"
+ifeq ("win32","@build_os@")
 BUSYBOX=	@BUSYBOX@
 ifeq ($(BUSYBOX),busybox)
 BUSYBOX=	$(shell which busybox 2>/dev/null)
@@ -177,12 +177,6 @@ D_BIN=		$(ROOT)/bin@TOOLCHAINEXT@/$(BUILD_TYPE)
 D_LIB=		$(ROOT)/lib@TOOLCHAINEXT@/$(BUILD_TYPE)
 D_OBJ=		$(ROOT)/objects@TOOLCHAINEXT@/$(BUILD_TYPE)
 
-D_ETC=		$(D_BIN)/etc
-D_PLUGIN=	$(D_BIN)/plugin
-D_SHARE=	$(D_BIN)/share
-D_DOC=		$(D_BIN)/doc
-D_LOCALE=	$(D_BIN)/locale
-
 # Compilers, programs
 
 CC=		@CC@
@@ -194,15 +188,19 @@ CP=		@CP@
 RC=		@RC@
 PERL=		@PERL@
 TAR=		@TAR@
+LEX=		@LEX@
+YACC=		@YACC@
 WGET=		@WGET@
 
 INSTALL=	@INSTALL@
 INSTALL_PROGRAM=@INSTALL_PROGRAM@
 INSTALL_DATA=	@INSTALL_DATA@
 
+ifeq ("win32","@build_os@")
 INNO=		@INNO@
 ifeq ($(INNO),) # Inno5: allowing legacy XP installations
 INNO=		"C:/Program Files (x86)/Inno Setup 5/Compil32"
+endif
 endif
 
 # Common flags
@@ -215,7 +213,7 @@ CRELEASE=	@CRELEASE@
 LDDEBUG=	@LDDEBUG@
 LDRELEASE=	@LDRELEASE@
 
-CINCLUDE=	-I. -I$(MCSOURCE) -I$(D_INC) -I$(D_INC)/glib-2.0 @CINCLUDE@
+CINCLUDE=	-I. -I$(D_INC) @CINCLUDE@
 
 CEXTRA=		@DEFS@ -DLIBW32_DYNAMIC
 ifeq ("$(BUILD_TYPE)","release")
@@ -225,7 +223,7 @@ else
 CFLAGS+=	$(CDEBUG) $(CWARN) $(CINCLUDE) $(CEXTRA) $(XFLAGS)
 LDFLAGS=	$(LDDEBUG) @LDFLAGS@
 endif
-LDLIBS=		-L$(D_LIB) @LIBS@ @EXTRALIBS@
+LDLIBS=		-L$(D_LIB) @LDLIBS@ @LIBS@ @EXTRALIBS@
 
 ARFLAGS=	rcv
 RMFLAGS=	-f
@@ -258,7 +256,7 @@ BINS=\
 	$(D_BIN)/service$(E)		\
 	$(D_BIN)/services$(E)		\
 	$(D_BIN)/service_control$(E)	\
-	$(D_BIN)/mmdblookup$(E)		\         
+	$(D_BIN)/mmdblookup$(E)		\
 	$(D_BIN)/clients$(E)		\
 	$(D_BIN)/examples$(E)
 
@@ -400,7 +398,7 @@ clean:
 		@echo $(BUILD_TYPE) clean
 		$(MAKE) -C examples clean
 		$(MAKE) -C clients clean
-		$(MAKE) -C mmdblookup
+		$(MAKE) -C mmdblookup clean
 		$(MAKE) -C service_control clean
 		$(MAKE) -C services clean
 		$(MAKE) -C service clean
@@ -414,8 +412,8 @@ clean:
 		$(MAKE) -C libw32 clean
 
 vclean:			clean
-		-@$(RM) $(RMDFLAGS) $(D_BIN)/* $(D_MACROS)/* $(D_HELP)/* $(D_LIB)/* $(D_OBJ)/*
-		-rmdir $(D_BIN) $(D_MACROS) $(D_HELP) $(D_LIB) $(D_OBJ)
+		-@$(RM) $(RMDFLAGS) $(D_BIN)/* $(D_LIB)/* $(D_OBJ)/*
+		-rmdir $(D_BIN) $(D_LIB) $(D_OBJ)
 
 distclean:		clean
 		$(RM) $(RMFLAGS) config.cache config.log config.status \

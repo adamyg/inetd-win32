@@ -2,5 +2,7 @@ freebsd/
 netbsd/
 sav/
 ref/
+owc/
 SimpleString_test*
+
 

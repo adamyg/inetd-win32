@@ -1,7 +1,7 @@
 #ifndef LIBW32_WIN32_IO_H_INCLUDED
 #define LIBW32_WIN32_IO_H_INCLUDED
 #include <edidentifier.h>
-__CIDENT_RCSID(gr_libw32_win32_io_h,"$Id: win32_io.h,v 1.2 2022/03/24 12:42:45 cvsuser Exp $")
+__CIDENT_RCSID(gr_libw32_win32_io_h,"$Id: win32_io.h,v 1.3 2022/06/05 11:08:42 cvsuser Exp $")
 __CPRAGMA_ONCE
 
 /* -*- mode: c; indent-width: 4; -*- */
@@ -49,7 +49,7 @@ __CPRAGMA_ONCE
 
 #if !defined(_WIN32_WINCE)                      /* require winsock2.h */
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT        0x601               /* latest features */
+#define _WIN32_WINNT    0x601                   /* latest features */
 #elif (_WIN32_WINNT) < 0x400
 #pragma message("unistd: _WIN32_WINNT < 0400")
 #endif
@@ -62,9 +62,9 @@ __CPRAGMA_ONCE
 __BEGIN_DECLS
 
 /*fcntl.h*/
-#if !defined(F_GETTL)
-#define F_GETFL         1
-#define F_SETFL         2
+#if !defined(F_GETFL)   /* match linux definitions */
+#define F_GETFL         3       /* get file status flags */
+#define F_SETFL         4       /* set file status flags */
 #endif
 
 LIBW32_API int          fcntl (int fildes, int ctrl, int);

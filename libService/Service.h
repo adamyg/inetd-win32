@@ -27,9 +27,11 @@
  * ==end==
  */
 
-#if defined(_MSC_VER)
-#include <msvc_system_error.hpp>
+#if defined(__WATCOMC__)
+#undef min
+#undef max
 #endif
+
 #include "../libNTService/NTService.h"
 
 #include "SimpleConfig.h"
@@ -43,10 +45,20 @@ class Service : public CNTService {
 
 public:
         struct Options {
-                Options() : argc(0), argv(NULL), arg0(NULL), /*port(0),*/
-                        ignore(false), daemon_mode(false), delay_start(false),
-                        console_output(false), logger(true) {
+                Options() : service_main(NULL), service_shutdown(NULL),
+                        argc(0), argv(NULL), arg0(NULL),
+                        ignore(false),
+                        daemon_mode(false),
+                        delay_start(false),
+                        console_output(false),
+                        logger(true),
+                        conf_required(false)
+                {
                 }
+
+                int (__cdecl *service_main)(int argc, char * const *);
+                void (__cdecl *service_shutdown)(int ret);
+
                 int argc;
                 const char **argv;
                 const char *arg0;
@@ -55,11 +67,12 @@ public:
                 bool delay_start;
                 bool console_output;
                 bool logger;
+                bool conf_required;
                 std::string conf;
         };
 
 public:
-        Service(const char *svcname, bool console_mode = true);
+        Service(const char *appname, const char *svcname, bool console_mode = true);
         virtual ~Service();
 
         void Start(const Options &options);
@@ -97,15 +110,17 @@ private:
 private:
         struct Options options_;
         SimpleConfig config_;
+        bool configopen_;
         Logger logger_;
 
-        char   pipe_name_[256];
+        char appname_[64];
+        char pipe_name_[256];
         HANDLE logger_stop_event_;
         HANDLE logger_thread_;
         HANDLE server_stopped_event_;
         HANDLE server_thread_;
 };
 
-#endif  //SERVICE_H_INCLUDED
+#endif //SERVICE_H_INCLUDED
 
 //end

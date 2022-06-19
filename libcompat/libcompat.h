@@ -1,3 +1,4 @@
+#pragma once
 #ifndef LIBCOMPACT_H_INCLUDED
 #define LIBCOMPACT_H_INCLUDED
 //
@@ -6,9 +7,16 @@
 
 #include "w32config.h"
 
+#if defined(LIBCOMPAT_SOURCE)
+#if !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+#endif
+
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 __BEGIN_DECLS
 
@@ -27,7 +35,7 @@ extern char *strndup(const char *str, size_t maxlen);
 #endif /*HAVE_STRNDUP*/
 
 #if !defined(HAVE_STRCATN)
-extern char *strcatn(register char *s1, register char *s2, register int n);
+extern char *strcatn(char *s1, char *s2, int n);
 #if !defined(LIBCOMPAT_SOURCE)
 #define HAVE_STRCATN
 #endif
@@ -187,6 +195,15 @@ extern int vasprintf(char **str, const char *fmt, va_list ap);
 #endif
 #endif /*HAVE_VASPRINTF*/
 
+
+#if !defined(HAVE_TIMEGM)       /*unistd.h*/
+struct tm;
+extern time_t timegm(struct tm *tm);
+#if !defined(LIBCOMPAT_SOURCE)
+#define HAVE_TIMEGM
+#endif
+#endif /*HAVE_TIMEGM*/
+
 extern char *xmktemp(char *path, char *result, size_t length);
 
 #if !defined(HAVE_GETLINE)
@@ -196,7 +213,7 @@ extern int /*ssize_t*/ getline(char **buf, size_t *bufsiz, FILE *fp);
 #define HAVE_GETLINE
 #endif
 #endif
-     
+
 __END_DECLS
 
 #endif /*LIBCOMPACT_H_INCLUDED*/

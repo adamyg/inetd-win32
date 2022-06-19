@@ -26,10 +26,11 @@
  * ==end==
  */
 
-#undef   bind           // sys/socket.h, WIN32
-#include <functional>
 #include <memory>
 #include <cassert>
+
+#undef bind             // sys/socket.h, WIN32
+#include <functional>
 
 #include "WindowStd.h"
 #include <process.h>    // _beginthread, _endthread
@@ -61,12 +62,12 @@ public:
 			return (SOCKET)fd_;
 		}
 		operator HANDLE () {
-			return (HANDLE)fd_;
+			return reinterpret_cast<HANDLE>(fd_);
 		}
 
 	private:
 		friend class IOCPService;
-		int fd_;
+		SOCKET fd_;
 		LPFN_ACCEPTEX acceptex_;	// async AcceptEx() implementation.
 		LPFN_GETACCEPTEXSOCKADDRS acceptexaddrs_; // async GetAcceptExSockaddrs() implementation.
 	};
@@ -110,8 +111,8 @@ public:
 		};
 
 	public:
-		Socket(int fd = INVALID_SOCKET) : state_(fd >= 0 ? State::Connected : State::Closed),
-				fd_(fd), iocp_(INVALID_HANDLE_VALUE), ovlpex_(this)
+		Socket(SOCKET fd = INVALID_SOCKET) : state_(fd >= 0 ? State::Connected : State::Closed),
+			fd_(fd), iocp_(INVALID_HANDLE_VALUE), ovlpex_(this)
 		{
 			(void) memset(&accept_buffer_, 0, sizeof(accept_buffer_));
 		}
@@ -124,16 +125,16 @@ public:
 		// Returns a handle to the managed socket if any.
 		int fd() const
 		{
-			return fd_;
+			return (int)fd_;
 		}
 
 		// Releases the ownership of the managed socket if any. fd() returns -1 after the call.
 		int release()
 		{
-			int t_fd = fd_;
+			SOCKET t_fd = fd_;
 			fd_ = INVALID_SOCKET;
 			close();
-			return t_fd;
+			return (int)t_fd;
 		}
 
 		bool getendpoints(struct sockaddr &local, struct sockaddr &remote) const
@@ -164,7 +165,7 @@ public:
 			}
 
 			DWORD dwBytes = 0, dwFlags = 0;
-			WSABUF wsabuf = {buflen, static_cast<char *>(buffer)};
+			WSABUF wsabuf = {(u_long)buflen, static_cast<char *>(buffer)};
 
 			return (0 == ::WSARecv(fd_, &wsabuf, 1, &dwBytes, &dwFlags, NULL, NULL) ? (int)dwBytes : -1);
 		}
@@ -177,7 +178,7 @@ public:
 			}
 
 			DWORD dwBytes = 0;
-			WSABUF wsabuf = {buflen, (char *)(buffer)};
+			WSABUF wsabuf = {(u_long)buflen, (char *)(buffer)};
 
 			return (0 == ::WSASend(fd_, &wsabuf, 1, &dwBytes, 0, NULL, NULL) ? (int)dwBytes : -1);
 		}
@@ -193,7 +194,7 @@ public:
 			}
 
 			DWORD dwBytes = 0, dwFlags = 0;
-			WSABUF wsabuf = {buflen, static_cast<char *>(buffer)};
+			WSABUF wsabuf = {(u_long)buflen, static_cast<char *>(buffer)};
 
 			ovlpex_.reset();
 			io_callback_ = std::move(callback);
@@ -227,7 +228,7 @@ public:
 			}
 
 			DWORD dwBytes = 0;
-			WSABUF wsabuf = {buflen, (char *)buffer};
+			WSABUF wsabuf = {(u_long)buflen, (char *)buffer};
 
 			ovlpex_.reset();
 			io_callback_ = std::move(callback);
@@ -285,7 +286,7 @@ public:
 			state_ = Socket::Closed;
 			if (INVALID_SOCKET != fd_) {
 				::closesocket(fd_);
-				fd_ = INVALID_SOCKET;
+				fd_ = -1;
 			}
 			accept_callback_ = nullptr;
 			io_callback_ = nullptr;
@@ -295,7 +296,7 @@ public:
 	private:
 		friend class IOCPService;
 		State state_;			// execution status.
-		int fd_;			// active aocket descriptor
+		SOCKET fd_;			// active aocket descriptor
 		HANDLE iocp_;			// associated io completion port; if any.
 		OVERLAPPEDEX ovlpex_;		// extended overlapped interface.
 		char accept_buffer_[(sizeof(sockaddr_in6) + 16) * 2];
@@ -341,7 +342,7 @@ public:
 			hThread = (HANDLE)::_beginthreadex(NULL, 0, Worker, (void *)iocp_global_, 0, NULL);
 			if (NULL == hThread) {
 				syslog(LOG_ERR, "beginthreadex: %M");
-				terminate();
+			     // terminate();
 				return false;
 			}
 			threads_[i] = hThread;
@@ -396,10 +397,10 @@ public:
 
 		if (fd != listener.fd_) {	// associate new listener.
 			GUID GUIDAcceptEx = WSAID_ACCEPTEX,
-			    GUIDGetSockaddrs = WSAID_GETACCEPTEXSOCKADDRS;
+			GUIDGetSockaddrs = WSAID_GETACCEPTEXSOCKADDRS;
 			DWORD dwBytes;
 
-			listener.fd_ = INVALID_SOCKET;
+			listener.fd_ = -1;
 			listener.acceptex_ = 0;
 			listener.acceptexaddrs_ = 0;
 
@@ -421,7 +422,7 @@ public:
 			}
 
 			// associate the listener.
-			HANDLE t_iocp = ::CreateIoCompletionPort((HANDLE) fd, iocp,
+			HANDLE t_iocp = ::CreateIoCompletionPort(reinterpret_cast<HANDLE>(fd), iocp,
 						reinterpret_cast<LONG_PTR>(&listener), numthreads_);
 			if (NULL == t_iocp || iocp != t_iocp) {
 				WSASyslogx(LOG_ERR, "AssociateIoCompletionPort");
